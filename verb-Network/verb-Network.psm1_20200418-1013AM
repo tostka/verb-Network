@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.5.0
+Version     : 1.0.3.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -521,43 +521,16 @@ function Test-Port {
 
 #*------^ Test-Port.ps1 ^------
 
-#*------v Test-RDP.ps1 v------
-function Test-RDP {
-    <#
-    .SYNOPSIS
-    Test-RDP() - determine if powershell is running within an RDP session
-    .NOTES
-    Author: Todd Kadrie
-    Website:	http://toddomation.com
-    Twitter:	http://twitter.com/tostka
-    REVISIONS   :
-    # 3:45 PM 4/17/2020 added cbh
-    # 10:45 AM 7/23/2014
-    .DESCRIPTION
-    Test-RDP() - determine if powershell is running within an RDP session
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    if(Test-RDP){write-host "Running in RDP"} ; 
-    .LINK
-    #>
-    if ($env:SESSIONNAME -ne 'Console') { return $True; }; 
-}
-
-#*------^ Test-RDP.ps1 ^------
-
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Send-EmailNotif,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Send-EmailNotif,Test-Port -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgXBiiMCZMdayaIcPm7qFtygE
-# /HqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUwF2g9BknRT8mluYUkWmbDhqb
+# TsGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -572,9 +545,9 @@ Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSL
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTITgG/
-# cr9dCe+rJs75t1Z/yHYxuDANBgkqhkiG9w0BAQEFAASBgHfm/pgowDXmCA26GkJW
-# gezGK/PHxXej0+rjM3U8U9KV/5cNIYFwhU621NQxHH1T2XsT81iEAlKQiYVbLIlO
-# bSUkSxhlmv+gZMg660ESIFPeDAyaEN5b+aiClgPRXVWcShLtEZIEEKeuYbmuav2o
-# ZhWfD8r0VqKTaVQmlMYGfkLp
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQvpI/w
+# 4/qyPTgUyTt65Tl/ksWfXTANBgkqhkiG9w0BAQEFAASBgLM42sOTShGKLInCJytF
+# 5b1ZUMZVBLuoUC8bCQ6mGE9TSofFmwIKvJ+GOAwSz1apxDApeRrjDJcnU1k/1C0X
+# NFxhgO6HadIwRQDWOyQ4YYVy+4bi3qp2c/sWESt4HwrXuGHFDUvHc4MNEeOJBTED
+# YVGH6KPwamv1YUd2l2Nf1bUP
 # SIG # End signature block

@@ -12,7 +12,7 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.2'
+ModuleVersion = '1.0.5'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Send-EmailNotif','Test-Port')
+FunctionsToExport = @('download-file','download-filecurl','download-fileNoSSLNoSSL','get-IPSettings','get-whoami','Send-EmailNotif','Test-Port','Test-RDP')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUEzRtEmePQYM29vctLxHth6rb
-# MV2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUzAI9h5VTsrRZm5b7ItGHLup4
+# 28GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRQa9gM
-# bwDfBPb5AJr/U7JV3egnLzANBgkqhkiG9w0BAQEFAASBgJn/xuQsG4F4kzU/h7TR
-# c2J/0O99R72kyIp6jNQ35e3TQSF2HMJP6+IETypPQsgTYBSKBXcNfZRio+OMOB6f
-# HogUTVSzkbAhaw9nezvc57qGIqNwaVZNMUswhKG1aNBygycXjoxqI4N5sZ0q4gYp
-# m+4QrjS5p6hN2KK7XM/R6Utd
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQiaWGo
+# V+icdUpyUM+/s0VCoi3SAjANBgkqhkiG9w0BAQEFAASBgDRhXtEGsjOTj5WGykL6
+# bEgoJNcm7yZYuwjwxZ0/JkecBAy0KSKSDcadkI66/G9/Gxg9qYW6YcR2O4yF02S1
+# HgtbB+1pKOHT/w0wGlvlmmQPUk2zkSgK+4rvxtdoeuM6fdrnpmerP70tY6RmyvgO
+# oUybXRBZyTsk6khcXBv58Foy
 # SIG # End signature block

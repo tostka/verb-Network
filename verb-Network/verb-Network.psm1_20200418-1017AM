@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.5.0
+Version     : 1.0.4.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -533,8 +533,6 @@ function Test-RDP {
     REVISIONS   :
     # 3:45 PM 4/17/2020 added cbh
     # 10:45 AM 7/23/2014
-    .DESCRIPTION
-    Test-RDP() - determine if powershell is running within an RDP session
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -556,8 +554,8 @@ Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSL
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUgXBiiMCZMdayaIcPm7qFtygE
-# /HqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUbaHSBgmuMKzh5sPN+aOdAJql
+# 1qmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -572,9 +570,9 @@ Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSL
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTITgG/
-# cr9dCe+rJs75t1Z/yHYxuDANBgkqhkiG9w0BAQEFAASBgHfm/pgowDXmCA26GkJW
-# gezGK/PHxXej0+rjM3U8U9KV/5cNIYFwhU621NQxHH1T2XsT81iEAlKQiYVbLIlO
-# bSUkSxhlmv+gZMg660ESIFPeDAyaEN5b+aiClgPRXVWcShLtEZIEEKeuYbmuav2o
-# ZhWfD8r0VqKTaVQmlMYGfkLp
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSOeVLa
+# aqVaNxJvuNdSac+HjuGVsjANBgkqhkiG9w0BAQEFAASBgFXpfODQ1tqNUm/tPFfD
+# nLhlYLT9Lmn85z/xn5dLLS+fX44KRTs685S+fBhnmpeJO4KnYCVv6+v0BXVlraLi
+# Ek82W6dY5VCQMqwLzYdBmx3iK0sVMY2HRmSDsEVkIr58pzvE8LiczRrjRr4G9mll
+# o80H1zpN8hhaQyJjwBzMGaCG
 # SIG # End signature block

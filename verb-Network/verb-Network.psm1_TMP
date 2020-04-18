@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.1.0
+Version     : 1.0.4.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -33,6 +33,231 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
+
+#*------v download-file.ps1 v------
+function download-file {
+    <#
+    .SYNOPSIS
+    download-file.ps1 - simple download client
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : download-file.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    REVISIONS
+    11:31 AM 4/17/2020 added CBH
+    .DESCRIPTION
+    download-file.ps1 - simple download client
+    .PARAMETER  url
+    Url to be downloaded
+    .PARAMETER  DestinationName
+    Full path to destiontion file for download
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    download-file -url https://xxx -destinationname c:\pathto\file.ext
+    .LINK
+    #>
+        [CmdletBinding()]
+        PARAM ([string]$url, [string]$DestinationName)
+        $rgxURLParse = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" ;
+        if ($url -match $rgxURLParse) {
+            $host = $matches[4] ;
+            if (test-connection -ComputerName $host -count 1) {
+                $client = new-object system.net.WebClient
+                $client.Headers.Add("user-agent", "PowerShell")
+                $client.downloadfile($url, $DestinationName)
+            }
+            else {
+                throw "unable to Ping $()" ;
+            } ;
+        }
+        else {
+            throw "Unparsable url, to fqdn:$($url)" ;
+        } ;
+    }
+
+#*------^ download-file.ps1 ^------
+
+#*------v download-filecurl.ps1 v------
+function download-filecurl {
+    <#
+    .SYNOPSIS
+    download-filecurl.ps1 - simple download wrapper around curl cmdline util
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : download-filecurl.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    REVISIONS
+    11:31 AM 4/17/2020 added CBH
+    .DESCRIPTION
+    download-filecurl.ps1 - simple download client
+    .PARAMETER  url
+    Url to be downloaded
+    .PARAMETER  DestinationName
+    Full path to destiontion file for download
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    download-filecurl -url https://xxx -destinationname c:\pathto\file.ext
+    .LINK
+    #>
+    PARAM ([string]$url, [string]$DestinationName)
+    $CurlArgument = '-o $($DestinationName)', '$($url)' ;
+    if (($PSVersionTable.PSEdition -eq 'Desktop') -OR ($IsCoreCLR -AND $IsWindows) -OR !$PSVersionTable.PSEdition) {$CURLEXE = "$env:windir\System32\curl.exe" } ; 
+    elseif ($IsCoreCLR -AND $IsLinux) {$CURLEXE = 'curl'} ;
+    & $CURLEXE @CurlArgument ;
+}
+
+#*------^ download-filecurl.ps1 ^------
+
+#*------v download-fileNoSSL.ps1 v------
+function download-fileNoSSLNoSSL {
+    <#
+    .SYNOPSIS
+    download-fileNoSSLNoSSL.ps1 - simple download client - overridding the SSL trust requirement to get the file (insecure, for testing)
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : download-fileNoSSL.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    REVISIONS
+    * 11:31 AM 4/17/2020 added CBH
+    * 3:04 PM 8/13/2014
+    .DESCRIPTION
+    download-fileNoSSL.ps1 - simple download client - overridding the SSL trust requirement to get the file (insecure, for testing)
+    .PARAMETER  url
+    Url to be downloaded
+    .PARAMETER  DestinationName
+    Full path to destiontion file for download
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    $url = "http://www.cs.wisc.edu/~ballard/bofh/excuses" ; 
+    $DestinationName = "c:\temp\temp.html" ; 
+    download-file $url $DestinationName
+    .LINK
+    http://blogs.technet.com/b/bshukla/archive/2010/04/12/ignoring-ssl-trust-in-powershell-system-net-webclient.aspx
+    #>
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true } ;
+        $client = new-object system.net.WebClient ;
+        if ($DestinationName) {
+            $client.DownloadString($url) | out-file -FilePath $local;
+        }
+        else {
+            # stream to console
+            $client.DownloadString($url) ;
+        } # if-block end
+        # not sure if toggle back is necesesary, but try it
+        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $false } ;
+    }
+
+#*------^ download-fileNoSSL.ps1 ^------
+
+#*------v get-IPSettings.ps1 v------
+function get-IPSettings {
+    <#
+    .SYNOPSIS
+    get-IPSettings.ps1 - retrieve DNSHostName, ServiceName(nic), DNSServerSearchOrder, IPAddress & DefaultIPGateway for localhost
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : get-IPSettings.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    REVISIONS
+    11:31 AM 4/17/2020 added CBH
+    .DESCRIPTION
+    get-IPSettings.ps1 - retrieve DNSHostName, ServiceName(nic), DNSServerSearchOrder, IPAddress & DefaultIPGateway for localhost
+    by iteself it returns the set as the object $OPSpecs
+    .PARAMETER  url
+    Url to be downloaded
+    .PARAMETER  DestinationName
+    Full path to destiontion file for download
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    Selected.System.Management.ManagementObject
+    .EXAMPLE
+    get-IPSettings
+    Return the complete set of values
+    .EXAMPLE
+    (get-ipsettings).IPAddress
+    Return solely the IPAddress value
+    .LINK
+    #>
+        [CmdletBinding()]
+        PARAM ()
+$IPSpecs = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost | where { $_.IPEnabled -match "True" } | Select -property DNSHostName, ServiceName, @{N = "DNSServerSearchOrder"; E = { "$($_.DNSServerSearchOrder)" } }, @{N = 'IPAddress'; E = { $_.IPAddress } }, @{N = 'DefaultIPGateway'; E = { $_.DefaultIPGateway } } ;
+    return $IPSpecs;
+}
+
+#*------^ get-IPSettings.ps1 ^------
+
+#*------v get-whoami.ps1 v------
+function get-whoami {
+        <#
+        .SYNOPSIS
+        get-whoami.ps1 - assemble & return DOMAIN\LOGON string from local eVaris
+        .NOTES
+        Version     : 1.0.0
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2020-04-17
+        FileName    : get-whoami.ps1
+        License     : MIT License
+        Copyright   : (c) 2020 Todd Kadrie
+        Github      : https://github.com/tostka
+        Tags        : Powershell,Internet,Download,File
+        REVISIONS
+        11:31 AM 4/17/2020 added CBH
+        .DESCRIPTION
+        get-whoami.ps1 - assemble & return DOMAIN\LOGON string from local eVaris
+        .INPUTS
+        None. Does not accepted piped input.
+        .OUTPUTS
+        System.String 
+        .EXAMPLE
+        $logon = get-whoami
+        .LINK
+        #>
+        [CmdletBinding()]
+        PARAM ()
+        return (get-content env:\userdomain).ToLower() + "\" + (get-content env:\username).ToLower() ;
+    }
+
+#*------^ get-whoami.ps1 ^------
 
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
@@ -296,7 +521,34 @@ function Test-Port {
 
 #*------^ Test-Port.ps1 ^------
 
+#*------v Test-RDP.ps1 v------
+function Test-RDP {
+    <#
+    .SYNOPSIS
+    Test-RDP() - determine if powershell is running within an RDP session
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    REVISIONS   :
+    # 3:45 PM 4/17/2020 added cbh
+    # 10:45 AM 7/23/2014
+    .DESCRIPTION
+    Test-RDP() - determine if powershell is running within an RDP session
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    System.Boolean
+    .EXAMPLE
+    if(Test-RDP){write-host "Running in RDP"} ; 
+    .LINK
+    #>
+    if ($env:SESSIONNAME -ne 'Console') { return $True; }; 
+}
+
+#*------^ Test-RDP.ps1 ^------
+
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Send-EmailNotif,Test-Port -Alias *
+Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Send-EmailNotif,Test-Port,Test-RDP -Alias *
 
