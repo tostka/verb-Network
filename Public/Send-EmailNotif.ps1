@@ -1,3 +1,4 @@
+#*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
     .SYNOPSIS
@@ -6,10 +7,10 @@ Function Send-EmailNotif {
     Author: Todd Kadrie
     Website:	http://www.toddomation.com
     Twitter:	@tostka, http://twitter.com/tostka
-    Additional Credits: REFERENCE
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
     # 1:14 PM 2/13/2019 Send-EmailNotif(): added $SmtpBody += "`$PassStatus triggers:: $($PassStatus)"
     # 11:04 AM 11/29/2018 added -ea 0 on the get-services, override abberant $mybox lacking new laptop
     # 1:09 PM 11/5/2018 reworked $email splat & attachment handling & validation, now works for multiple attachments, switched catch write-error's to write-hosts (was immed exiting)
@@ -33,7 +34,6 @@ Function Send-EmailNotif {
         #$smtpTo="LYNDLISMessagingReports@toro.com" ;
         # 1:02 PM 4/28/2017 hourly run, just send to me
         $smtpTo="todd.kadrie@toro.com" ;
-
         # 12:09 PM 4/26/2017 need to email transcript before archiving it
         if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
         #Load as an attachment into the body text:
@@ -50,7 +50,15 @@ Function Send-EmailNotif {
 
         # 1:33 PM 4/28/2017 test for ERROR|CHANGE
         if($PassStatus ){
-            Send-EmailNotif ;
+            $Email = @{
+                smtpFrom = $SMTPFrom ;
+                SMTPTo = $SMTPTo ;
+                SMTPSubj = $SMTPSubj ;
+                #SMTPServer = $SMTPServer ;
+                SmtpBody = $SmtpBody ;
+            } ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Send-EmailNotif w`n$(($Email|out-string).trim())" ; 
+            Send-EmailNotif @Email;
         } else {
             write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):No Email Report: `$Passstatus is $null ; " ;
         }  ;
@@ -63,36 +71,34 @@ Function Send-EmailNotif {
     [-DeliveryNotificationOption <DeliveryNotificationOptions>] [-Encoding <Encoding>] [-Port <Int32>] [-Priority
     <MailPriority>] [-UseSsl] -From <String> [<CommonParameters>]
     #>
-    # by remming the below, they inherit out of params set in global scope - prolly should recast them lowercase, to reflect global scope
-    <#
+    [CmdletBinding()]
     PARAM(
-    [parameter(Mandatory=$true)]
-    [alias("from")]
-    [string] $SMTPFrom,
-    [parameter(Mandatory=$true)]
-    [alias("To")]
-    [string] $SmtpTo,
-    [parameter(Mandatory=$true)]
-    [parameter(Mandatory=$true)]
-    [alias("subj","Subject")]
-    [string] $SMTPSubj,
-    [parameter(Mandatory=$true)]
-    [alias("server","SmtpServer")]
-    [string] $SMTPServer,
-    [parameter(Mandatory=$true)]
-    [alias("port")]
-    [string] $SMTPPort,
-    [parameter(Mandatory=$true)]
-    [alias("Body")]
-    [string] $SmtpBody,
-    [parameter(Mandatory=$false)]
-    [string] $BodyAsHtml,
-    [parameter(Mandatory=$false)]
-    [alias("attach","Attachments","attachment")]
-    [string] $SmtpAttachment
+        [parameter(Mandatory=$true)]
+        [alias("from")]
+        [string] $SMTPFrom,
+        [parameter(Mandatory=$true)]
+        [alias("To")]
+        [string] $SmtpTo,
+        [parameter(Mandatory=$true)]
+        [alias("subj","Subject")]
+        [string] $SMTPSubj,
+        [parameter(Mandatory=$false)]
+        [alias("server")]
+        [string] $SMTPServer,
+        [parameter(Mandatory=$false)]
+        [alias("port")]
+        [string] $SMTPPort,
+        [parameter(Mandatory=$true)]
+        [alias("Body")]
+        [string] $SmtpBody,
+        [parameter(Mandatory=$false)]
+        [string] $BodyAsHtml,
+        [parameter(Mandatory=$false)]
+        [alias("attach","Attachments","attachment")]
+        [string] $SmtpAttachment
     )
-    #>
-
+    
+    $verbose = ($VerbosePreference -eq "Continue") ; 
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
     # just default the port if missing, and always use it
@@ -100,10 +106,7 @@ Function Send-EmailNotif {
         $SMTPPort = 25;
     }	 # if-block end
 
-    #if ( ($myBox -contains $env:COMPUTERNAME) -OR ($env:COMPUTERNAME -match $rgxLyncServers) ) {
-    # 2:19 PM 4/26/2017 lync doesn't need 8111, has vscan access
-    # 11:04 AM 11/29/2018 added -ea 0 on the get-services
-    if ( ($myBox -contains $env:COMPUTERNAME) ) {
+    if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
         #$SMTPServer = [infra file]
         $SMTPPort = $smtpserverport ; # [infra file]
         write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
@@ -146,34 +149,21 @@ Function Send-EmailNotif {
                 else {write-warning "$((get-date).ToString('HH:mm:ss')):UNABLE TO GCI ATTACHMENT:$($attachment)" }  ;
             } ;
         } ;
-    } ; # if-block end
+    } ; 
 
-    if ($host.version.major -ge 3) {
-        $Email.add("Port", $($SMTPPort));
-    }
+    if ($host.version.major -ge 3) {$Email.add("Port", $($SMTPPort));}
     elseif ($SmtpPort -ne 25) {
         write-warning "$((get-date).ToString('HH:mm:ss')):Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
     } ;
 
-    if ($BodyAsHtml) {
-        $Email.BodyAsHtml = $True;
-    } # if-E
-    <# 11:59 AM 8/28/2013 mailing debugging code
-    write-host  -ForegroundColor Yellow "Emailing with following parameters:"
-    $Email
-    write-host "body:"
-    $SmtpBody
-    write-host ("-" * 5)
-    write-host "body.length: " $SmtpBody.length
-    #>
-
+    if ($BodyAsHtml) {$Email.BodyAsHtml = $True } ;
     write-host "sending mail..."
     $email | out-string ;
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
     $error.clear()
     TRY {
         if ($validatedAttachments) {
-            # 12:14 PM 11/5/2018 looks like on psv2?v3 attachment is an array, can be pipelined in too
+            # looks like on psv2?v3 attachment is an array, can be pipelined in too
             $validatedAttachments | send-mailmessage @email ;
         }
         else {
@@ -189,9 +179,6 @@ Function Send-EmailNotif {
         write-host -red  "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)"
         write-host -red  "$((get-date).ToString('HH:mm:ss')): Line: $($_.InvocationInfo.Line)"
         write-host -red  "$((get-date).ToString('HH:mm:ss')): Error Details: $($_)"
-    } ; # try/catch-E
-
-    # then pipe just the errors out to console
-    #if($error.count -gt 0){write-host $error }
-
-}
+    } ; 
+} ; 
+#*------^ Send-EmailNotif.ps1 ^------
