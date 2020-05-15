@@ -10,6 +10,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
     # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
     # 1:14 PM 2/13/2019 Send-EmailNotif(): added $SmtpBody += "`$PassStatus triggers:: $($PassStatus)"
     # 11:04 AM 11/29/2018 added -ea 0 on the get-services, override abberant $mybox lacking new laptop
@@ -107,7 +108,7 @@ Function Send-EmailNotif {
     }	 # if-block end
 
     if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
-        #$SMTPServer = [infra file]
+        $SMTPServer = $global:SMTPServer ;
         $SMTPPort = $smtpserverport ; # [infra file]
         write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
     }
@@ -171,14 +172,8 @@ Function Send-EmailNotif {
         } ;
     }
     Catch {
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Failed send-mailmessage attempt"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Error in $($_.InvocationInfo.ScriptName)."
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): -- Error information"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Line Number: $($_.InvocationInfo.ScriptLineNumber)"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Offset: $($_.InvocationInfo.OffsetInLine)"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Line: $($_.InvocationInfo.Line)"
-        write-host -red  "$((get-date).ToString('HH:mm:ss')): Error Details: $($_)"
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
     } ; 
+    $error.clear() ;
 } ; 
 #*------^ Send-EmailNotif.ps1 ^------
