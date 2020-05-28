@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.7.0
+Version     : 1.0.8.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -536,8 +536,8 @@ Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSL
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPLl+yWE4BewOyVYTtFYLWgRF
-# nMigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnS670mqFvEPHxuO/VYUapMIi
+# fwmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -552,9 +552,9 @@ Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSL
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTeBAFo
-# IKigBUy9RD9z/7HjfxwGjTANBgkqhkiG9w0BAQEFAASBgHCNtEBOvSQPcSI+PhfE
-# oJehRU9JiXYYAJILpbTRa9xUiUbJDNLKS2ugePc+P+8f4Fzd32Fh9jb98Gd1h3M9
-# OUk2vHE3MORNxC6t+K8sqtpnF+pGPsGdyvkCe6DgSFm9wbIoOliiwfM12+p9gAJK
-# NZRmYhJcrNTpfSMdMNarmt/E
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRhJLmw
+# i30EqazboySjvl5+q6bjkTANBgkqhkiG9w0BAQEFAASBgJOu+4ovXDG7maySK85l
+# YUoAs+DupthH6b9BlOiSSFZzNqSg7fwZtgGLU3lGKxoSnADiFPD+6F0EBc2s6J1z
+# JWswH6cIuhLJs7x38KvYUdJIMOk1K40ZSeGhkrDFDjq9rreXV+22clJVaM6flRi0
+# D2q7rWUeh06nftIcAKN6qGlu
 # SIG # End signature block
