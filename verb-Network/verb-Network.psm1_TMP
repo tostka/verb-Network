@@ -1,11 +1,11 @@
-# verb-Network.psm1
+# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.7.0
+Version     : 1.0.9.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -33,6 +33,147 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
+
+#*------v Connect-PSR.ps1 v------
+Function Connect-PSR {
+    <#
+    .SYNOPSIS
+    Connect-PSR - Setup Remote Powershell connection
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-06-09
+    FileName    : Reconnect-PSR.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Remote
+    REVISIONS
+    * 8:56 AM 6/9/2020 added to verb-Network ; added verbose echo
+    * 9:34 AM 12/21/2016 port to Powershell remote
+    * 12:09 PM 12/9/2016 implented and debugged as part of verb-PSR set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    * 2/10/14 posted version 
+    .DESCRIPTION
+    Connect-PSR - Setup Remote Powershell connection
+    $Credential can leverage a global: $Credential = $global:SIDcred
+    .PARAMETER  Server
+    Server to Remote to
+    .PARAMETER CommandPrefix
+    No console feedback 
+    .PARAMETER Silent
+    No console feedback 
+    .PARAMETER  Credential
+    Credential object
+    .EXAMPLE
+    # -----------
+    try{    
+        $reqMods="Connect-PSR;Reconnect-PSR;Disconnect-PSR;Disconnect-PssBroken;Cleanup".split(";") ; 
+        $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ; 
+        Reconnect-PSR ; 
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ; 
+    } ; 
+    # -----------
+    .LINK
+    #>
+    [CmdletBinding()]
+    [Alias('cPSR')]
+    Param( 
+        [Parameter(Position=0,Mandatory=$True,HelpMessage="Server to Remote to")][Alias('__ServerName', 'Computer')]
+        [string]$Server,
+        [Parameter(HelpMessage="OptionalCommand Prefix for cmdlets from this session[PSR]")][string]$CommandPrefix,
+        [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID,
+        [Parameter(HelpMessage='Silent flag [-silent]')][switch]$silent
+    )  ; 
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    if(!$silent){
+        write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding Remote PS (connecting to $($Server))..." ; 
+    } ; 
+    
+    $PSRsplat=@{ComputerName=$server ; Name="PSR"} ;
+    # credential support
+    if($Credential){ $PSRsplat.Add("Credential",$Credential) } ; 
+    # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
+    write-verbose "$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($PSRsplat|out-string).trim())" ; 
+    $error.clear() ;
+    TRY {
+      $Global:PSRSess = New-PSSession @PSRSplat -ea stop ;
+    } CATCH {
+      $ErrTrapd = $_ ; 
+      write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
+    } ;
+}
+
+#*------^ Connect-PSR.ps1 ^------
+
+#*------v Disconnect-PSR.ps1 v------
+Function Disconnect-PSR {
+    <# 
+    .SYNOPSIS
+    Disconnect-PSR - Clear Remote Powershell connection
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://tinstoys.blogspot.com
+    Twitter:	http://twitter.com/tostka
+    Inspired By: ExactMike Perficient, Global Knowl... (Partner)  
+    Website:	https://social.technet.microsoft.com/Forums/msonline/en-US/f3292898-9b8c-482a-86f0-3caccc0bd3e5/exchange-powershell-monitoring-remote-sessions?forum=onlineservicesexchange
+    REVISIONS   :
+    * 2:56 PM 12/21/2016 add a pretest suppress not found error
+    * 9:34 AM 12/21/2016 port to Powershell remote
+    * 12:54 PM 12/9/2016 cleaned up, add pshelp
+    * 12:09 PM 12/9/2016 implented and debugged as part of verb-PSR set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    * 2/10/14 posted version 
+    .DESCRIPTION
+    Disconnect-PSR - Clear Remote Powershell connection
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output.
+    .EXAMPLE
+    Disconnect-PSR ; 
+    .LINK
+    #>
+        <#
+    .SYNOPSIS
+    Disconnect-PSR - Clear Remote Powershell connection
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-06-09
+    FileName    : Disconnect-PSR .ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Remote
+    REVISIONS
+    * 2:56 PM 12/21/2016 add a pretest suppress not found error ; port to Powershell remote
+    * 12:54 PM 12/9/2016 cleaned up, add pshelp ;implented and debugged as part of verb-PSR set
+    * 2:37 PM 12/6/2016 ported to local EMSRemote
+    .DESCRIPTION
+    Disconnect-PSR - Clear Remote Powershell connection
+    .EXAMPLE
+    .\Disconnect-PSR .ps1
+    .EXAMPLE
+    .\Disconnect-PSR .ps1
+    .LINK
+    #>
+    [CmdletBinding()]
+    [Alias('dPSR')]
+    Param() ;
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    if($Global:PSRSess){$Global:PSRSess | Remove-PSSession ; } ; 
+    # kill any other sessions using my distinctive name; add verbose, to ensure they're echo'd that they were missed
+    Get-PSSession |? {$_.name -eq 'PSR'} | Remove-PSSession -verbose ;
+}
+
+#*------^ Disconnect-PSR.ps1 ^------
 
 #*------v download-file.ps1 v------
 function download-file {
@@ -258,6 +399,43 @@ function get-whoami {
     }
 
 #*------^ get-whoami.ps1 ^------
+
+#*------v Reconnect-PSR.ps1 v------
+Function Reconnect-PSR {
+    <#
+    .SYNOPSIS
+    Reconnect-PSR - Reconnect Remote Powershell connection
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-06-09
+    FileName    : Reconnect-PSR.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Remote
+    REVISIONS
+    * 8:56 AM 6/9/2020 added to verb-Network
+    * 2:51 PM 12/21/2016 add support for Connect-PSR -silent ; port to Powershell remote
+    * 1:26 PM 12/9/2016 split no-session and reopen code, to suppress notfound errors ; cleaned up, add pshelp; implented and debugged as part of verb-PSR set; ported to local EMSRemote
+    .DESCRIPTION
+    .EXAMPLE
+    .\Reconnect-PSR.ps1
+    .EXAMPLE
+    .\Reconnect-PSR.ps1
+    .LINK
+    #>
+    [CmdletBinding()]
+    [Alias('rPSR')]
+    Param() ;
+    $verbose = ($VerbosePreference -eq "Continue") ; 
+    if(!$PSRSess){Connect-PSR -silent }
+    elseif($PSRSess.state -ne 'Opened' -OR $PSRSess.Availability -ne 'Available' ) { Disconnect-PSR ;Start-Sleep -S 3;Connect-PSR -silent ;} ;
+}
+
+#*------^ Reconnect-PSR.ps1 ^------
 
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
@@ -530,5 +708,5 @@ function Test-RDP {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Send-EmailNotif,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,Test-Port,Test-RDP -Alias *
 

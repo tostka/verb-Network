@@ -12,7 +12,7 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.8'
+ModuleVersion = '1.0.10'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('download-file','download-filecurl','download-fileNoSSLNoSSL','get-IPSettings','get-whoami','Send-EmailNotif','Test-Port','Test-RDP')
+FunctionsToExport = @('Connect-PSR','Disconnect-PSR','download-file','download-filecurl','download-fileNoSSLNoSSL','get-IPSettings','get-whoami','Reconnect-PSR','Send-EmailNotif','Test-Port','Test-RDP')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUh2Re96XtzA7hK5kkqG1b6PgY
-# 8sCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUaxhVPpHg/n89U7nijABOavXe
+# PIegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQxjUPA
-# dLu48Sh2mreoJMVVdHV6djANBgkqhkiG9w0BAQEFAASBgC3ikutGt+5bPqKcGJ93
-# FZUau0Iv4wFefgAynN5sSqiWLrBIvlyecpbbE5Zk6SFrgUcvQmnTBBNOaFVTzLd+
-# KE6AhuDSa/nGWrm3uD7lRXHE2yUKbZ9W6LGJj3WkbNN8rBc4v/GuNzSSuYm9GqOR
-# Us5iNyUgs9GHDN9M++vyy652
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTs7rTz
+# 2WHqOOkB3IGBGuVYqMmtdjANBgkqhkiG9w0BAQEFAASBgHUiinrdji0z/yovGyZn
+# e8OW1+RHP/mK/EXwWovH68tdYbELJjvRB6Wzuh7HBD9iZ0YwVcle6IiZDSw5E12M
+# pzmKMWUL9vYv12a86tg0/wakHRMzUbq1xmwlgUrKg9svJcYgbcbV76cEZ0xLMgIe
+# 7JcE4I3uBm5avlh9Ss3JlUSa
 # SIG # End signature block

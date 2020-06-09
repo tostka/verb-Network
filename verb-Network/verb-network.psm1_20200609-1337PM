@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.10.0
+Version     : 1.0.9.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -51,7 +51,7 @@ Function Connect-PSR {
     Github      : https://github.com/tostka
     Tags        : Powershell,Remote
     REVISIONS
-    * 8:56 AM 6/9/2020 added to verb-Network ; added verbose echo
+    * 8:56 AM 6/9/2020 added to verb-Network
     * 9:34 AM 12/21/2016 port to Powershell remote
     * 12:09 PM 12/9/2016 implented and debugged as part of verb-PSR set
     * 2:37 PM 12/6/2016 ported to local EMSRemote
@@ -73,9 +73,18 @@ Function Connect-PSR {
         $reqMods="Connect-PSR;Reconnect-PSR;Disconnect-PSR;Disconnect-PssBroken;Cleanup".split(";") ; 
         $reqMods | % {if( !(test-path function:$_ ) ) {write-error "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Missing $($_) function. EXITING." } } ; 
         Reconnect-PSR ; 
-    } CATCH {
-        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
-        Exit #STOP(debug)|EXIT(close)|Continue(move on in loop cycle) ; 
+    } Catch {
+        $msg=": Error Details: $($_)";
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): FAILURE!" ;
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): Error in $($_.InvocationInfo.ScriptName)." ; 
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): -- Error information" ;
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): Line Number: $($_.InvocationInfo.ScriptLineNumber)" ;
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): Offset: $($_.InvocationInfo.OffsetInLine)" ;
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): Command: $($_.InvocationInfo.MyCommand)" ; 
+        Write-Error "$((get-date).ToString('yyyyMMdd HH:mm:ss')): Line: $($_.InvocationInfo.Line)" ;
+        Write-Error  "$((get-date).ToString('yyyyMMdd HH:mm:ss')): $($msg)"; 
+        Cleanup ; 
+        #Exit ;
     } ; 
     # -----------
     .LINK
@@ -94,14 +103,14 @@ Function Connect-PSR {
         write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding Remote PS (connecting to $($Server))..." ; 
     } ; 
     
-    $PSRsplat=@{ComputerName=$server ; Name="PSR"} ;
+    $PSRsplat=@{ComputerName="$($server)" ; Name="PSR"} ;
     # credential support
     if($Credential){ $PSRsplat.Add("Credential",$Credential) } ; 
     # -Authentication Basic only if specif needed: for Ex configured to connect via IP vs hostname)
-    write-verbose "$((get-date).ToString('HH:mm:ss')):New-PSSession w`n$(($PSRsplat|out-string).trim())" ; 
-    $error.clear() ;
+    $Global:PSRSess = New-PSSession @PSRSplat  ;
+      $error.clear() ;
     TRY {
-      $Global:PSRSess = New-PSSession @PSRSplat -ea stop ;
+      $Global:E10Sess = New-PSSession @EMSSplat -ea STOP  ;
     } CATCH {
       $ErrTrapd = $_ ; 
       write-warning "$(get-date -format 'HH:mm:ss'): Failed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: $($ErrTrapd)" ;
@@ -714,8 +723,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcqGUChensV3couJerwM1/hxf
-# x+igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUCiR4SlJ7fSP7S4KXGg9kYuXl
+# XVKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -730,9 +739,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRNKkB9
-# d7hBxlPY/S4T8W7HX/APBjANBgkqhkiG9w0BAQEFAASBgHGJm/vQauycVvA7l19Z
-# XzSzltZfV6tZNLhiuVIQug+4JcqtmmxlpCzGgf1KBzbqxFqmOQJZyS/N5bIf1JjJ
-# H/r1mustHEIRmUI9TjXBUmgS3aKVkndVLRoAz+jMozvhEzI2CQ+WLok0AHnnLfMa
-# OInCBl7Mf7SWaNr3GPDz65Om
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSChnpO
+# xhGF6iiARGNgt/Jgf5IuEjANBgkqhkiG9w0BAQEFAASBgBxOpxUeZSRwSZZ+at48
+# WpsyecXs/T+T9ntF/B/qdCn6JTU9O2gYkplokxfw4Y0VAJfeM09pXTEQQjAoq0ce
+# yj1LnzAge1Fh+SOAwjxFLnTfZQRl5D2NCv9H6p4Pg4rSBbSEi3aMEEaR3vfW+jeo
+# ydQXnU1z2WpQOZVt3MAw3Xcc
 # SIG # End signature block
