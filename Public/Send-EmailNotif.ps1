@@ -10,6 +10,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
     # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
     # 1:14 PM 2/13/2019 Send-EmailNotif(): added $SmtpBody += "`$PassStatus triggers:: $($PassStatus)"
@@ -96,7 +97,7 @@ Function Send-EmailNotif {
         [string] $BodyAsHtml,
         [parameter(Mandatory=$false)]
         [alias("attach","Attachments","attachment")]
-        [string] $SmtpAttachment
+        $SmtpAttachment
     )
     
     $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -175,5 +176,6 @@ Function Send-EmailNotif {
         Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
     } ; 
     $error.clear() ;
-} ; 
+}
+
 #*------^ Send-EmailNotif.ps1 ^------

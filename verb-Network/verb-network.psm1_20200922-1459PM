@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.11.0
+Version     : 1.0.10.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -715,8 +715,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnbvZKwK3JV4oFpiTHH39MOJL
-# LiOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcqGUChensV3couJerwM1/hxf
+# x+igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -731,9 +731,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQQttT8
-# 8LVZccIaXpBk3d479ewSWjANBgkqhkiG9w0BAQEFAASBgC7YubzKIfIKCkcCuxik
-# 0Lq/bcGu4t4ny6tyRLtBPTj2AzORbPv+d9LolUyAgbuzk1di9Wnhqb3xCVRuZBiq
-# xYzcWaJSF2lvnOHl0pFDk4Fmu1x55xyFu4EeFnBfy9aWOQ3k6IHKcSdqjBE39dqG
-# H00miSFdpQRb+Xb5jsYDKUCT
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRNKkB9
+# d7hBxlPY/S4T8W7HX/APBjANBgkqhkiG9w0BAQEFAASBgHGJm/vQauycVvA7l19Z
+# XzSzltZfV6tZNLhiuVIQug+4JcqtmmxlpCzGgf1KBzbqxFqmOQJZyS/N5bIf1JjJ
+# H/r1mustHEIRmUI9TjXBUmgS3aKVkndVLRoAz+jMozvhEzI2CQ+WLok0AHnnLfMa
+# OInCBl7Mf7SWaNr3GPDz65Om
 # SIG # End signature block
