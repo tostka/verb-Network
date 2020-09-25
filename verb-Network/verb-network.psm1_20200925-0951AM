@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.12.0
+Version     : 1.0.11.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -690,17 +690,10 @@ function Test-RDP {
     Website:	http://toddomation.com
     Twitter:	http://twitter.com/tostka
     REVISIONS   :
-    # 9:48 AM 9/25/2020 fixed to explicitly check for an RDP & clientname evari: wasn't properly firing on work box, $env:sessionname is blank, not 'Console' 
     # 3:45 PM 4/17/2020 added cbh
     # 10:45 AM 7/23/2014
     .DESCRIPTION
     Test-RDP() - determine if powershell is running within an RDP session
-    RDP sets 2 environment variables on remote connect:
-    $env:sessionname: RDP-Tcp#[session#]
-    $env:clientname: [connecting client computername]
-    If both are set, you're in an RDP 
-    Proviso: unless Explorer Folder Option "Launch folder windows in a separate process" is enabled, 
-    applications launched from an additional Explorer window do not have these e-varis.
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -709,10 +702,7 @@ function Test-RDP {
     if(Test-RDP){write-host "Running in RDP"} ; 
     .LINK
     #>
-    # win10 on workbox doesn't have $env:SESSIONNAME -eq 'Console', below is false positive
-    #if ($env:SESSIONNAME -ne 'Console') { return $True; }; 
-    # better test is test match rgx on RDP-Tcp# string & $env:clientname populated 
-    if(($env:sessionname -match 'RDP-Tcp#\d*') -AND ($env:clientname)){ return $True} ;
+    if ($env:SESSIONNAME -ne 'Console') { return $True; }; 
 }
 
 #*------^ Test-RDP.ps1 ^------
@@ -725,8 +715,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU+9vxDFJ0UnbuOKsr68Icc8U/
-# u8igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUnbvZKwK3JV4oFpiTHH39MOJL
+# LiOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -741,9 +731,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ69mqm
-# JcUz+7FMu7q96w1Z2EwafjANBgkqhkiG9w0BAQEFAASBgKK0QvJa59qK5yaCX0ZO
-# Fa//noyuxs2tSnV6S16sAh3xzpUCYmz7FRD0iQxWLjJSACpykKgjNa+ktD+PYOqk
-# WgCp1b72TujrspYu64w6tXCg75zmtG4iTtQYObs6gOpM823wIn8wZ/w+eTK3jD4U
-# 8kdMacMva/QU+zmqq56y4KNK
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQQttT8
+# 8LVZccIaXpBk3d479ewSWjANBgkqhkiG9w0BAQEFAASBgC7YubzKIfIKCkcCuxik
+# 0Lq/bcGu4t4ny6tyRLtBPTj2AzORbPv+d9LolUyAgbuzk1di9Wnhqb3xCVRuZBiq
+# xYzcWaJSF2lvnOHl0pFDk4Fmu1x55xyFu4EeFnBfy9aWOQ3k6IHKcSdqjBE39dqG
+# H00miSFdpQRb+Xb5jsYDKUCT
 # SIG # End signature block
