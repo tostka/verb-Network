@@ -1,4 +1,4 @@
-#*------v summarize-PassStatus v------
+#*------v summarize-PassStatus.ps1 v------
 function summarize-PassStatus {
     <#
     .SYNOPSIS
@@ -35,7 +35,7 @@ function summarize-PassStatus {
     BEGIN {$Verbose = ($VerbosePreference -eq 'Continue') } ;
     PROCESS {
         $Error.Clear() ;
-        if($StatusElems = $script:PassStatus.split(';') |?{$_ -ne ''}){
+        if($StatusElems = $PassStatus.split(';') |?{$_ -ne ''}){
         $Rpt = @"
     
 `$PassStatus Triggers Summary::
@@ -56,5 +56,6 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
     END{
           $Rpt | write-output ; 
     } ;
-} ; 
-#*------^ summarize-PassStatus ^------
+}
+
+#*------^ summarize-PassStatus.ps1 ^------

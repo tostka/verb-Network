@@ -14,7 +14,7 @@ function summarize-PassStatusHtml {
     Copyright   : (c) 2020 Todd Kadrie
     Github      : https://github.com/tostka/
     REVISIONS
-    * 8:49 AM 10/12/2020 init
+    * 8:49 AM 10/12/2020 init, half-implemented, untested, moved to another method instead
     .DESCRIPTION
     summarize-PassStatusHtml - Summarize $PassStatus string (semi-colon-delimited array) into a grouped formatted HTML (fragment) report of the histogram of values. 
     .OUTPUTS

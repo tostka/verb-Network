@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.13.0
+Version     : 1.0.14.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -449,6 +449,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
     # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
@@ -575,6 +576,7 @@ Function Send-EmailNotif {
         Subject    = $($SMTPSubj) ;
         SMTPServer = $SMTPServer ;
         Body       = $SmtpBody ;
+        BodyAsHtml = $false ; 
     } ;
 
     [array]$validatedAttachments = $null ;
@@ -597,7 +599,9 @@ Function Send-EmailNotif {
         write-warning "$((get-date).ToString('HH:mm:ss')):Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
     } ;
 
-    if ($BodyAsHtml) {$Email.BodyAsHtml = $True } ;
+    # trigger html if body has html tags in it
+    if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
+
     write-host "sending mail..."
     $email | out-string ;
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
@@ -656,7 +660,7 @@ function summarize-PassStatus {
     BEGIN {$Verbose = ($VerbosePreference -eq 'Continue') } ;
     PROCESS {
         $Error.Clear() ;
-        if($StatusElems = $script:PassStatus.split(';') |?{$_ -ne ''}){
+        if($StatusElems = $PassStatus.split(';') |?{$_ -ne ''}){
         $Rpt = @"
     
 `$PassStatus Triggers Summary::
@@ -680,6 +684,81 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 }
 
 #*------^ summarize-PassStatus.ps1 ^------
+
+#*------v summarize-PassStatusHtml.ps1 v------
+function summarize-PassStatusHtml {
+    <#
+    .SYNOPSIS
+    summarize-PassStatusHtml - Summarize $PassStatus string (semi-colon-delimited array) into a grouped formatted HTML report of the histogram of values. 
+    .NOTES
+    Version     : 1.0.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 20201012-0849AM
+    FileName    : summarize-PassStatusHtml
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/
+    REVISIONS
+    * 8:49 AM 10/12/2020 init, half-implemented, untested, moved to another method instead
+    .DESCRIPTION
+    summarize-PassStatusHtml - Summarize $PassStatus string (semi-colon-delimited array) into a grouped formatted HTML (fragment) report of the histogram of values. 
+    .OUTPUTS
+    System.String
+    .EXAMPLE
+    $datatable = (summarize-PassStatusHtml -PassStatus ';CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;ERROR;ADD' )
+    $smtpBody = ConvertTo-HTML -Body "$datatable" -Title "" -PostContent "<p>(Creation Date: $((get-date -format 'yyyyMMdd-HHmmtt'))<p>" 
+    Returns a summary historgram of the specified semi-colon-delimited array of PassStatus values
+    .LINK
+    https://github.com/tostka/
+    #>
+    
+    [CmdletBinding()] 
+    Param(
+        [Parameter(Position=0,Mandatory=$True,HelpMessage="Semi-colon-delimited string of PassStatus elements, to be summarized in a returned report[-PassStatus 'TEN1']")]
+        [ValidateNotNullOrEmpty()]
+        [string]$PassStatus
+    ) ;
+    BEGIN {$Verbose = ($VerbosePreference -eq 'Continue') } ;
+    PROCESS {
+        $Error.Clear() ;
+        if($StatusElems = $script:PassStatus.split(';') |?{$_ -ne ''}){
+
+            $datatable = $StatusElems | group | sort count -desc  | ConvertTo-Html -Property count,Name -Fragment -PreContent "<h2>`$PassStatus Triggers Summary::</h2>" ; 
+            # full html build in the return 
+            #$Report = ConvertTo-HTML -Body "$datatable" -Title "`$PassStatus Triggers Summary::" -PostContent "<p>(Creation Date: $((get-date -format 'yyyyMMdd-HHmmtt'))<p>" 
+
+            <#
+            $Rpt = @"
+    
+`$PassStatus Triggers Summary::
+
+$(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).trim())
+    
+"@ ; 
+#>
+        } else {
+
+            $datatable = "<h2>`$PassStatus Triggers Summary::</h2>(no `$PassStatus elements passed)<br>" ;
+
+            <#
+            $Rpt = @"
+    
+`$PassStatus Triggers Summary::
+
+(no `$PassStatus elements passed)
+    
+"@ ; 
+#>
+        } ; 
+    } ;  # PROC-E
+    END{
+          $datatable | write-output ; 
+    } ;
+}
+
+#*------^ summarize-PassStatusHtml.ps1 ^------
 
 #*------v Test-Port.ps1 v------
 function Test-Port {
@@ -781,5 +860,5 @@ function Test-RDP {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,summarize-PassStatus,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
 

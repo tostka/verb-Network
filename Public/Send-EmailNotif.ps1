@@ -10,6 +10,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
     # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
@@ -136,6 +137,7 @@ Function Send-EmailNotif {
         Subject    = $($SMTPSubj) ;
         SMTPServer = $SMTPServer ;
         Body       = $SmtpBody ;
+        BodyAsHtml = $false ; 
     } ;
 
     [array]$validatedAttachments = $null ;
@@ -158,7 +160,9 @@ Function Send-EmailNotif {
         write-warning "$((get-date).ToString('HH:mm:ss')):Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
     } ;
 
-    if ($BodyAsHtml) {$Email.BodyAsHtml = $True } ;
+    # trigger html if body has html tags in it
+    if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
+
     write-host "sending mail..."
     $email | out-string ;
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
