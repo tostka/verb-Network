@@ -1,4 +1,4 @@
-# verb-network.psm1
+﻿# verb-network.psm1
 
 
 <#
@@ -647,36 +647,10 @@ function summarize-PassStatus {
     .EXAMPLE
     $SmtpBody += (summarize-PassStatus -PassStatus ';CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;ERROR;ADD' )
     Returns a summary historgram of the specified semi-colon-delimited array of PassStatus values
-    .EXAMPLE
-    # group out the PassStatus_$($tenorg) strings into a report for eml body
-    if($script:PassStatus){
-        if($summarizeStatus){
-            if($script:TargetTenants){
-                # loop the TargetTenants/TenOrgs and summarize each processed
-                foreach($TenOrg in $TargetTenants){
-                    $SmtpBody += "`n===Processing Summary: $($TenOrg):" ; 
-                    if((get-Variable -Name PassStatus_$($tenorg)).value){
-                        if((get-Variable -Name PassStatus_$($tenorg)).value.split(';') |?{$_ -ne ''}){
-                            $SmtpBody += (summarize-PassStatus -PassStatus (get-Variable -Name PassStatus_$($tenorg)).value -verbose:$($VerbosePreference -eq 'Continue') );
-                        } ; 
-                    } else {
-                        $SmtpBody += "(no processing of mailboxes in $($TenOrg), this pass)" ; 
-                    } ; 
-                    $SmtpBody += "`n" ; 
-                } ; 
-            } ;
-        } else { 
-            # dump PassStatus right into the email
-            $SmtpBody += "`n`$script:PassStatus: $($script:PassStatus):" ; 
-        } ;
-        if($SmtpAttachment){ 
-            $smtpBody +="(Logs Attached)" 
-        };
-        $SmtpBody += "`n$('-'*50)" ;
-    }
     .LINK
-    https://github.com/tostka/verb-Network
+    https://github.com/tostka/
     #>
+    
     [CmdletBinding()] 
     Param(
         [Parameter(Position=0,Mandatory=$True,HelpMessage="Semi-colon-delimited string of PassStatus elements, to be summarized in a returned report[-PassStatus 'TEN1']")]
@@ -888,3 +862,29 @@ function Test-RDP {
 
 Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTluOiRAERrDFZS4vRlR67t++
+# OD+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRftmWo
+# iV3prOIAaCie3g4YgtVzyjANBgkqhkiG9w0BAQEFAASBgG1sUYmwgqbsrvVxITdo
+# UZwq2u8UxVBDOSMz8rfGAc5oq4kwZbI3JjZIE55QtlvxI+zuhY2ksDjSmhhnqSt9
+# GrKrviqJObldl3uyTSZFD4kK5z3wF+lwNOZ8y8tKZpCnw0JhfAknfaiKZ02DsJB7
+# pOvcSJDuc/6E4dM6h9a/tq9q
+# SIG # End signature block

@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.15.0
+Version     : 1.0.16.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -647,10 +647,36 @@ function summarize-PassStatus {
     .EXAMPLE
     $SmtpBody += (summarize-PassStatus -PassStatus ';CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;ERROR;ADD' )
     Returns a summary historgram of the specified semi-colon-delimited array of PassStatus values
+    .EXAMPLE
+    # group out the PassStatus_$($tenorg) strings into a report for eml body
+    if($script:PassStatus){
+        if($summarizeStatus){
+            if($script:TargetTenants){
+                # loop the TargetTenants/TenOrgs and summarize each processed
+                foreach($TenOrg in $TargetTenants){
+                    $SmtpBody += "`n===Processing Summary: $($TenOrg):" ; 
+                    if((get-Variable -Name PassStatus_$($tenorg)).value){
+                        if((get-Variable -Name PassStatus_$($tenorg)).value.split(';') |?{$_ -ne ''}){
+                            $SmtpBody += (summarize-PassStatus -PassStatus (get-Variable -Name PassStatus_$($tenorg)).value -verbose:$($VerbosePreference -eq 'Continue') );
+                        } ; 
+                    } else {
+                        $SmtpBody += "(no processing of mailboxes in $($TenOrg), this pass)" ; 
+                    } ; 
+                    $SmtpBody += "`n" ; 
+                } ; 
+            } ;
+        } else { 
+            # dump PassStatus right into the email
+            $SmtpBody += "`n`$script:PassStatus: $($script:PassStatus):" ; 
+        } ;
+        if($SmtpAttachment){ 
+            $smtpBody +="(Logs Attached)" 
+        };
+        $SmtpBody += "`n$('-'*50)" ;
+    }
     .LINK
-    https://github.com/tostka/
+    https://github.com/tostka/verb-Network
     #>
-    
     [CmdletBinding()] 
     Param(
         [Parameter(Position=0,Mandatory=$True,HelpMessage="Semi-colon-delimited string of PassStatus elements, to be summarized in a returned report[-PassStatus 'TEN1']")]
@@ -866,8 +892,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUTluOiRAERrDFZS4vRlR67t++
-# OD+gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpDht1oEIU02BSjXSIXxWA5gz
+# zaqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -882,9 +908,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRftmWo
-# iV3prOIAaCie3g4YgtVzyjANBgkqhkiG9w0BAQEFAASBgG1sUYmwgqbsrvVxITdo
-# UZwq2u8UxVBDOSMz8rfGAc5oq4kwZbI3JjZIE55QtlvxI+zuhY2ksDjSmhhnqSt9
-# GrKrviqJObldl3uyTSZFD4kK5z3wF+lwNOZ8y8tKZpCnw0JhfAknfaiKZ02DsJB7
-# pOvcSJDuc/6E4dM6h9a/tq9q
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSCzn8N
+# ExwRTQ4RPKE4UwVsuTppUjANBgkqhkiG9w0BAQEFAASBgF7AIfOFt09lOykZR3sL
+# EGdNOJ2bGCeHPya5j57hjNufDyANPY/ZHWxbCiUeLDiKU6PtKvCXon9eeJXKM5Xh
+# US7ZNNK9yi0E+XD1crsFHWdIc5ZR4yLlT0zGl8iw6RfW2yhhM8C9c4hLFPlfY121
+# 3Lm7bDEu6cT0PTolITwmWQV3
 # SIG # End signature block

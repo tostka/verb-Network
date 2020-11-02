@@ -22,10 +22,36 @@ function summarize-PassStatus {
     .EXAMPLE
     $SmtpBody += (summarize-PassStatus -PassStatus ';CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;CHANGE;ERROR;ADD' )
     Returns a summary historgram of the specified semi-colon-delimited array of PassStatus values
+    .EXAMPLE
+    # group out the PassStatus_$($tenorg) strings into a report for eml body
+    if($script:PassStatus){
+        if($summarizeStatus){
+            if($script:TargetTenants){
+                # loop the TargetTenants/TenOrgs and summarize each processed
+                foreach($TenOrg in $TargetTenants){
+                    $SmtpBody += "`n===Processing Summary: $($TenOrg):" ; 
+                    if((get-Variable -Name PassStatus_$($tenorg)).value){
+                        if((get-Variable -Name PassStatus_$($tenorg)).value.split(';') |?{$_ -ne ''}){
+                            $SmtpBody += (summarize-PassStatus -PassStatus (get-Variable -Name PassStatus_$($tenorg)).value -verbose:$($VerbosePreference -eq 'Continue') );
+                        } ; 
+                    } else {
+                        $SmtpBody += "(no processing of mailboxes in $($TenOrg), this pass)" ; 
+                    } ; 
+                    $SmtpBody += "`n" ; 
+                } ; 
+            } ;
+        } else { 
+            # dump PassStatus right into the email
+            $SmtpBody += "`n`$script:PassStatus: $($script:PassStatus):" ; 
+        } ;
+        if($SmtpAttachment){ 
+            $smtpBody +="(Logs Attached)" 
+        };
+        $SmtpBody += "`n$('-'*50)" ;
+    }
     .LINK
-    https://github.com/tostka/
+    https://github.com/tostka/verb-Network
     #>
-    
     [CmdletBinding()] 
     Param(
         [Parameter(Position=0,Mandatory=$True,HelpMessage="Semi-colon-delimited string of PassStatus elements, to be summarized in a returned report[-PassStatus 'TEN1']")]
