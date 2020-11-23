@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.16.0
+Version     : 1.0.18.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -539,7 +539,6 @@ Function Send-EmailNotif {
         [alias("attach","Attachments","attachment")]
         $SmtpAttachment
     )
-    
     $verbose = ($VerbosePreference -eq "Continue") ; 
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
@@ -577,6 +576,7 @@ Function Send-EmailNotif {
         SMTPServer = $SMTPServer ;
         Body       = $SmtpBody ;
         BodyAsHtml = $false ; 
+        verbose = $verbose ; 
     } ;
 
     [array]$validatedAttachments = $null ;
@@ -602,8 +602,8 @@ Function Send-EmailNotif {
     # trigger html if body has html tags in it
     if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
 
-    write-host "sending mail..."
-    $email | out-string ;
+    # dumping to pipeline appears out of sync in console put it into a write- command to keep in sync
+    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):send-mailmessage w`n$(($email |out-string).trim())" ; 
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
     $error.clear()
     TRY {
@@ -892,8 +892,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpDht1oEIU02BSjXSIXxWA5gz
-# zaqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9GRMb39Kz7fTFZ79dNlHphLE
+# VqCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -908,9 +908,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSCzn8N
-# ExwRTQ4RPKE4UwVsuTppUjANBgkqhkiG9w0BAQEFAASBgF7AIfOFt09lOykZR3sL
-# EGdNOJ2bGCeHPya5j57hjNufDyANPY/ZHWxbCiUeLDiKU6PtKvCXon9eeJXKM5Xh
-# US7ZNNK9yi0E+XD1crsFHWdIc5ZR4yLlT0zGl8iw6RfW2yhhM8C9c4hLFPlfY121
-# 3Lm7bDEu6cT0PTolITwmWQV3
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQRqo2E
+# e8BrcJeBMwjMTyiaItDaxjANBgkqhkiG9w0BAQEFAASBgKVwJEtOfaEycwcwdFBW
+# 7lw76NiLFlSzbOdeupNgDKvzkVNurwEQMBIl3CLkHpDNkRWUiSHkK2gNFClPlgvj
+# LSmMLFKn/2vSv9y42nToJeoqjxlO6y6gK2FtpYwkQ837Ncra9hSZLSbXKZer5Sq6
+# Zfn3/GEkieFksuPI/qxWOe5d
 # SIG # End signature block

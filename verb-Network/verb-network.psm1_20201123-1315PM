@@ -1,4 +1,4 @@
-# verb-network.psm1
+﻿# verb-network.psm1
 
 
 <#
@@ -539,6 +539,7 @@ Function Send-EmailNotif {
         [alias("attach","Attachments","attachment")]
         $SmtpAttachment
     )
+    
     $verbose = ($VerbosePreference -eq "Continue") ; 
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
@@ -576,7 +577,6 @@ Function Send-EmailNotif {
         SMTPServer = $SMTPServer ;
         Body       = $SmtpBody ;
         BodyAsHtml = $false ; 
-        verbose = $verbose ; 
     } ;
 
     [array]$validatedAttachments = $null ;
@@ -602,8 +602,8 @@ Function Send-EmailNotif {
     # trigger html if body has html tags in it
     if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
 
-    # dumping to pipeline appears out of sync in console put it into a write- command to keep in sync
-    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):send-mailmessage w`n$(($email |out-string).trim())" ; 
+    write-host "sending mail..."
+    $email | out-string ;
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
     $error.clear()
     TRY {
@@ -888,3 +888,29 @@ function Test-RDP {
 
 Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUpDht1oEIU02BSjXSIXxWA5gz
+# zaqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSCzn8N
+# ExwRTQ4RPKE4UwVsuTppUjANBgkqhkiG9w0BAQEFAASBgF7AIfOFt09lOykZR3sL
+# EGdNOJ2bGCeHPya5j57hjNufDyANPY/ZHWxbCiUeLDiKU6PtKvCXon9eeJXKM5Xh
+# US7ZNNK9yi0E+XD1crsFHWdIc5ZR4yLlT0zGl8iw6RfW2yhhM8C9c4hLFPlfY121
+# 3Lm7bDEu6cT0PTolITwmWQV3
+# SIG # End signature block

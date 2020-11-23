@@ -10,6 +10,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
     # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
@@ -100,7 +101,6 @@ Function Send-EmailNotif {
         [alias("attach","Attachments","attachment")]
         $SmtpAttachment
     )
-    
     $verbose = ($VerbosePreference -eq "Continue") ; 
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
@@ -138,6 +138,7 @@ Function Send-EmailNotif {
         SMTPServer = $SMTPServer ;
         Body       = $SmtpBody ;
         BodyAsHtml = $false ; 
+        verbose = $verbose ; 
     } ;
 
     [array]$validatedAttachments = $null ;
@@ -163,8 +164,8 @@ Function Send-EmailNotif {
     # trigger html if body has html tags in it
     if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
 
-    write-host "sending mail..."
-    $email | out-string ;
+    # dumping to pipeline appears out of sync in console put it into a write- command to keep in sync
+    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):send-mailmessage w`n$(($email |out-string).trim())" ; 
     if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
     $error.clear()
     TRY {
