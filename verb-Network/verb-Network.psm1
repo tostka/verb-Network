@@ -1,11 +1,11 @@
-﻿# verb-network.psm1
+﻿# verb-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.18.0
+Version     : 1.0.21.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -320,6 +320,87 @@ function download-fileNoSSLNoSSL {
 
 #*------^ download-fileNoSSL.ps1 ^------
 
+#*------v get-DNSServers.ps1 v------
+function get-DNSServers{
+    <#
+    .SYNOPSIS
+    get-DNSServers.ps1 - Get the DNS servers list of each IP enabled network connection
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2021-01-14
+    FileName    : get-DNSServers.ps1
+    License     : (non specified)
+    Copyright   : (non specified)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,DNS
+    AddedCredit : Sitaram Pamarthi
+    AddedWebsite:	http://techibee.com
+    REVISIONS
+    * 3:00 PM 1/14/2021 updated CBH, minor revisions & tweaking
+    .DESCRIPTION
+    This script displays DNS servers list of each IP enabled network connection in local or remote computer (Note:only displays Nics with IPEnabled=TRUE, which ignores VPN tunnels)
+    .Parameter ComputerName
+    Computer Name(s) from which you want to query the DNS server details. If this
+    parameter is not used, the the script gets the DNS servers from local computer network adapaters.
+    .EXAMPLE.Example 1
+        Get-DNSServers.ps1 -ComputerName MYTESTPC21
+        Get the DNS servers information from a remote computer MYTESTPC21.
+    .LINK
+    https://github.com/tostka/verb-XXX
+    #>
+    [cmdletbinding()]
+    param (
+      [parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
+      [string[]] $ComputerName = $env:computername
+    )
+    begin {}
+    process {
+      foreach($Computer in $ComputerName) {
+        Write-Verbose "Working on $Computer"
+        if(Test-Connection -ComputerName $Computer -Count 1 -ea 0) {
+          try {
+            $Networks = Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter IPEnabled=TRUE  -ComputerName $Computer  -ErrorAction Stop ; 
+          } catch {
+            Write-Verbose "Failed to Query $Computer. Error details: $_"
+            continue
+          }
+          foreach($Network in $Networks) {
+            $DNSServers = $Network.DNSServerSearchOrder
+            $NetworkName = $Network.Description
+            If(!$DNSServers) {
+              $PrimaryDNSServer = "Notset"
+              $SecondaryDNSServer = "Notset"
+            } elseif($DNSServers.count -eq 1) {
+              $PrimaryDNSServer = $DNSServers[0]
+              $SecondaryDNSServer = "Notset"
+            } else {
+              $PrimaryDNSServer = $DNSServers[0]
+              $SecondaryDNSServer = $DNSServers[1]
+            }
+            If($network.DHCPEnabled) {
+              $IsDHCPEnabled = $true
+            }
+            $OutputObj  = New-Object -Type PSObject
+            $OutputObj | Add-Member -MemberType NoteProperty -Name ComputerName -Value $Computer.ToUpper()
+            $OutputObj | Add-Member -MemberType NoteProperty -Name PrimaryDNSServers -Value $PrimaryDNSServer
+            $OutputObj | Add-Member -MemberType NoteProperty -Name SecondaryDNSServers -Value $SecondaryDNSServer
+            $OutputObj | Add-Member -MemberType NoteProperty -Name IsDHCPEnabled -Value $IsDHCPEnabled
+            $OutputObj | Add-Member -MemberType NoteProperty -Name NetworkName -Value $NetworkName
+            $OutputObj
+          }
+        } else {
+          Write-Verbose "$Computer not reachable"
+        }
+      }
+    }
+    end {} ; 
+}
+
+#*------^ get-DNSServers.ps1 ^------
+
 #*------v get-IPSettings.ps1 v------
 function get-IPSettings {
     <#
@@ -364,6 +445,138 @@ $IPSpecs = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localho
 }
 
 #*------^ get-IPSettings.ps1 ^------
+
+#*------v Get-NetIPConfigurationLegacy.ps1 v------
+function Get-NetIPConfigurationLegacy {
+    <#
+    .SYNOPSIS
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet
+    (to my knowledge) by get-NetIPConfiguration.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 20210114-1055AM
+    FileName    : Get-NetIPConfigurationLegacy.ps1
+    License     : MIT License
+    Copyright   : (c) 2021 Todd Kadrie
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,Ipconfig,Legacy
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
+    REVISIONS
+    * 11:02 AM 1/14/2021 initial vers
+    .DESCRIPTION
+    Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
+    or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 
+    (to my knowledge) by get-NetIPConfiguration.
+    Parses the propreties of each adapter output into an object. 
+    My intent was to grab the PPP* adapter's DNSServers while on VPN. Couldn't find the properties 
+    exposed in the stock cmdlet or WMI (probably there, didn't find *yet*), 
+    so I wrote my own quick-n-ugly parser of ipconfig's /all output. :D 
+    .INPUT
+    Does not accept pipeline input
+    .OUTPUT
+    System.Object[]
+    .EXAMPLE
+    $nics = Get-NetIPConfigurationLegacy ; 
+    Return an object summarizing the specs on all nics
+    .EXAMPLE
+    $DNSServer = (Get-NetIPConfigurationLegacy | ?{$_.DNSServers -AND $_.AdapterName -like 'PPP*'}).DNSServers[0] ; 
+    Retrieve the first configured 'DNS Servers' entry on the Adapter named like 'PPP*'
+    .LINK
+    https://github.com/tostka/verb-Network
+    #>
+    [CmdletBinding()]
+    Param () ; 
+    $nicprops = [ordered]@{
+        AdapterName = "" ;
+        ConnectionspecificDNSSuffix  = "" ;
+        MediaState = "" ;
+        Description = "" ;
+        MacAddress = "" ;
+        DHCPEnabled = "" ;
+        AutoconfigurationEnabled = "" ;
+        IPv4Address = @("") ;
+        SubnetMask = "" ;
+        DefaultGateway = "" ;
+        DNSServers = @("") ;
+        NetBIOSoverTcpip = "" ;
+        ConnectionspecificDNSSuffixSearchList = @("") ;
+        BindingOrder = 0 ; 
+    } ;
+    $nics = @(); 
+    $rgxIPv4='\b(?:\d{1,3}\.){3}\d{1,3}\b' ; 
+    $error.clear() ;
+    TRY {
+        $output = ipconfig /all ;
+        $bindingorder = 0 ; 
+        for($i=0; $i -le ($output.Count -1); $i++) {
+            if ($output[$i] -match 'Connection-specific\sDNS\sSuffix\s\s\.'){
+                if ($output[$i-1] -match 'Media\sState\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.'){
+                    $nic = New-Object -TypeName psobject -Property $nics2 ;            
+                    $nic.AdapterName =($output[$i - 3] -split -split ": ")[0].trim()  ;            
+                    $nic.MediaState = ($output[$i-1] -split -split ": ")[1].trim()  ;
+                    if($nic.MediaState -eq 'Media disconnected'){$nic.MediaState = 'disconnected' } else { $nic.MediaState = 'connected'} ;
+                    $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
+                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
+                    $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ; 
+                    $nic.AutoconfigurationEnabled = [boolean](($output[$i+4] -split -split ": ")[1].trim() -eq 'Yes') ;  ;
+                    $nic.BindingOrder = [int]$bindingorder ; 
+                    $bindingorder++ ; 
+                    $nics += $nic ;
+                } elseif ($output[$i+1] -match 'Description\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.') {
+                    $nic = New-Object -TypeName psobject -Property $nicprops ;
+                    $nic.AdapterName = ($output[$i-2] -split -split ": ")[0].trim()  ;
+                    $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
+                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
+                    $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ;
+                    $nic.AutoconfigurationEnabled = ($output[$i+4] -split -split ": ")[1].trim() ;
+                    $nic.AutoconfigurationEnabled = [boolean]($nic.AutoconfigurationEnabled -eq 'Yes') ; 
+                    $nic.IPv4Address = ($output[$i+5] -split ": ")[1].trim().replace('(Preferred)','(Pref)') ;
+                    $nic.SubnetMask = ($output[$i+6] -split ": ")[1].trim() ;
+                    $nic.DefaultGateway = ($output[$i+7] -split ": ")[1].trim() ;
+                    $nic.DNSServers = @(($output[$i+8] -split ": ")[1].trim()) ;
+                    for($j=$i+9;; $j++) {
+                        # walk list until NetBios line
+                        if($output[$j] -notmatch 'NetBIOS\sover\sTcpip\.\s\.\s\.\s\.\s\.\s\.\s\.\s\.'){
+                            $nic.DNSServers+=$output[$j].trim() ; 
+                        } else {break}; 
+                    } ; 
+                    $i = $j ; 
+                    $nic.NetBIOSoverTcpip = [boolean](($output[$i] -split ": ")[1].trim() -eq 'Enabled') ; 
+                    if($output[$i+1] -match 'Connection-specific\sDNS\sSuffix\sSearch\sList'){
+                        #walk list until first line *not* containing an ipaddr
+                        $nic.ConnectionspecificDNSSuffixSearchList = @($output[$i+2].trim()) ;
+                        for($j=$i+3;; $j++) {
+                            if($output[$j].trim -match $rgxIPv4){
+                                $nic.ConnectionspecificDNSSuffixSearchList+=$output[$j].trim() ;
+                            } else {break}; 
+                        } ; 
+                    } ; 
+                    $nic.BindingOrder = [int]$bindingorder ; 
+                    $bindingorder++ ; 
+                    $nics += $nic ;
+                };
+            } else {
+                continue 
+            } ;
+        } ;
+        $nics | sort bindingorder | write-output ; 
+    } CATCH {
+        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($Error[0].Exception.GetType().FullName)]{" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug 
+        else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Exit #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+    } ; 
+}
+
+#*------^ Get-NetIPConfigurationLegacy.ps1 ^------
 
 #*------v get-whoami.ps1 v------
 function get-whoami {
@@ -437,6 +650,69 @@ Function Reconnect-PSR {
 
 #*------^ Reconnect-PSR.ps1 ^------
 
+#*------v Resolve-DNSLegacy.ps1 v------
+function Resolve-DNSLegacy.ps1{
+    [CmdletBinding()]
+    Param(
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)]
+        [alias("Computer")]
+        [ValidateLength(3,35)]
+        [string[]]$Computername,
+        [Parameter(Position=1)]
+        [string]$DNSServerIP,
+        [Parameter(Position=2)]
+        [string] $ErrorFile
+    )
+    Begin{
+        # if not specified, move it to random temp file
+        if(!$ErrorFile -OR (!(test-path $ErrorFile))){
+            $ErrorFile = [System.IO.Path]::GetTempFileName().replace('.tmp','.txt') ;
+        } ; 
+        if(!$DNSServerIP){
+            $nics = Get-NetIPConfigurationLegacy ; 
+            if($DNSServerIP = ($nics | ?{$_.DNSServers -AND $_.AdapterName -like 'PPP*'}).DNSServers[0]){write-verbose "(Using PPP* Nic DNSServerIP:$($DNSServerIP)"}  ; 
+        
+            elseif($DNSServerIP = ($nics | ?{$_.DNSServers -AND $_.AdapterName -notlike 'PPP*'}).DNSServers[0]){
+                write-verbose "(Using first non-PPP* Nic DNSServerIP:$($DNSServerIP)"
+                if($DNSServerIP -is [system.array]){write-warning "Returned multiple DNS server IPs!"
+            }} 
+            else { throw "Get-NetIPConfigurationLegacy:No matchable DNS Server found"} ; 
+        } ; 
+        $server = ""
+        $IP = ""
+        $object = [pscustomobject]@{}
+    }#end begin
+    Process{
+        foreach($computer in $Computername){
+            $Lookup = nslookup $computer $DNSServerIP 2> $ErrorFile
+                $Lookup | Where{$_} | foreach{
+                    if(($Error[1].Exception.Message -split ':')[1] -eq ' Non-existent domain'){
+                        $object | Add-Member ComputeName $computer
+                        $object | Add-Member IpAddress "None"
+                        $object
+                        $object = [pscustomobject]@{}
+                        Write-Error "End" 2>> $ErrorFile
+                    }elseif($_ -match "^Name:\s+(?<name>.+)"){
+                            $server = $Matches.name
+                    }elseif($_ -match "$DNSServerIP"){
+                    }elseif($_ -match "^Address:\s+(?<ipaddress>.+)"){
+                            $IP = $Matches.ipaddress
+                    }#if
+                }#foreach
+            $Lookup = ''
+            $object | Add-Member ComputeName $server
+            $object | Add-Member IpAddress $ip
+            if($object.ComputeName){$object| write-output }
+            $server = ''
+            $ip = ''
+            $object = [pscustomobject]@{}
+        } ; 
+    } ; #end process
+    End{} ; 
+}
+
+#*------^ Resolve-DNSLegacy.ps1 ^------
+
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
@@ -449,6 +725,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
     # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
@@ -886,14 +1163,14 @@ function Test-RDP {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,get-whoami,Reconnect-PSR,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9GRMb39Kz7fTFZ79dNlHphLE
-# VqCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUWDncvBkgkO2Mx/sI8W0hOav+
+# JLugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -908,9 +1185,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQRqo2E
-# e8BrcJeBMwjMTyiaItDaxjANBgkqhkiG9w0BAQEFAASBgKVwJEtOfaEycwcwdFBW
-# 7lw76NiLFlSzbOdeupNgDKvzkVNurwEQMBIl3CLkHpDNkRWUiSHkK2gNFClPlgvj
-# LSmMLFKn/2vSv9y42nToJeoqjxlO6y6gK2FtpYwkQ837Ncra9hSZLSbXKZer5Sq6
-# Zfn3/GEkieFksuPI/qxWOe5d
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ/YbKU
+# xm2bN9VSWbP+0NYqzBpHYDANBgkqhkiG9w0BAQEFAASBgHHYWMn8VEfp3pW8ICy0
+# M/npmfIU34jXkAPouD7p6DTmdqVyPsOiUG221JAt9s9TxCXqDlEvjEBiXOLNGNP3
+# +djysdt6xnCx8dz46eDYS1ZFuYZvKTPmisj0Y2JJ/trvReEA3g+FggRbMS6pPKmb
+# BnMlYMLPZRyn3qGsqDhHSVa2
 # SIG # End signature block

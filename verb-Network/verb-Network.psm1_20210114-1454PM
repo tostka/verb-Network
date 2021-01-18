@@ -1,11 +1,11 @@
-# verb-Network.psm1
+﻿# verb-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.20.0
+Version     : 1.0.19.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -321,83 +321,7 @@ function download-fileNoSSLNoSSL {
 #*------^ download-fileNoSSL.ps1 ^------
 
 #*------v get-DNSServers.ps1 v------
-function get-DNSServers{
-    <#
-    .SYNOPSIS
-    get-DNSServers.ps1 - Get the DNS servers list of each IP enabled network connection
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     :	http://www.toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 2021-01-14
-    FileName    : get-DNSServers.ps1
-    License     : (non specified)
-    Copyright   : (non specified)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,DNS
-    AddedCredit : Sitaram Pamarthi
-    AddedWebsite:	http://techibee.com
-    REVISIONS
-    * 3:00 PM 1/14/2021 updated CBH, minor revisions & tweaking
-    .DESCRIPTION
-    This script displays DNS servers list of each IP enabled network connection in local or remote computer (Note:only displays Nics with IPEnabled=TRUE, which ignores VPN tunnels)
-    .Parameter ComputerName
-    Computer Name(s) from which you want to query the DNS server details. If this
-    parameter is not used, the the script gets the DNS servers from local computer network adapaters.
-    .EXAMPLE.Example 1
-        Get-DNSServers.ps1 -ComputerName MYTESTPC21
-        Get the DNS servers information from a remote computer MYTESTPC21.
-    .LINK
-    https://github.com/tostka/verb-XXX
-    #>
-    [cmdletbinding()]
-    param (
-      [parameter(ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true)]
-      [string[]] $ComputerName = $env:computername
-    )
-    begin {}
-    process {
-      foreach($Computer in $ComputerName) {
-        Write-Verbose "Working on $Computer"
-        if(Test-Connection -ComputerName $Computer -Count 1 -ea 0) {
-          try {
-            $Networks = Get-WmiObject -Class Win32_NetworkAdapterConfiguration  -Filter IPEnabled=TRUE  -ComputerName $Computer  -ErrorAction Stop ; 
-          } catch {
-            Write-Verbose "Failed to Query $Computer. Error details: $_"
-            continue
-          }
-          foreach($Network in $Networks) {
-            $DNSServers = $Network.DNSServerSearchOrder
-            $NetworkName = $Network.Description
-            If(!$DNSServers) {
-              $PrimaryDNSServer = "Notset"
-              $SecondaryDNSServer = "Notset"
-            } elseif($DNSServers.count -eq 1) {
-              $PrimaryDNSServer = $DNSServers[0]
-              $SecondaryDNSServer = "Notset"
-            } else {
-              $PrimaryDNSServer = $DNSServers[0]
-              $SecondaryDNSServer = $DNSServers[1]
-            }
-            If($network.DHCPEnabled) {
-              $IsDHCPEnabled = $true
-            }
-            $OutputObj  = New-Object -Type PSObject
-            $OutputObj | Add-Member -MemberType NoteProperty -Name ComputerName -Value $Computer.ToUpper()
-            $OutputObj | Add-Member -MemberType NoteProperty -Name PrimaryDNSServers -Value $PrimaryDNSServer
-            $OutputObj | Add-Member -MemberType NoteProperty -Name SecondaryDNSServers -Value $SecondaryDNSServer
-            $OutputObj | Add-Member -MemberType NoteProperty -Name IsDHCPEnabled -Value $IsDHCPEnabled
-            $OutputObj | Add-Member -MemberType NoteProperty -Name NetworkName -Value $NetworkName
-            $OutputObj
-          }
-        } else {
-          Write-Verbose "$Computer not reachable"
-        }
-      }
-    }
-    end {} ; 
-}
+end {}
 
 #*------^ get-DNSServers.ps1 ^------
 
@@ -1163,5 +1087,31 @@ function Test-RDP {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-IPSettings,Get-NetIPConfigurationLegacy,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-Port,Test-RDP -Alias *
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5Z4MFvtWidl0F2UO+ypaYrtc
+# IeGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRdfo7/
+# QlyHm/nUFVgHLKPrES8SpTANBgkqhkiG9w0BAQEFAASBgAbv54kEAX4qG/mr8Zy8
+# HRv7BXej5B9dBAREbQmppm+85vJlloM51HOtG7TQnLyebewTBW4zuFyrA1Ozvv3W
+# CbFf9+onWHDMXqCp+qKkfOmlGYtQKYQ8d5KuPIv8Q/oPe61uD7fHofZY6fgEc5/6
+# HIMrG9JQsPxei5rq4mYMG51t
+# SIG # End signature block
