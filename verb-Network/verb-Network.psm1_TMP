@@ -1,11 +1,11 @@
-# verb-Network.psm1
+# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.20.0
+Version     : 1.0.22.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -467,7 +467,23 @@ function Get-NetIPConfigurationLegacy {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 11:02 AM 1/14/2021 initial vers
+    * 11:02 AM 1/14/2021 initial vers. Still needs to accomodate Wins Servers (aren't config'd on my box):
+    Ethernet adapter nic:
+
+   Connection-specific DNS Suffix  . :
+   Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
+   Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
+   DHCP Enabled. . . . . . . . . . . : No
+   Autoconfiguration Enabled . . . . : Yes
+   IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
+   Subnet Mask . . . . . . . . . . . : 255.255.255.0
+   Default Gateway . . . . . . . . . : 170.92.16.254
+   DNS Servers . . . . . . . . . . . : 170.92.16.157
+                                       170.92.48.249
+   Primary WINS Server . . . . . . . : 170.92.17.42
+   Secondary WINS Server . . . . . . : 170.92.16.44
+   NetBIOS over Tcpip. . . . . . . . : Enabled
+
     .DESCRIPTION
     Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
     or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 

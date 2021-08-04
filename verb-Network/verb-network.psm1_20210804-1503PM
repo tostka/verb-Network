@@ -1,11 +1,11 @@
-﻿# verb-network.psm1
+﻿# verb-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.23.0
+Version     : 1.0.21.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -467,23 +467,7 @@ function Get-NetIPConfigurationLegacy {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 11:02 AM 1/14/2021 initial vers. Still needs to accomodate Wins Servers (aren't config'd on my box):
-    Ethernet adapter nic:
-
-   Connection-specific DNS Suffix  . :
-   Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
-   Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
-   DHCP Enabled. . . . . . . . . . . : No
-   Autoconfiguration Enabled . . . . : Yes
-   IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
-   Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   Default Gateway . . . . . . . . . : 170.92.16.254
-   DNS Servers . . . . . . . . . . . : 170.92.16.157
-                                       170.92.48.249
-   Primary WINS Server . . . . . . . : 170.92.17.42
-   Secondary WINS Server . . . . . . : 170.92.16.44
-   NetBIOS over Tcpip. . . . . . . . : Enabled
-
+    * 11:02 AM 1/14/2021 initial vers
     .DESCRIPTION
     Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
     or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 
@@ -1185,8 +1169,8 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUtQ538Sxnz5unZlQ93WnW1xVa
-# ag2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUWDncvBkgkO2Mx/sI8W0hOav+
+# JLugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1201,9 +1185,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSra75L
-# kzEcE/xaXRilI5uIO708DTANBgkqhkiG9w0BAQEFAASBgFUacvgJAjBY5UC1viql
-# skpDy+LdYCHdT1HRL5VpcA5OLMDngll8xC7VhuUv5JJQM4DeN3rJYxSbEZDXithF
-# htqihIqYK3iFGLo8HAhw3bChC2db+oU+bg7WIXWhEOcdIYayByMAQQbzdSmSDJm1
-# ygWfsROMi62oTEhMw/mWAqxH
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ/YbKU
+# xm2bN9VSWbP+0NYqzBpHYDANBgkqhkiG9w0BAQEFAASBgHHYWMn8VEfp3pW8ICy0
+# M/npmfIU34jXkAPouD7p6DTmdqVyPsOiUG221JAt9s9TxCXqDlEvjEBiXOLNGNP3
+# +djysdt6xnCx8dz46eDYS1ZFuYZvKTPmisj0Y2JJ/trvReEA3g+FggRbMS6pPKmb
+# BnMlYMLPZRyn3qGsqDhHSVa2
 # SIG # End signature block
