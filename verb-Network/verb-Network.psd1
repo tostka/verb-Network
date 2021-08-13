@@ -12,7 +12,7 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.23'
+ModuleVersion = '1.0.24'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Connect-PSR','Disconnect-PSR','download-file','download-filecurl','download-fileNoSSLNoSSL','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-whoami','Reconnect-PSR','Resolve-DNSLegacy.ps1','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','Test-Port','Test-RDP')
+FunctionsToExport = @('Connect-PSR','Disconnect-PSR','download-file','download-filecurl','download-fileNoSSLNoSSL','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-whoami','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','test-IpAddressCidrRange','Test-Port','Test-RDP')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU7vf4end8xH7Y1IjeSTamUy+I
-# meagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/uvu7v/0dZR5hPSvTxvJmXMa
+# DwugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSzMGq7
-# glL2gTXHq1jHghgywhZAyTANBgkqhkiG9w0BAQEFAASBgKATOvZYflsLnA2+RVlA
-# nHCOzidp8i+IQDxDdMWKroB2hOJVyX5wHzyGAxoANMZwUGZZftBeqdUUwbICC9m7
-# T+RFaJ/SMX9vBXEixxoUB2Z5746DP/8CupkKdZtWAnodUci7k9ngIDpN5NGm152E
-# cwY9qLUQmi7cEeSeQLlc1mNn
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQKEzJS
+# HdJN3pvDO8JkXqypxfnL7DANBgkqhkiG9w0BAQEFAASBgGRpgxSdoMoSG4UqKzvx
+# QRtQONFq0Eykmu06yhUmI567cQL8h3xAdt+79doDwWJ+Rj66BS+6rnyzHjax6WGc
+# 88MrHphPjGjB7zsnpZsDkzKiA72fkNJSY62RlTgSAkh5AH0oavkUJEXV2ItTWimX
+# kY3H6t/RvhFlUvZvauGaj8/T
 # SIG # End signature block
