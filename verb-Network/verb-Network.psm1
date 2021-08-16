@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.24.0
+Version     : 1.0.25.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -33,6 +33,80 @@ $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:
 #*======v FUNCTIONS v======
 
 
+
+#*------v Add-IntToIPv4Address.ps1 v------
+function Add-IntToIPv4Address {
+<#
+    .SYNOPSIS
+    Add-IntToIPv4Address.ps1 - Add an integer to an IP Address and get the new IP Address.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : Add-IntToIPv4Address.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit :  Brian Farnsworth
+    AddedWebsite: https://codeandkeep.com/
+    AddedTwitter: 
+    REVISIONS
+    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+    * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    Add an integer to an IP Address and get the new IP Address.
+    .PARAMETER IP
+    The IP Address to add an integer to [-IP 192.168.0.1]
+    .PARAMETER Integer
+    An integer to add to the IP Address. Can be a positive or negative number[-integer 1].
+    .EXAMPLE
+    .EXAMPLE
+    Add-IntToIPv4Address -IPv4Address 10.10.0.252 -Integer 10
+    10.10.1.6
+    Description
+    -----------
+    This command will add 10 to the IP Address 10.10.0.1 and return the new IP Address.
+    .EXAMPLE
+    Add-IntToIPv4Address -IPv4Address 192.168.1.28 -Integer -100
+    192.168.0.184
+    Description
+    -----------
+    This command will subtract 100 from the IP Address 192.168.1.28 and return the new IP Address.
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://codeandkeep.com/PowerShell-Get-Subnet-NetworkID/
+    #>
+    ##Requires -Modules DnsClient
+    [CmdletBinding()]
+    Param(
+      [parameter(HelpMessage="The IP address to test[-IP 192.168.0.1]")]
+      [String]$IP,
+      [parameter(HelpMessage="An integer to add to the IP Address. Can be a positive or negative number[-integer 1]")]
+      [int64]$Integer
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+        Try{
+            #$ipInt=ConvertIPv4ToInt -IP $IP  -ErrorAction Stop ; 
+            $ipInt=Convert-IPtoInt64 -IP $IP  -ErrorAction Stop ; 
+            $ipInt+=$Integer ; 
+            #ConvertIntToIPv4 -Integer $ipInt ; 
+            convert-Int64toIP -int $ipInt  |write-output ; 
+        }Catch{
+              Write-Error -Exception $_.Exception -Category $_.CategoryInfo.Category ; 
+        } ; 
+    } ;  # PROC-E
+    END {}
+}
+
+#*------^ Add-IntToIPv4Address.ps1 ^------
 
 #*------v Connect-PSR.ps1 v------
 Function Connect-PSR {
@@ -594,6 +668,272 @@ function Get-NetIPConfigurationLegacy {
 
 #*------^ Get-NetIPConfigurationLegacy.ps1 ^------
 
+#*------v get-NetworkClass.ps1 v------
+function get-NetworkClass {
+<#
+    .SYNOPSIS
+    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : get-NetworkClass.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit : Mark Wragg
+    AddedWebsite: https://github.com/markwragg
+    AddedTwitter: 
+    REVISIONS
+    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+    * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    Use to determine the network class of a given IP address.
+    Returns A, B, C, D or E depending on the numeric value of the first octet of a given IP address.
+    .OUTPUT
+    System.String
+    .PARAMETER IP
+    The IP address to test[-IP 192.168.0.1]
+    .EXAMPLE
+    '10.1.1.1' | Get-NetworkClass
+    Result
+    ------
+    A
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
+    #>
+    ###Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="The IP address to test[-IP 192.168.0.1]")]
+        [string]$IP
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+        switch ($IP.Split('.')[0]) {
+            { $_ -in 0..127 } { 'A' }
+            { $_ -in 128..191 } { 'B' }
+            { $_ -in 192..223 } { 'C' }
+            { $_ -in 224..239 } { 'D' }
+            { $_ -in 240..255 } { 'E' }
+        } ;
+    } ;  # PROC-E
+    END {}
+}
+
+#*------^ get-NetworkClass.ps1 ^------
+
+#*------v get-Subnet.ps1 v------
+function get-Subnet {
+    <#
+    .SYNOPSIS
+    get-Subnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-
+    FileName    : 
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit : Mark Wragg
+    AddedWebsite: https://github.com/markwragg
+    AddedTwitter: 
+    REVISIONS
+    * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
+    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+    * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    get-Subnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
+    Use to get subnet details  for a given network address and mask, including network address, broadcast address, network class, address range, host addresses and host address count.
+    .PARAMETER IP
+    The network IP address or IP address with subnet mask via slash notation.
+    .PARAMETER MaskBits
+    The numerical representation of the subnet mask.
+    .PARAMETER Enumerate
+    Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
+    .EXAMPLE
+    Get-Subnet 10.1.2.3/24
+    Description
+    -----------
+    Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
+    .EXAMPLE
+    Get-Subnet 192.168.0.1 -MaskBits 23
+    Description
+    -----------
+    Returns the subnet details for the specified network and mask.
+    .EXAMPLE
+    Get-Subnet
+    Description
+    -----------
+    Returns the subnet details for the current local IP.
+    .EXAMPLE
+    '10.1.2.3/24','10.1.2.4/24' | Get-Subnet
+    Description
+    -----------
+    Returns the subnet details for two specified networks.    
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://github.com/markwragg/PowerShell-Subnet/tree/master/Subnet/Public
+    #>
+    ##Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM (
+        [parameter(ValueFromPipeline,HelpMessage="The network IP address or IP address with subnet mask via slash notation.[-IP 192.168.0.1]")]
+        [string]$IP,
+        [parameter(HelpMessage="The numerical representation of the subnet mask.[-MaskBits 23]")]
+        [ValidateRange(0, 32)]
+        [Alias('CIDR')]
+        [int]$MaskBits,
+        #[parameter(HelpMessage="Use to force the return of all host IP addresses regardless of the subnet size (skipped by default for subnets larger than /16).[-Force]")]
+        #[switch]$Force
+        [parameter(HelpMessage="Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]")]
+        [switch]$Enumerate
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+
+        if ($PSBoundParameters.ContainsKey('MaskBits')) { 
+            $Mask = $MaskBits  ; 
+        } ; 
+
+        if (-not $IP) { 
+            $LocalIP = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq 'IPv4' -and $_.PrefixOrigin -ne 'WellKnown' }) ; 
+            $IP = $LocalIP.IPAddress ; 
+            If ($Mask -notin 0..32) { $Mask = $LocalIP.PrefixLength } ; 
+        } ; 
+
+        if ($IP -match '/\d') { 
+            $IPandMask = $IP -Split '/'  ; 
+            $IP = $IPandMask[0] ; 
+            $Mask = $IPandMask[1] ; 
+        } ; 
+        
+        $Class = Get-NetworkClass -IP $IP ; 
+
+        <# detecting ipv6 - core was written for ipv4...
+        # ip4 CIDR range: 0 to 32
+        # ip6 CIDR range: 0 to 128 - need to update to accomodate cidr ip6
+        if($Address -like "*:*" -AND [int]$cidr[1] -ge 0 -AND [int]$cidr[1] -le 128){
+            # CIDR ip6
+            write-verbose "valid ipv6 CIDR subnet syntax" ;
+            $report.Valid = $true ; 
+        } elseif([int]$cidr[1] -ge 0 -and [int]$cidr[1] -le 32){}
+        #>
+
+        if($IP -like "*:*" -AND [int]$Mask -ge 0 -AND [int]$Mask -le 128){
+                write-warning "ipv6 CIDR detected: unsupported to expand subnet specs with this function" ; 
+                $false | write-output ; 
+        }else{
+        
+            if ($Mask -notin 0..32) {
+                $Mask = switch ($Class) {
+                    'A' { 8 }
+                    'B' { 16 }
+                    'C' { 24 }
+                    #'Single' { 32 } # just marking 32 indicates a single IP, not used in code below
+                    default { 
+                        throw "Subnet mask size was not specified and could not be inferred because the address is Class $Class." 
+                    }
+                } ; 
+                Write-Warning "Subnet mask size was not specified. Using default subnet size for a Class $Class network of /$Mask." ; 
+            } ; 
+
+            $IPAddr = [ipaddress]::Parse($IP) ; 
+            $MaskAddr = [ipaddress]::Parse((Convert-Int64toIP -int ([convert]::ToInt64(("1" * $Mask + "0" * (32 - $Mask)), 2)))) ; 
+
+            # fast way to get a count, wo full expansion
+            $maxHosts=[math]::Pow(2,(32-$Mask)) - 2 ; 
+
+            $NetworkAddr = [ipaddress]($MaskAddr.address -band $IPAddr.address) ; 
+            #$BroadcastAddr = [ipaddress](([ipaddress]::parse("255.255.255.255").address -bxor $MaskAddr.address -bor $NetworkAddr.address)) ; 
+            # inacc, returning 255.255.255.255 for 170.92.0.0/16
+            # Add-IntToIPv4Address -IPv4Address 10.10.0.252 -Integer 10
+            $BroadcastAddr = [ipaddress](Add-IntToIPv4Address -IP $NetworkAddr.IPAddressToString  -Integer ($maxHosts+1)) ; 
+            $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
+        
+            $HostStartAddr = (Convert-IPtoInt64 -ip $NetworkAddr.ipaddresstostring) + 1 ; 
+            $HostEndAddr = (Convert-IPtoInt64 -ip $broadcastaddr.ipaddresstostring) - 1 ; 
+        
+
+            #if ($Mask -ge 16 -or $Force) {
+            if ($Enumerate) {
+                Write-Progress "Calcualting host addresses for $NetworkAddr/$Mask.." ; 
+                if ($Mask -ge 31) {
+                    $HostAddresses = ,$NetworkAddr ; 
+                    if ($Mask -eq 31) {
+                        $HostAddresses += $BroadcastAddr ; 
+                    } ; 
+
+                    $HostAddressCount = $HostAddresses.Length ; 
+                    $NetworkAddr = $null ; 
+                    $BroadcastAddr = $null ; 
+                } else {
+                    $HostAddresses = for ($i = $HostStartAddr; $i -le $HostEndAddr; $i++) {
+                        Convert-Int64toIP -int $i ; 
+                    }
+                    $HostAddressCount = ($HostEndAddr - $HostStartAddr) + 1 ; 
+                }                     
+            } ; 
+            # more interested in the count than specific ips
+            <#else {
+                Write-Warning "Host address enumeration was not performed because it would take some time for a /$Mask subnet. `nUse -Force if you want it to occur." ; 
+            } ; 
+            #>
+
+            $report = [ordered]@{
+                IPAddress        = $IPAddr
+                MaskBits         = $Mask
+                NetworkAddress   = $NetworkAddr
+                BroadcastAddress = $broadcastaddr
+                SubnetMask       = $MaskAddr
+                NetworkClass     = $Class
+                Range            = $Range
+            } ; 
+            if($Enumerate){
+                $report.add('HostAddresses',$HostAddresses) ;
+                $report.add('HostAddressCount',$HostAddressCount );
+            } else {
+                $report.add('HostAddressCount',$maxHosts);
+            } ; ;
+
+            <#[pscustomobject]@{
+                IPAddress        = $IPAddr
+                MaskBits         = $Mask
+                NetworkAddress   = $NetworkAddr
+                BroadcastAddress = $broadcastaddr
+                SubnetMask       = $MaskAddr
+                NetworkClass     = $Class
+                Range            = $Range
+                HostAddresses    = $HostAddresses
+                HostAddressCount = $HostAddressCount
+            } ; 
+            #>
+
+            New-Object PSObject -Property $report | write-output ;    
+        } ;
+
+    } ; # PROC-E
+    END {}
+}
+
+#*------^ get-Subnet.ps1 ^------
+
 #*------v get-whoami.ps1 v------
 function get-whoami {
         <#
@@ -749,6 +1089,7 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISIONS
+    * 2:28 PM 8/16/2021 spliced in simple summarize of ipv4 CIDR subnets (range, # usable ips in range etc), leveraging combo of Mark Wragg get-subnet() and a few bits from Brian Farnsworth's Get-IPv4Subnet() (which pulls summaries wo fully enumeratinfg every ip - much faster)
     * 12:25 PM 8/13/2021Add ip4/6 syntax testing/simple validation (via 
     test-IpAddressCidrRange, sourced in verb-network, local deferral copy) ; 
     extended verbose echos ; add case for version spec & [~+-?]all (suppress spurious 
@@ -1048,6 +1389,23 @@ function Resolve-SPFRecord {
                             if($ret.valid){
                                 if($ret.type -match '(IPAddress|CIDRRange)'){
                                     write-host -ForegroundColor gray "(Validated ip4: entry format is:$($matches[0]))" 
+                                    if($ret.type -eq 'CIDRRange'){
+                                        $subnet = Get-Subnet -ip $SPFDirective.replace('ip4:','').replace('ip6:','') -verbose:$($verbose);
+                                        if($subnet){
+                                            if($subnet.MaskBits -eq 32){
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is a single IP address (/32)" ;
+                                            } elseif($subnet.HostAddressCount -eq 0){
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is Class$($subnet.NetworkClass) spanning $($subnet.HostAddressCount+1) usable addresses on range:$($subnet.Range)" ;
+                                            }  else { 
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is Class$($subnet.NetworkClass) spanning $($subnet.HostAddressCount) usable addresses on range:$($subnet.Range)" ;
+                                            } ; 
+                                        } elseif($SPFDirective -like 'ip6:*') { 
+                                            $smsg = "($($SPFDirective) is an ipv6 CIDR Range: This script does not support summarizing ipv6 Ranges)" ; 
+                                        } else {
+                                            $smsg = "WARNING: unrecognized CIDRRange specification" ; 
+                                        } ; 
+                                        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`n$($smsg)" ; 
+                                    } ; 
                                 } else {
                                     write-warning "invalid IP specification:$($ret.type) is unsupported format" ;
                                 } ;       
@@ -1627,6 +1985,65 @@ function Test-Port {
 
 #*------^ Test-Port.ps1 ^------
 
+#*------v test-PrivateIP.ps1 v------
+function test-PrivateIP {
+<#
+    .SYNOPSIS
+    test-PrivateIP.ps1 - Use to determine if a given IP address is within the IPv4 private address space ranges.
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : test-PrivateIP.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit : Mark Wragg
+    AddedWebsite: https://github.com/markwragg
+    AddedTwitter: 
+    REVISIONS
+    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+    * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    Use to determine if a given IP address is within the IPv4 private address space ranges.
+    Returns $true or $false for a given IP address string depending on whether or not is is within the private IP address ranges.
+    .PARAMETER IP
+    The IP address to test[-IP 192.168.0.1]
+    .EXAMPLE
+    Test-PrivateIP -IP 172.16.1.2
+    Result
+    ------
+    True
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
+    #>
+    ##Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="The IP address to test[-IP 192.168.0.1]")]
+        [string]$IP
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+        if ($IP -Match '(^127\.)|(^192\.168\.)|(^10\.)|(^172\.1[6-9]\.)|(^172\.2[0-9]\.)|(^172\.3[0-1]\.)') {
+            $true ; 
+        } else {
+            $false ; 
+        } ; 
+    } ;  # PROC-E
+    END {}
+}
+
+#*------^ test-PrivateIP.ps1 ^------
+
 #*------v Test-RDP.ps1 v------
 function Test-RDP {
     <#
@@ -1664,16 +2081,129 @@ function Test-RDP {
 
 #*------^ Test-RDP.ps1 ^------
 
+#*------v Convert-Int64toIP.ps1 v------
+function convert-Int64toIP {
+    <#
+    .SYNOPSIS
+    Convert-Int64toIP.ps1 - Converts 64bit Integer representation back to IPv4 Address
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : Convert-Int64toIP.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit : Mark Wragg
+    AddedWebsite: https://github.com/markwragg
+    AddedTwitter: 
+    REVISIONS
+        * 1:29 PM 8/12/2021 added CBH, minor param inline help etc.
+    * 4/14/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    Convert-Int64toIP.ps1 - Converts 64bit Integer representation back to IPv4 Address
+    .PARAMETER IP
+    The IP address to convert[-IP 192.168.0.1]
+    .OUTPUT
+    System.String
+    .EXAMPLE
+    convert-Int64toIP -int 3232235521
+    Result
+    ------
+    192.168.0.1
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Private/Convert-Int64toIP.ps1
+    #>
+    ###Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3232235521]")]
+        [int64]$int
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+        (([math]::truncate($int / 16777216)).tostring() + "." + ([math]::truncate(($int % 16777216) / 65536)).tostring() + "." + ([math]::truncate(($int % 65536) / 256)).tostring() + "." + ([math]::truncate($int % 256)).tostring() )
+    } ;  # PROC-E
+    END {} ;
+}
+
+#*------^ Convert-Int64toIP.ps1 ^------
+
+#*------v convert-IPtoInt64.ps1 v------
+function Convert-IPtoInt64 {
+<#
+    .SYNOPSIS
+    Convert-IPtoInt64.ps1 - Converts IP Address into a 64bit Integer representation
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-08-16
+    FileName    : Convert-IPtoInt64.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Network,IP,Subnet
+    AddedCredit : Mark Wragg
+    AddedWebsite: https://github.com/markwragg
+    AddedTwitter: 
+    REVISIONS
+    * 1:29 PM 8/12/2021 added CBH, minor param inline help etc.
+    * 4/14/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+    .DESCRIPTION
+    Convert-IPtoInt64.ps1 - Converts IP Address into a 64bit Integer representation
+    .PARAMETER IP
+    The IP address to convert[-IP 192.168.0.1]
+    .OUTPUT
+    System.Int64
+    .EXAMPLE
+    Convert-IPtoInt64 -IP 192.168.0.1
+    Result
+    ------
+    3232235521
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Private/Convert-IPtoInt64.ps1
+    #>
+    ###Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM (
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="The IP address to convert[-IP 192.168.0.1]")]
+        [string]$IP
+    )
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    } ;  # BEG-E
+    PROCESS {
+        $octets = $ip.split(".") ;
+        [int64]([int64]$octets[0] * 16777216 + [int64]$octets[1] * 65536 + [int64]$octets[2] * 256 + [int64]$octets[3]) ; 
+    } ;  # PROC-E
+    END {} ;
+}
+
+#*------^ convert-IPtoInt64.ps1 ^------
+
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-Subnet,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPXF/wbL0M278JFgZ7jF79I1k
-# 3KOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/zjMQrRs2Gz3d2MKmhOm/oNp
+# u9CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -1688,9 +2218,9 @@ Export-ModuleMember -Function Connect-PSR,Disconnect-PSR,download-file,download-
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT01CNF
-# 7z2qbQ8Xwhug3QIPSUl1OTANBgkqhkiG9w0BAQEFAASBgDZDXG1TibPu8z3u6MdH
-# Pdn5kyshvjPr0LP1TSjtecTKZ+mpB/itkBzYRQB1J8AlhnqBEnJfnC5zHjlSOl0Y
-# yOVxs4DA2Gtb6CrS7R84DtgT78vOxUWT6ZT2bfHICzzMCItQAOP1nf47pjzJONDY
-# w9TiGtF+Mjf8zp5zi+KrepA5
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS4ClL7
+# yNne0obPeoKh7Rm8qieDuTANBgkqhkiG9w0BAQEFAASBgKd14qYEHXvF2GtjiZhp
+# vn2Ecps2jN/fUWhxAzS3Iu9PQmN1v/W9Cu8ZzK9jhFZc9Ld1XxWBsv+gaLduCQ1P
+# 36JLgwlD/Y/5I9MI7fVuQApm18YHvZfFhj9Zqj0MBk8aidn1o4Zn2DwhhUQGyWAx
+# XIhmocJ/yvFVh9+yK1DFY1Fk
 # SIG # End signature block

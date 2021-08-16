@@ -18,6 +18,7 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISIONS
+    * 2:28 PM 8/16/2021 spliced in simple summarize of ipv4 CIDR subnets (range, # usable ips in range etc), leveraging combo of Mark Wragg get-subnet() and a few bits from Brian Farnsworth's Get-IPv4Subnet() (which pulls summaries wo fully enumeratinfg every ip - much faster)
     * 12:25 PM 8/13/2021Add ip4/6 syntax testing/simple validation (via 
     test-IpAddressCidrRange, sourced in verb-network, local deferral copy) ; 
     extended verbose echos ; add case for version spec & [~+-?]all (suppress spurious 
@@ -317,6 +318,23 @@ function Resolve-SPFRecord {
                             if($ret.valid){
                                 if($ret.type -match '(IPAddress|CIDRRange)'){
                                     write-host -ForegroundColor gray "(Validated ip4: entry format is:$($matches[0]))" 
+                                    if($ret.type -eq 'CIDRRange'){
+                                        $subnet = Get-Subnet -ip $SPFDirective.replace('ip4:','').replace('ip6:','') -verbose:$($verbose);
+                                        if($subnet){
+                                            if($subnet.MaskBits -eq 32){
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is a single IP address (/32)" ;
+                                            } elseif($subnet.HostAddressCount -eq 0){
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is Class$($subnet.NetworkClass) spanning $($subnet.HostAddressCount+1) usable addresses on range:$($subnet.Range)" ;
+                                            }  else { 
+                                                $smsg = "$($subnet.ipaddress)/$($subnet.MaskBits) is Class$($subnet.NetworkClass) spanning $($subnet.HostAddressCount) usable addresses on range:$($subnet.Range)" ;
+                                            } ; 
+                                        } elseif($SPFDirective -like 'ip6:*') { 
+                                            $smsg = "($($SPFDirective) is an ipv6 CIDR Range: This script does not support summarizing ipv6 Ranges)" ; 
+                                        } else {
+                                            $smsg = "WARNING: unrecognized CIDRRange specification" ; 
+                                        } ; 
+                                        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`n$($smsg)" ; 
+                                    } ; 
                                 } else {
                                     write-warning "invalid IP specification:$($ret.type) is unsupported format" ;
                                 } ;       
