@@ -34,10 +34,10 @@ Function Send-EmailNotif {
         # constants
         $smtpFrom = (($scriptBaseName.replace(".","-")) + "@toro.com") ;
         $smtpSubj= ("Daily Rpt: "+ (Split-Path $transcript -Leaf) + " " + [System.DateTime]::Now) ;
-        #$smtpTo="emailadmin@toro.com" ;
-        #$smtpTo="LYNDLISMessagingReports@toro.com" ;
+        #$smtpTo=$tormeta.NotificationDlUs2 ;
+        #$smtpTo=$tormeta.NotificationDlUs ;
         # 1:02 PM 4/28/2017 hourly run, just send to me
-        $smtpTo="todd.kadrie@toro.com" ;
+        $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ; 
         # 12:09 PM 4/26/2017 need to email transcript before archiving it
         if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
         #Load as an attachment into the body text:
