@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.27.0
+Version     : 1.0.25.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1504,10 +1504,10 @@ Function Send-EmailNotif {
         # constants
         $smtpFrom = (($scriptBaseName.replace(".","-")) + "@toro.com") ;
         $smtpSubj= ("Daily Rpt: "+ (Split-Path $transcript -Leaf) + " " + [System.DateTime]::Now) ;
-        #$smtpTo=$tormeta.NotificationDlUs2 ;
-        #$smtpTo=$tormeta.NotificationDlUs ;
+        #$smtpTo="emailadmin@toro.com" ;
+        #$smtpTo="LYNDLISMessagingReports@toro.com" ;
         # 1:02 PM 4/28/2017 hourly run, just send to me
-        $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ; 
+        $smtpTo="todd.kadrie@toro.com" ;
         # 12:09 PM 4/26/2017 need to email transcript before archiving it
         if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
         #Load as an attachment into the body text:
@@ -2202,8 +2202,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5lQIsmOBmR9A2pTOKssOYq2/
-# oCagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/zjMQrRs2Gz3d2MKmhOm/oNp
+# u9CgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2218,9 +2218,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS4aN0c
-# a4xuU3sYd1tTVwo7MyaFNzANBgkqhkiG9w0BAQEFAASBgG391RT1qPpqq5+w/hjH
-# jfREiapT5dzLWk9dlt6v3Ip0Yd8IBXoQAv983vqX1BbDW9MduK1bsVK0jnSLxuGf
-# APeIqwwpbQjm33v5fwopUc2fqOHMWqIdl7hMn43JgoSbZFG+4wEWTiq5qgrhKQGl
-# 8ySP6t8dJ4/kldXs6BdGLinx
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS4ClL7
+# yNne0obPeoKh7Rm8qieDuTANBgkqhkiG9w0BAQEFAASBgKd14qYEHXvF2GtjiZhp
+# vn2Ecps2jN/fUWhxAzS3Iu9PQmN1v/W9Cu8ZzK9jhFZc9Ld1XxWBsv+gaLduCQ1P
+# 36JLgwlD/Y/5I9MI7fVuQApm18YHvZfFhj9Zqj0MBk8aidn1o4Zn2DwhhUQGyWAx
+# XIhmocJ/yvFVh9+yK1DFY1Fk
 # SIG # End signature block
