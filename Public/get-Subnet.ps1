@@ -6,18 +6,19 @@ function get-Subnet {
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
     FileName    : 
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,IP,Subnet
-    AddedCredit : Mark Wragg
-    AddedWebsite: https://github.com/markwragg
-    AddedTwitter: 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
     REVISIONS
+    * 2:53 PM 11/2/2021 refactor/fix CBH
     * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
@@ -32,23 +33,15 @@ function get-Subnet {
     Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
     .EXAMPLE
     Get-Subnet 10.1.2.3/24
-    Description
-    -----------
     Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
     .EXAMPLE
     Get-Subnet 192.168.0.1 -MaskBits 23
-    Description
-    -----------
     Returns the subnet details for the specified network and mask.
     .EXAMPLE
     Get-Subnet
-    Description
-    -----------
     Returns the subnet details for the current local IP.
     .EXAMPLE
     '10.1.2.3/24','10.1.2.4/24' | Get-Subnet
-    Description
-    -----------
     Returns the subnet details for two specified networks.    
     .LINK
     https://github.com/tostka/verb-Network

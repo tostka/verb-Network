@@ -1,6 +1,6 @@
 #*------v Function get-NetworkClass v------
 function get-NetworkClass {
-<#
+    <#
     .SYNOPSIS
     get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .NOTES
@@ -18,13 +18,11 @@ function get-NetworkClass {
     AddedWebsite: https://github.com/markwragg
     AddedTwitter: 
     REVISIONS
+    * 2:49 PM 11/2/2021 refactor/fixed CBH
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
     .DESCRIPTION
-    Use to determine the network class of a given IP address.
-    Returns A, B, C, D or E depending on the numeric value of the first octet of a given IP address.
-    .OUTPUT
-    System.String
+    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .PARAMETER IP
     The IP address to test[-IP 192.168.0.1]
     .EXAMPLE
@@ -37,6 +35,7 @@ function get-NetworkClass {
     .LINK
     https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
     #>
+
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (

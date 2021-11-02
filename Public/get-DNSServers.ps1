@@ -17,17 +17,18 @@ function get-DNSServers{
     AddedCredit : Sitaram Pamarthi
     AddedWebsite:	http://techibee.com
     REVISIONS
+    * 2:42 PM 11/2/2021 scratch refactor borked CBH, fixed
     * 3:00 PM 1/14/2021 updated CBH, minor revisions & tweaking
     .DESCRIPTION
-    This script displays DNS servers list of each IP enabled network connection in local or remote computer (Note:only displays Nics with IPEnabled=TRUE, which ignores VPN tunnels)
+    get-DNSServers.ps1 - Get the DNS servers list of each IP enabled network connection
     .Parameter ComputerName
     Computer Name(s) from which you want to query the DNS server details. If this
     parameter is not used, the the script gets the DNS servers from local computer network adapaters.
-    .EXAMPLE.Example 1
-        Get-DNSServers.ps1 -ComputerName MYTESTPC21
-        Get the DNS servers information from a remote computer MYTESTPC21.
+    .EXAMPLE
+    Get-DNSServers -ComputerName MYTESTPC21 ;
+    Get the DNS servers information from a remote computer MYTESTPC21.
     .LINK
-    https://github.com/tostka/verb-XXX
+    https://github.com/tostka/verb-Network
     #>
     [cmdletbinding()]
     param (

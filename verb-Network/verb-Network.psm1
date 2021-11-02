@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.29.0
+Version     : 1.0.31.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -413,17 +413,18 @@ function get-DNSServers{
     AddedCredit : Sitaram Pamarthi
     AddedWebsite:	http://techibee.com
     REVISIONS
+    * 2:42 PM 11/2/2021 scratch refactor borked CBH, fixed
     * 3:00 PM 1/14/2021 updated CBH, minor revisions & tweaking
     .DESCRIPTION
-    This script displays DNS servers list of each IP enabled network connection in local or remote computer (Note:only displays Nics with IPEnabled=TRUE, which ignores VPN tunnels)
+    get-DNSServers.ps1 - Get the DNS servers list of each IP enabled network connection
     .Parameter ComputerName
     Computer Name(s) from which you want to query the DNS server details. If this
     parameter is not used, the the script gets the DNS servers from local computer network adapaters.
-    .EXAMPLE.Example 1
-        Get-DNSServers.ps1 -ComputerName MYTESTPC21
-        Get the DNS servers information from a remote computer MYTESTPC21.
+    .EXAMPLE
+    Get-DNSServers -ComputerName MYTESTPC21 ;
+    Get the DNS servers information from a remote computer MYTESTPC21.
     .LINK
-    https://github.com/tostka/verb-XXX
+    https://github.com/tostka/verb-Network
     #>
     [cmdletbinding()]
     param (
@@ -524,15 +525,14 @@ $IPSpecs = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localho
 function Get-NetIPConfigurationLegacy {
     <#
     .SYNOPSIS
-    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet
-    (to my knowledge) by get-NetIPConfiguration.
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 20210114-1055AM
-    FileName    : Get-NetIPConfigurationLegacy.ps1
+    FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
     Github      : https://github.com/tostka/verb-Network
@@ -541,31 +541,23 @@ function Get-NetIPConfigurationLegacy {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:29 PM 11/2/2021 # flip $nic[dot]description to alt syntax: I think it's breaking CBH get-help parsing. ; refactored cbh from scra6tch, trying to get the get-help support to work properly, I'll bet you it's: $nic[period]Description = (
     * 11:02 AM 1/14/2021 initial vers. Still needs to accomodate Wins Servers (aren't config'd on my box):
-    Ethernet adapter nic:
-
-   Connection-specific DNS Suffix  . :
-   Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
-   Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
-   DHCP Enabled. . . . . . . . . . . : No
-   Autoconfiguration Enabled . . . . : Yes
-   IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
-   Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   Default Gateway . . . . . . . . . : 170.92.16.254
-   DNS Servers . . . . . . . . . . . : 170.92.16.157
-                                       170.92.48.249
-   Primary WINS Server . . . . . . . : 170.92.17.42
-   Secondary WINS Server . . . . . . : 170.92.16.44
-   NetBIOS over Tcpip. . . . . . . . : Enabled
-
+    Connection-specific DNS Suffix  . :
+       Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
+       Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
+       DHCP Enabled. . . . . . . . . . . : No
+       Autoconfiguration Enabled . . . . : Yes
+       IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
+       Subnet Mask . . . . . . . . . . . : 255.255.255.0
+       Default Gateway . . . . . . . . . : 170.92.16.254
+       DNS Servers . . . . . . . . . . . : 170.92.16.157
+                                           170.92.48.249
+       Primary WINS Server . . . . . . . : 170.92.17.42
+       Secondary WINS Server . . . . . . : 170.92.16.44
+       NetBIOS over Tcpip. . . . . . . . : Enabled
     .DESCRIPTION
-    Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
-    or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 
-    (to my knowledge) by get-NetIPConfiguration.
-    Parses the propreties of each adapter output into an object. 
-    My intent was to grab the PPP* adapter's DNSServers while on VPN. Couldn't find the properties 
-    exposed in the stock cmdlet or WMI (probably there, didn't find *yet*), 
-    so I wrote my own quick-n-ugly parser of ipconfig's /all output. :D 
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .INPUT
     Does not accept pipeline input
     .OUTPUT
@@ -611,7 +603,8 @@ function Get-NetIPConfigurationLegacy {
                     $nic.MediaState = ($output[$i-1] -split -split ": ")[1].trim()  ;
                     if($nic.MediaState -eq 'Media disconnected'){$nic.MediaState = 'disconnected' } else { $nic.MediaState = 'connected'} ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    # flip [dot]description to alt syntax: I think it's breaking CBH get-help parsing.
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ; 
                     $nic.AutoconfigurationEnabled = [boolean](($output[$i+4] -split -split ": ")[1].trim() -eq 'Yes') ;  ;
@@ -622,7 +615,7 @@ function Get-NetIPConfigurationLegacy {
                     $nic = New-Object -TypeName psobject -Property $nicprops ;
                     $nic.AdapterName = ($output[$i-2] -split -split ": ")[0].trim()  ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ;
                     $nic.AutoconfigurationEnabled = ($output[$i+4] -split -split ": ")[1].trim() ;
@@ -670,7 +663,7 @@ function Get-NetIPConfigurationLegacy {
 
 #*------v get-NetworkClass.ps1 v------
 function get-NetworkClass {
-<#
+    <#
     .SYNOPSIS
     get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .NOTES
@@ -688,13 +681,11 @@ function get-NetworkClass {
     AddedWebsite: https://github.com/markwragg
     AddedTwitter: 
     REVISIONS
+    * 2:49 PM 11/2/2021 refactor/fixed CBH
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
     .DESCRIPTION
-    Use to determine the network class of a given IP address.
-    Returns A, B, C, D or E depending on the numeric value of the first octet of a given IP address.
-    .OUTPUT
-    System.String
+    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .PARAMETER IP
     The IP address to test[-IP 192.168.0.1]
     .EXAMPLE
@@ -707,6 +698,7 @@ function get-NetworkClass {
     .LINK
     https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
     #>
+
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
@@ -739,18 +731,19 @@ function get-Subnet {
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
     FileName    : 
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,IP,Subnet
-    AddedCredit : Mark Wragg
-    AddedWebsite: https://github.com/markwragg
-    AddedTwitter: 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
     REVISIONS
+    * 2:53 PM 11/2/2021 refactor/fix CBH
     * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
@@ -765,23 +758,15 @@ function get-Subnet {
     Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
     .EXAMPLE
     Get-Subnet 10.1.2.3/24
-    Description
-    -----------
     Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
     .EXAMPLE
     Get-Subnet 192.168.0.1 -MaskBits 23
-    Description
-    -----------
     Returns the subnet details for the specified network and mask.
     .EXAMPLE
     Get-Subnet
-    Description
-    -----------
     Returns the subnet details for the current local IP.
     .EXAMPLE
     '10.1.2.3/24','10.1.2.4/24' | Get-Subnet
-    Description
-    -----------
     Returns the subnet details for two specified networks.    
     .LINK
     https://github.com/tostka/verb-Network
@@ -1134,8 +1119,45 @@ Function Reconnect-PSR {
 
 #*------v Resolve-DNSLegacy.ps1 v------
 function Resolve-DNSLegacy.ps1{
+    <#
+    .SYNOPSIS
+    Resolve-DNSLegacy.ps1 - 1LINEDESC
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2021-01-13
+    FileName    : Resolve-DNSLegacy.ps1
+    License     : (none specified)
+    Copyright   : (none specified)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,DNS,Network
+    AddedCredit :  i255d
+    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
+    REVISIONS
+    * 3:02 PM 11/2/2021 refactor/fix cbh
+    * 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
+    * 2015 orig posted copy
+    .DESCRIPTION
+    Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
+    I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
+    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
+    Updated/tweaked by TSK 2021.
+    .PARAMETER ComputerName
+    Computername
+    .PARAMETER DNSServerIP
+    DNS Server IP Address
+    .PARAMETER ErrorFile
+    Path to output file for results
+    .EXAMPLE
+    PS> Get-Content C:\serverlist.txt | Resolve-DNSLegacy.ps1 | Export-CSV C:\ServerList.csv
+    Process serverlist from pipelined txt file, and export to serverlist.
+    .LINK
+    https://github.com/tostka/verb-Network
+    #>
     [CmdletBinding()]
-    Param(
+    PARAM(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)]
         [alias("Computer")]
         [ValidateLength(3,35)]
@@ -1145,7 +1167,7 @@ function Resolve-DNSLegacy.ps1{
         [Parameter(Position=2)]
         [string] $ErrorFile
     )
-    Begin{
+    BEGIN{
         # if not specified, move it to random temp file
         if(!$ErrorFile -OR (!(test-path $ErrorFile))){
             $ErrorFile = [System.IO.Path]::GetTempFileName().replace('.tmp','.txt') ;
@@ -1164,7 +1186,7 @@ function Resolve-DNSLegacy.ps1{
         $IP = ""
         $object = [pscustomobject]@{}
     }#end begin
-    Process{
+    PROCESS{
         foreach($computer in $Computername){
             $Lookup = nslookup $computer $DNSServerIP 2> $ErrorFile
                 $Lookup | Where{$_} | foreach{
@@ -1190,7 +1212,7 @@ function Resolve-DNSLegacy.ps1{
             $object = [pscustomobject]@{}
         } ; 
     } ; #end process
-    End{} ; 
+    END{} ; 
 }
 
 #*------^ Resolve-DNSLegacy.ps1 ^------
@@ -1215,6 +1237,7 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISIONS
+    * 3:46 PM 11/2/2021 flipped some echos to wv ;  CBH minor cleanup
     * 2:28 PM 8/16/2021 spliced in simple summarize of ipv4 CIDR subnets (range, # usable ips in range etc), leveraging combo of Mark Wragg get-subnet() and a few bits from Brian Farnsworth's Get-IPv4Subnet() (which pulls summaries wo fully enumeratinfg every ip - much faster)
     * 12:25 PM 8/13/2021Add ip4/6 syntax testing/simple validation (via 
     test-IpAddressCidrRange, sourced in verb-network, local deferral copy) ; 
@@ -1227,27 +1250,23 @@ function Resolve-SPFRecord {
     .DESCRIPTION
     resolve-SPFRecord.ps1 - query & parse/validate the current SPF DNS records, including all included services. 
     
-    from [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
-    Supported SPF directives and functions
+    From [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
+    ## Supported SPF directives and functions: 
      - include
      - mx
      - a
      - ip4 und ip6
      - redirect
      - Warning for too many include entries
-    Not supported
+    ## Not supported: 
      - exp
      - Makros
      - Usage
      
-    For the query of the corresponding TXT records in the DNS only the paramater name is needed. The domain to be queried must be specified here, and the script does the rest.
-    Resolve-SPFRecord -Name domainname.tld
-    It is recommended to output the result with 'Format-Table' for better readability.
-    Resolve-SPFRecord -Name domainname.tld | ft
-    Alternative DNS server
-    Optionally, the Server parameter can be used. Defaults to defaults to cloudflare resolver 1.1.1.1 (secondary is 1.0.0.1):
-    [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
-    With this you change the DNS server to be queried. This can be helpful, for example, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
+    Optionally, the Server (DNS) parameter can be used. Defaults to cloudflare resolver: 1.1.1.1 (secondary is 1.0.0.1)
+    documented here: [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
+    
+    Specify explicit DNS server to be queried. Useful, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
     .PARAMETER Name
     Domain Name[-Name some.tld]
     .PARAMETER Server
@@ -1262,6 +1281,7 @@ function Resolve-SPFRecord {
     [| get-member the output to see what .NET obj TypeName is returned, to use here]
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld
+    For the query of the corresponding TXT records in the DNS only the paramater name is needed
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld | ft
     It is recommended to output the result with 'Format-Table' for better readability.
@@ -1281,7 +1301,7 @@ function Resolve-SPFRecord {
     IPAddress                Referrer                  
     ---------                --------                  
     51.4.72.0/24             spf.protection.outlook.com
-    ...
+
     Broader example, group/profile returned referrers, dump summaries on referrers
     .LINK
     https://github.com/tostka/verb-Network
@@ -1472,6 +1492,7 @@ function Resolve-SPFRecord {
                     "?" { "neutral" }
                 } ; 
                 write-verbose "detected Qualifier:$($Qualifier)" ; 
+                write-host -foregroundcolor green "Processing SPFDirectives:`n$(($SPFDirectives|out-string).trim())" ; 
                 $ReturnValues = foreach ($SPFDirective in $SPFDirectives) {
                     switch -Regex ($SPFDirective) {
                         # 9:59 AM 8/13/2021 add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
@@ -1514,7 +1535,7 @@ function Resolve-SPFRecord {
                             #$type = [regex]::match($ret.type ,'(IPAddress|CIDRRange)').captures[0].groups[0].value
                             if($ret.valid){
                                 if($ret.type -match '(IPAddress|CIDRRange)'){
-                                    write-host -ForegroundColor gray "(Validated ip4: entry format is:$($matches[0]))" 
+                                    write-verbose "(Validated ip4: entry format is:$($matches[0]))" 
                                     if($ret.type -eq 'CIDRRange'){
                                         $subnet = Get-Subnet -ip $SPFDirective.replace('ip4:','').replace('ip6:','') -verbose:$($verbose);
                                         if($subnet){
@@ -2328,8 +2349,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1VhTjJyQCur9mr2ztzZM3vfC
-# fyegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUqJFTMtQfA7Y7xXfmTz3ek10b
+# 5kagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2344,9 +2365,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRT6FtO
-# VcujXkZ2gxKwINPRRtr8oTANBgkqhkiG9w0BAQEFAASBgCaWN8MJ/y3FYEYccQQi
-# SYUQGZ6ktCM2aAIvTUCWoNEjtL8lGEOr0E7kvrjZvFALbdXt0YObuBK9vAWd2L2k
-# 7f0IyASnEkN4PuYTp+dZofuhXOH1r4Ea0uii4oe2984QeCBimy0zq15Hl15RXDZj
-# 8wUKO9ntY+mdz06XLE+iYsHM
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT63Jh0
+# ymX88H4naysX5fi6sZFaDjANBgkqhkiG9w0BAQEFAASBgBgvlGMs5B/wGOUmcF6v
+# Yx86QA47GkeuYS6qqIwTgGoEdxc7h899KY/GjTUnsK6kKSNwOoSVQmvbwi2uElnG
+# zEyCifUHOV0mjE//jNOiZ/QUZ3Q+GzSq7w2IBxfEhxTcj/m1xSzIsAKfYSV4RDG1
+# iXLiEZEhaJoNQaoRL+Bvsi+o
 # SIG # End signature block

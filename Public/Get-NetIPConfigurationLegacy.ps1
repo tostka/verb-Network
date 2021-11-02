@@ -3,15 +3,14 @@
 function Get-NetIPConfigurationLegacy {
     <#
     .SYNOPSIS
-    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet
-    (to my knowledge) by get-NetIPConfiguration.
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 20210114-1055AM
-    FileName    : Get-NetIPConfigurationLegacy.ps1
+    FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
     Github      : https://github.com/tostka/verb-Network
@@ -20,31 +19,23 @@ function Get-NetIPConfigurationLegacy {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:29 PM 11/2/2021 # flip $nic[dot]description to alt syntax: I think it's breaking CBH get-help parsing. ; refactored cbh from scra6tch, trying to get the get-help support to work properly, I'll bet you it's: $nic[period]Description = (
     * 11:02 AM 1/14/2021 initial vers. Still needs to accomodate Wins Servers (aren't config'd on my box):
-    Ethernet adapter nic:
-
-   Connection-specific DNS Suffix  . :
-   Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
-   Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
-   DHCP Enabled. . . . . . . . . . . : No
-   Autoconfiguration Enabled . . . . : Yes
-   IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
-   Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   Default Gateway . . . . . . . . . : 170.92.16.254
-   DNS Servers . . . . . . . . . . . : 170.92.16.157
-                                       170.92.48.249
-   Primary WINS Server . . . . . . . : 170.92.17.42
-   Secondary WINS Server . . . . . . : 170.92.16.44
-   NetBIOS over Tcpip. . . . . . . . : Enabled
-
+    Connection-specific DNS Suffix  . :
+       Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
+       Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
+       DHCP Enabled. . . . . . . . . . . : No
+       Autoconfiguration Enabled . . . . : Yes
+       IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
+       Subnet Mask . . . . . . . . . . . : 255.255.255.0
+       Default Gateway . . . . . . . . . : 170.92.16.254
+       DNS Servers . . . . . . . . . . . : 170.92.16.157
+                                           170.92.48.249
+       Primary WINS Server . . . . . . . : 170.92.17.42
+       Secondary WINS Server . . . . . . : 170.92.16.44
+       NetBIOS over Tcpip. . . . . . . . : Enabled
     .DESCRIPTION
-    Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
-    or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 
-    (to my knowledge) by get-NetIPConfiguration.
-    Parses the propreties of each adapter output into an object. 
-    My intent was to grab the PPP* adapter's DNSServers while on VPN. Couldn't find the properties 
-    exposed in the stock cmdlet or WMI (probably there, didn't find *yet*), 
-    so I wrote my own quick-n-ugly parser of ipconfig's /all output. :D 
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .INPUT
     Does not accept pipeline input
     .OUTPUT
@@ -90,7 +81,8 @@ function Get-NetIPConfigurationLegacy {
                     $nic.MediaState = ($output[$i-1] -split -split ": ")[1].trim()  ;
                     if($nic.MediaState -eq 'Media disconnected'){$nic.MediaState = 'disconnected' } else { $nic.MediaState = 'connected'} ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    # flip [dot]description to alt syntax: I think it's breaking CBH get-help parsing.
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ; 
                     $nic.AutoconfigurationEnabled = [boolean](($output[$i+4] -split -split ": ")[1].trim() -eq 'Yes') ;  ;
@@ -101,7 +93,7 @@ function Get-NetIPConfigurationLegacy {
                     $nic = New-Object -TypeName psobject -Property $nicprops ;
                     $nic.AdapterName = ($output[$i-2] -split -split ": ")[0].trim()  ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ;
                     $nic.AutoconfigurationEnabled = ($output[$i+4] -split -split ": ")[1].trim() ;

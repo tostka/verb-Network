@@ -18,6 +18,7 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISIONS
+    * 3:46 PM 11/2/2021 flipped some echos to wv ;  CBH minor cleanup
     * 2:28 PM 8/16/2021 spliced in simple summarize of ipv4 CIDR subnets (range, # usable ips in range etc), leveraging combo of Mark Wragg get-subnet() and a few bits from Brian Farnsworth's Get-IPv4Subnet() (which pulls summaries wo fully enumeratinfg every ip - much faster)
     * 12:25 PM 8/13/2021Add ip4/6 syntax testing/simple validation (via 
     test-IpAddressCidrRange, sourced in verb-network, local deferral copy) ; 
@@ -30,27 +31,23 @@ function Resolve-SPFRecord {
     .DESCRIPTION
     resolve-SPFRecord.ps1 - query & parse/validate the current SPF DNS records, including all included services. 
     
-    from [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
-    Supported SPF directives and functions
+    From [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
+    ## Supported SPF directives and functions: 
      - include
      - mx
      - a
      - ip4 und ip6
      - redirect
      - Warning for too many include entries
-    Not supported
+    ## Not supported: 
      - exp
      - Makros
      - Usage
      
-    For the query of the corresponding TXT records in the DNS only the paramater name is needed. The domain to be queried must be specified here, and the script does the rest.
-    Resolve-SPFRecord -Name domainname.tld
-    It is recommended to output the result with 'Format-Table' for better readability.
-    Resolve-SPFRecord -Name domainname.tld | ft
-    Alternative DNS server
-    Optionally, the Server parameter can be used. Defaults to defaults to cloudflare resolver 1.1.1.1 (secondary is 1.0.0.1):
-    [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
-    With this you change the DNS server to be queried. This can be helpful, for example, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
+    Optionally, the Server (DNS) parameter can be used. Defaults to cloudflare resolver: 1.1.1.1 (secondary is 1.0.0.1)
+    documented here: [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
+    
+    Specify explicit DNS server to be queried. Useful, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
     .PARAMETER Name
     Domain Name[-Name some.tld]
     .PARAMETER Server
@@ -65,6 +62,7 @@ function Resolve-SPFRecord {
     [| get-member the output to see what .NET obj TypeName is returned, to use here]
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld
+    For the query of the corresponding TXT records in the DNS only the paramater name is needed
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld | ft
     It is recommended to output the result with 'Format-Table' for better readability.
@@ -84,7 +82,7 @@ function Resolve-SPFRecord {
     IPAddress                Referrer                  
     ---------                --------                  
     51.4.72.0/24             spf.protection.outlook.com
-    ...
+
     Broader example, group/profile returned referrers, dump summaries on referrers
     .LINK
     https://github.com/tostka/verb-Network
@@ -275,6 +273,7 @@ function Resolve-SPFRecord {
                     "?" { "neutral" }
                 } ; 
                 write-verbose "detected Qualifier:$($Qualifier)" ; 
+                write-host -foregroundcolor green "Processing SPFDirectives:`n$(($SPFDirectives|out-string).trim())" ; 
                 $ReturnValues = foreach ($SPFDirective in $SPFDirectives) {
                     switch -Regex ($SPFDirective) {
                         # 9:59 AM 8/13/2021 add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
@@ -317,7 +316,7 @@ function Resolve-SPFRecord {
                             #$type = [regex]::match($ret.type ,'(IPAddress|CIDRRange)').captures[0].groups[0].value
                             if($ret.valid){
                                 if($ret.type -match '(IPAddress|CIDRRange)'){
-                                    write-host -ForegroundColor gray "(Validated ip4: entry format is:$($matches[0]))" 
+                                    write-verbose "(Validated ip4: entry format is:$($matches[0]))" 
                                     if($ret.type -eq 'CIDRRange'){
                                         $subnet = Get-Subnet -ip $SPFDirective.replace('ip4:','').replace('ip6:','') -verbose:$($verbose);
                                         if($subnet){

@@ -1,52 +1,44 @@
-<#
-.SYNOPSIS
-Resolve-DNSLegacy.ps1 - Get FQDN and IP for a list of servers.
-.NOTES
-Version     : 1.0.0
-Author      : Todd Kadrie
-Website     :	http://www.toddomation.com
-Twitter     :	@tostka / http://twitter.com/tostka
-CreatedDate : 2021-01-13
-FileName    : Resolve-DNSLegacy.ps1
-License     : (none specified)
-Copyright   : (none specified)
-Github      : https://github.com/tostka/verb-Network
-Tags        : Powershell,DNS,Network
-AddedCredit :  i255d
-AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
-REVISIONS
-* 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
-* 2015 orig posted copy
-.DESCRIPTION
-Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
-I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
-Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
-Updated/tweaked by TSK 2021.
-.PARAMETER ComputerName
-.PARAMETER DNSServerIP
-.PARAMETER Whatif
-.EXAMPLE
-Get-Content C:\serverlist.txt | Resolve-DNSLegacy.ps1 | Export-CSV C:\ServerList.csv
-.EXAMPLE
-.\Resolve-DNSLegacy.ps1
-.LINK
-https://github.com/tostka/verb-XXX
-#>
-<#
-.Synopsis
-Get FQDN and IP for a list of servers.
-.DESCRIPTION
-Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server if you don't want 10.10.10.20.
-.PARAMETER ComputerName
-.PARAMETER DNSServerIP
-.EXAMPLE
-Get-Content C:\serverlist.txt | Resolve-DNSLegacy.ps1 | Export-CSV C:\ServerList.csv
-.EXAMPLE
-Another example of how to use this cmdlet
-#>
+#*----------v Function Resolve-DNSLegacy() v----------
 function Resolve-DNSLegacy.ps1{
+    <#
+    .SYNOPSIS
+    Resolve-DNSLegacy.ps1 - 1LINEDESC
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2021-01-13
+    FileName    : Resolve-DNSLegacy.ps1
+    License     : (none specified)
+    Copyright   : (none specified)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,DNS,Network
+    AddedCredit :  i255d
+    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
+    REVISIONS
+    * 3:02 PM 11/2/2021 refactor/fix cbh
+    * 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
+    * 2015 orig posted copy
+    .DESCRIPTION
+    Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
+    I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
+    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
+    Updated/tweaked by TSK 2021.
+    .PARAMETER ComputerName
+    Computername
+    .PARAMETER DNSServerIP
+    DNS Server IP Address
+    .PARAMETER ErrorFile
+    Path to output file for results
+    .EXAMPLE
+    PS> Get-Content C:\serverlist.txt | Resolve-DNSLegacy.ps1 | Export-CSV C:\ServerList.csv
+    Process serverlist from pipelined txt file, and export to serverlist.
+    .LINK
+    https://github.com/tostka/verb-Network
+    #>
     [CmdletBinding()]
-    Param(
+    PARAM(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)]
         [alias("Computer")]
         [ValidateLength(3,35)]
@@ -56,7 +48,7 @@ function Resolve-DNSLegacy.ps1{
         [Parameter(Position=2)]
         [string] $ErrorFile
     )
-    Begin{
+    BEGIN{
         # if not specified, move it to random temp file
         if(!$ErrorFile -OR (!(test-path $ErrorFile))){
             $ErrorFile = [System.IO.Path]::GetTempFileName().replace('.tmp','.txt') ;
@@ -75,7 +67,7 @@ function Resolve-DNSLegacy.ps1{
         $IP = ""
         $object = [pscustomobject]@{}
     }#end begin
-    Process{
+    PROCESS{
         foreach($computer in $Computername){
             $Lookup = nslookup $computer $DNSServerIP 2> $ErrorFile
                 $Lookup | Where{$_} | foreach{
@@ -101,5 +93,6 @@ function Resolve-DNSLegacy.ps1{
             $object = [pscustomobject]@{}
         } ; 
     } ; #end process
-    End{} ; 
-}#end function
+    END{} ; 
+} ;
+#*------^ END Function Resolve-DNSLegacy ^------
