@@ -10,6 +10,7 @@ Function Send-EmailNotif {
     Website:	URL
     Twitter:	URL
     REVISIONS   :
+    * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
     * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
     # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
@@ -25,6 +26,26 @@ Function Send-EmailNotif {
     # 10:17 AM 8/21/2014 added custom port spec for access to lynms650:8111 from my workstation
     .DESCRIPTION
     Send-EmailNotif.ps1 - Mailer function (wraps send-mailmessage)
+    .PARAMETER SMTPFrom
+    Sender address
+    .PARAMETER SmtpTo
+    Recipient address
+    .PARAMETER SMTPSubj
+    Subject
+    .PARAMETER server
+    Server
+    .PARAMETER SMTPPort
+    Port number
+    .PARAMETER useSSL
+    Switch for SSL
+    .PARAMETER SmtpBody
+    Message Body
+    .PARAMETER BodyAsHtml
+    Switch for Body in Html format
+    .PARAMETER SmtpAttachment
+    array of attachement files
+    .PARAMETER Credential
+    Credential (PSCredential obj) [-credential XXXX]
     .INPUTS
     None. Does not accepted piped input.
     .OUTPUTS
@@ -77,30 +98,35 @@ Function Send-EmailNotif {
     #>
     [CmdletBinding()]
     PARAM(
-        [parameter(Mandatory=$true)]
-        [alias("from")]
+        [parameter(Mandatory=$true,HelpMessage="Sender address")]
+        [alias("from","SenderAddress")]
         [string] $SMTPFrom,
-        [parameter(Mandatory=$true)]
-        [alias("To")]
+        [parameter(Mandatory=$true,HelpMessage="Recipient address")]
+        [alias("To","RecipientAddress")]
         [string] $SmtpTo,
-        [parameter(Mandatory=$true)]
-        [alias("subj","Subject")]
+        [parameter(Mandatory=$true,HelpMessage="Subject")]
+        [alias("Subject")]
         [string] $SMTPSubj,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Server")]
         [alias("server")]
         [string] $SMTPServer,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Port number")]
         [alias("port")]
-        [string] $SMTPPort,
-        [parameter(Mandatory=$true)]
+        [int] $SMTPPort,
+        [parameter(HelpMessage="Switch for SSL")]
+        [int] $useSSL,
+        [parameter(Mandatory=$true,HelpMessage="Message Body")]
         [alias("Body")]
         [string] $SmtpBody,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Switch for Body in Html format")]
         [string] $BodyAsHtml,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="array of attachement files")]
         [alias("attach","Attachments","attachment")]
-        $SmtpAttachment
+        $SmtpAttachment,
+        [Parameter(HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
+        [System.Management.Automation.PSCredential]$Credential
     )
+    
     $verbose = ($VerbosePreference -eq "Continue") ; 
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
@@ -108,26 +134,24 @@ Function Send-EmailNotif {
     if ($SMTPPort -eq $null) {
         $SMTPPort = 25;
     }	 # if-block end
-
-    if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
-        $SMTPServer = $global:SMTPServer ;
-        $SMTPPort = $smtpserverport ; # [infra file]
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
-    }
-    elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer})) {
-        $SMTPServer = $env:computername ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Locally:$($SMTPServer)" ;
-    }
-    elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) ) {
-        # non Hub Ex server, draw from local site
-        $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer) } ) ;
-        $SMTPServer = ($htsrvs | get-random).name ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Random Hub:$($SMTPServer)" ;
-    }
-    else {
-        # non-Ex servers, non-mybox: Lync etc, assume vscan access
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Non-Exch server, assuming Vscan access" ;
-        $SMTPServer = "vscan.toro.com" ;
+    if(-not $SMTPServer){
+        if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
+            $SMTPServer = $global:SMTPServer ;
+            $SMTPPort = $smtpserverport ; # [infra file]
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
+        }elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer})) {
+            $SMTPServer = $env:computername ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Locally:$($SMTPServer)" ;
+        }elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) ) {
+            # non Hub Ex server, draw from local site
+            $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer) } ) ;
+            $SMTPServer = ($htsrvs | get-random).name ;
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Random Hub:$($SMTPServer)" ;
+        }else {
+            # non-Ex servers, non-mybox: Lync etc, assume vscan access
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Non-Exch server, assuming Vscan access" ;
+            $SMTPServer = "vscan.toro.com" ;
+        } ;
     } ;
 
     # define/update variables into $Email splat for params
@@ -141,6 +165,16 @@ Function Send-EmailNotif {
         verbose = $verbose ; 
     } ;
 
+    if($Credential){
+        write-verbose "Adding specified credential" ; 
+        $Email.add('Credential',$Credential) ; 
+    } ; 
+    
+    if($useSSL){
+        write-verbose "Adding specified credential" ; 
+        $Email.add('useSSL',$useSSL) ; 
+    } ; 
+    
     [array]$validatedAttachments = $null ;
     if ($SmtpAttachment) {
         # attachment send
