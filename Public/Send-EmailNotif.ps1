@@ -18,7 +18,7 @@ Function Send-EmailNotif {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
-    * 9:58 PM 11/7/2021 updated CBH with complete gmail example
+    * 9:58 PM 11/7/2021 updated CBH with complete gmail example ; updated CBH with complete gmail example
     * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
     * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
     # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
