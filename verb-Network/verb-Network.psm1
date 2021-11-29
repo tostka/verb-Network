@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.32.0
+Version     : 2.0.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1079,6 +1079,50 @@ function get-whoami {
     }
 
 #*------^ get-whoami.ps1 ^------
+
+#*------v Invoke-SecurityDialog.ps1 v------
+function Invoke-SecurityDialog {
+    <#
+    .SYNOPSIS
+    Invoke-SecurityDialog.ps1 - Open Windows System Security dialog via powershell (for Password changes etc) - handy for nested RDP/TermServ sessions where normal Ctrl+Alt+Del/Ctrl+Alt+End(remote) triggers don't work (hotkey, remote triggers only outtermost RDP sec dlg). 
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2021-11-23
+    FileName    : 
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell
+    AddedCredit : 
+    AddedWebsite: 
+    AddedTwitter: 
+    REVISIONS
+    * 9:16 AM 11/23/2021 init
+    .DESCRIPTION
+    Invoke-SecurityDialog.ps1 - Open system Security dialog via powershell - handy for nested RDP/TermServ sessions where normal Ctrl+Alt+Del/Ctrl+Alt+End (remote) triggers don't work. 
+    .INPUTS
+    Accepts piped input
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> Invoke-SecurityDialog
+    For the query of the corresponding TXT records in the DNS only the paramater name is needed
+    .LINK
+    https://github.com/tostka/verb-Network
+    .LINK
+    https://cloudbrothers.info/en/powershell-tip-resolve-spf/
+    #>
+    #Requires -Modules DnsClient
+    [CmdletBinding()]
+    PARAM () ; 
+    write-host "Triggering local Windows Security Dialog (requires RAA)...`n(cmd.exe RAA, alt:`nexplorer.exe shell:::{2559a1f2-21d7-11d4-bdaf-00c04f60b9f0}`n)" ; 
+    (New-Object -COM Shell.Application).WindowsSecurity() ;
+}
+
+#*------^ Invoke-SecurityDialog.ps1 ^------
 
 #*------v Reconnect-PSR.ps1 v------
 Function Reconnect-PSR {
@@ -2571,14 +2615,14 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-Subnet,get-tsUsers,get-whoami,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-Subnet,get-tsUsers,get-whoami,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULoVccHKRbvbxJeHs+9w1U9v+
-# C5igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUxSQebBr2Xl5b9TYx03P1rcTe
+# eYagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2593,9 +2637,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQb2GK3
-# 91GUpFlcP1gToWwiDaqn8TANBgkqhkiG9w0BAQEFAASBgFwFp6/bFdYn3l3d/OCw
-# mjx7EvK3XItN59XE6/GwhAEq3xdnLmfgheveq+b3vXhjmWIG8N5OfV/9HyWOB464
-# BJus5qszxVFywmasg5LjHrDM8O0BsOqH5Hn5E3ZT5yBpNCT8nbcQJgvmdr5/UMhB
-# Mbx5vJ1Ug24HQv/HGuuPcFRR
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRWfYs6
+# Y+7zMq5G4eDclv/KB9OwAzANBgkqhkiG9w0BAQEFAASBgA1euBp9mWNA0J3GS68D
+# mZxB6XtXmwVqWTMv9wMfSuPN7UzR6HrikEA07zdX9g6aB+N1OXq5w6dEiB+nE4oM
+# JOldXjjuKddEV1XxlwCBU25Bp4rQ56NCm1HVZz27XABpC/3s8tNODGHsoRyYtgtv
+# Nq+9985fekktlxpaU8NU3i5X
 # SIG # End signature block

@@ -12,7 +12,7 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.32'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','Disconnect-PSR','download-file','download-filecurl','download-fileNoSSLNoSSL','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-Subnet','get-tsUsers','get-whoami','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','test-IpAddressCidrRange','Test-Port','test-PrivateIP','Test-RDP')
+FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','Disconnect-PSR','download-file','download-filecurl','download-fileNoSSLNoSSL','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-Subnet','get-tsUsers','get-whoami','Invoke-SecurityDialog','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','test-IpAddressCidrRange','Test-Port','test-PrivateIP','Test-RDP')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUZmVeR/EMmeBsyaqjy9GiLxwj
-# HjqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmCKps0C5/iBldwHSGI18O+5E
+# 9ZmgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRGcBkK
-# ZV0WsdWIJfDUPsn6RfMuATANBgkqhkiG9w0BAQEFAASBgE4pbJvRljBUR37pYy/o
-# BsfRys1mqi/Rlj+PFPr8igzLfQDG60MIGxvCiAPN/AZUFtvHfmEKMlQn8nqqLpGI
-# eslBPitxaW/RmSs+HFmV/zDhh/3eSLmMHbuvfOqikTl2gxHfx4qXpbKdWOwJMwV+
-# NLmWZj3gMf9z10SkM8Awg6Qn
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQHVCjp
+# uP9fSrYdS9sOkL2RNsNxZTANBgkqhkiG9w0BAQEFAASBgBm9DgekuO64grTPZWPu
+# qc5O/ZTPCZ41hrWzBIeeCGVyMmZB0R/i4Nm+A+Hf8NgEtzmf78WxBC+7ZwKbVA5b
+# JGI8EmFkIqqW2YKlOp3LblxAkAKrO8K9N+kF7xtAvm7n0Yq6k79lwPXJjuof9wK7
+# SbMf2N63mA0Y2OLfjzLWmrFk
 # SIG # End signature block

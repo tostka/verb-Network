@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.29.0
+Version     : 1.0.32.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -413,17 +413,18 @@ function get-DNSServers{
     AddedCredit : Sitaram Pamarthi
     AddedWebsite:	http://techibee.com
     REVISIONS
+    * 2:42 PM 11/2/2021 scratch refactor borked CBH, fixed
     * 3:00 PM 1/14/2021 updated CBH, minor revisions & tweaking
     .DESCRIPTION
-    This script displays DNS servers list of each IP enabled network connection in local or remote computer (Note:only displays Nics with IPEnabled=TRUE, which ignores VPN tunnels)
+    get-DNSServers.ps1 - Get the DNS servers list of each IP enabled network connection
     .Parameter ComputerName
     Computer Name(s) from which you want to query the DNS server details. If this
     parameter is not used, the the script gets the DNS servers from local computer network adapaters.
-    .EXAMPLE.Example 1
-        Get-DNSServers.ps1 -ComputerName MYTESTPC21
-        Get the DNS servers information from a remote computer MYTESTPC21.
+    .EXAMPLE
+    Get-DNSServers -ComputerName MYTESTPC21 ;
+    Get the DNS servers information from a remote computer MYTESTPC21.
     .LINK
-    https://github.com/tostka/verb-XXX
+    https://github.com/tostka/verb-Network
     #>
     [cmdletbinding()]
     param (
@@ -524,15 +525,14 @@ $IPSpecs = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localho
 function Get-NetIPConfigurationLegacy {
     <#
     .SYNOPSIS
-    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet
-    (to my knowledge) by get-NetIPConfiguration.
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 20210114-1055AM
-    FileName    : Get-NetIPConfigurationLegacy.ps1
+    FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
     Github      : https://github.com/tostka/verb-Network
@@ -541,31 +541,23 @@ function Get-NetIPConfigurationLegacy {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 2:29 PM 11/2/2021 # flip $nic[dot]description to alt syntax: I think it's breaking CBH get-help parsing. ; refactored cbh from scra6tch, trying to get the get-help support to work properly, I'll bet you it's: $nic[period]Description = (
     * 11:02 AM 1/14/2021 initial vers. Still needs to accomodate Wins Servers (aren't config'd on my box):
-    Ethernet adapter nic:
-
-   Connection-specific DNS Suffix  . :
-   Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
-   Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
-   DHCP Enabled. . . . . . . . . . . : No
-   Autoconfiguration Enabled . . . . : Yes
-   IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
-   Subnet Mask . . . . . . . . . . . : 255.255.255.0
-   Default Gateway . . . . . . . . . : 170.92.16.254
-   DNS Servers . . . . . . . . . . . : 170.92.16.157
-                                       170.92.48.249
-   Primary WINS Server . . . . . . . : 170.92.17.42
-   Secondary WINS Server . . . . . . : 170.92.16.44
-   NetBIOS over Tcpip. . . . . . . . : Enabled
-
+    Connection-specific DNS Suffix  . :
+       Description . . . . . . . . . . . : vmxnet3 Ethernet Adapter
+       Physical Address. . . . . . . . . : 00-50-56-9D-93-7E
+       DHCP Enabled. . . . . . . . . . . : No
+       Autoconfiguration Enabled . . . . : Yes
+       IPv4 Address. . . . . . . . . . . : 170.92.16.155(Preferred)
+       Subnet Mask . . . . . . . . . . . : 255.255.255.0
+       Default Gateway . . . . . . . . . : 170.92.16.254
+       DNS Servers . . . . . . . . . . . : 170.92.16.157
+                                           170.92.48.249
+       Primary WINS Server . . . . . . . : 170.92.17.42
+       Secondary WINS Server . . . . . . : 170.92.16.44
+       NetBIOS over Tcpip. . . . . . . . : Enabled
     .DESCRIPTION
-    Wrapper for ipconfig, as either Legacy version of PSv3+'s 'get-NetIPConfiguration' cmdlet, 
-    or as a means to parse and leverage properties *displayed* by ipconfig, that aren't surfaced 
-    (to my knowledge) by get-NetIPConfiguration.
-    Parses the propreties of each adapter output into an object. 
-    My intent was to grab the PPP* adapter's DNSServers while on VPN. Couldn't find the properties 
-    exposed in the stock cmdlet or WMI (probably there, didn't find *yet*), 
-    so I wrote my own quick-n-ugly parser of ipconfig's /all output. :D 
+    Get-NetIPConfigurationLegacy.ps1 - Wrapper for ipconfig, as Legacy/alt version of PSv3+'s 'get-NetIPConfiguration' cmdlet (to my knowledge) by get-NetIPConfiguration.
     .INPUT
     Does not accept pipeline input
     .OUTPUT
@@ -611,7 +603,8 @@ function Get-NetIPConfigurationLegacy {
                     $nic.MediaState = ($output[$i-1] -split -split ": ")[1].trim()  ;
                     if($nic.MediaState -eq 'Media disconnected'){$nic.MediaState = 'disconnected' } else { $nic.MediaState = 'connected'} ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    # flip [dot]description to alt syntax: I think it's breaking CBH get-help parsing.
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ; 
                     $nic.AutoconfigurationEnabled = [boolean](($output[$i+4] -split -split ": ")[1].trim() -eq 'Yes') ;  ;
@@ -622,7 +615,7 @@ function Get-NetIPConfigurationLegacy {
                     $nic = New-Object -TypeName psobject -Property $nicprops ;
                     $nic.AdapterName = ($output[$i-2] -split -split ": ")[0].trim()  ;
                     $nic.ConnectionspecificDNSSuffix  = ($output[$i] -split -split ": ")[1].trim()  ;
-                    $nic.Description = ($output[$i+1] -split -split ": ")[1].trim() ;
+                    $nic["Description"] = ($output[$i+1] -split -split ": ")[1].trim() ;
                     $nic.MacAddress = ($output[$i+2] -split -split ": ")[1].trim() ;
                     $nic.DHCPEnabled = [boolean](($output[$i+3] -split -split ": ")[1].trim() -eq 'Yes') ;
                     $nic.AutoconfigurationEnabled = ($output[$i+4] -split -split ": ")[1].trim() ;
@@ -670,7 +663,7 @@ function Get-NetIPConfigurationLegacy {
 
 #*------v get-NetworkClass.ps1 v------
 function get-NetworkClass {
-<#
+    <#
     .SYNOPSIS
     get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .NOTES
@@ -688,13 +681,11 @@ function get-NetworkClass {
     AddedWebsite: https://github.com/markwragg
     AddedTwitter: 
     REVISIONS
+    * 2:49 PM 11/2/2021 refactor/fixed CBH
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
     .DESCRIPTION
-    Use to determine the network class of a given IP address.
-    Returns A, B, C, D or E depending on the numeric value of the first octet of a given IP address.
-    .OUTPUT
-    System.String
+    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
     .PARAMETER IP
     The IP address to test[-IP 192.168.0.1]
     .EXAMPLE
@@ -707,6 +698,7 @@ function get-NetworkClass {
     .LINK
     https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
     #>
+
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
@@ -739,18 +731,19 @@ function get-Subnet {
     .NOTES
     Version     : 1.0.0
     Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
     CreatedDate : 2020-
     FileName    : 
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,IP,Subnet
-    AddedCredit : Mark Wragg
-    AddedWebsite: https://github.com/markwragg
-    AddedTwitter: 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
     REVISIONS
+    * 2:53 PM 11/2/2021 refactor/fix CBH
     * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
     * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
     * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
@@ -765,23 +758,15 @@ function get-Subnet {
     Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
     .EXAMPLE
     Get-Subnet 10.1.2.3/24
-    Description
-    -----------
     Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
     .EXAMPLE
     Get-Subnet 192.168.0.1 -MaskBits 23
-    Description
-    -----------
     Returns the subnet details for the specified network and mask.
     .EXAMPLE
     Get-Subnet
-    Description
-    -----------
     Returns the subnet details for the current local IP.
     .EXAMPLE
     '10.1.2.3/24','10.1.2.4/24' | Get-Subnet
-    Description
-    -----------
     Returns the subnet details for two specified networks.    
     .LINK
     https://github.com/tostka/verb-Network
@@ -1134,8 +1119,45 @@ Function Reconnect-PSR {
 
 #*------v Resolve-DNSLegacy.ps1 v------
 function Resolve-DNSLegacy.ps1{
+    <#
+    .SYNOPSIS
+    Resolve-DNSLegacy.ps1 - 1LINEDESC
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2021-01-13
+    FileName    : Resolve-DNSLegacy.ps1
+    License     : (none specified)
+    Copyright   : (none specified)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,DNS,Network
+    AddedCredit :  i255d
+    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
+    REVISIONS
+    * 3:02 PM 11/2/2021 refactor/fix cbh
+    * 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
+    * 2015 orig posted copy
+    .DESCRIPTION
+    Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
+    I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
+    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
+    Updated/tweaked by TSK 2021.
+    .PARAMETER ComputerName
+    Computername
+    .PARAMETER DNSServerIP
+    DNS Server IP Address
+    .PARAMETER ErrorFile
+    Path to output file for results
+    .EXAMPLE
+    PS> Get-Content C:\serverlist.txt | Resolve-DNSLegacy.ps1 | Export-CSV C:\ServerList.csv
+    Process serverlist from pipelined txt file, and export to serverlist.
+    .LINK
+    https://github.com/tostka/verb-Network
+    #>
     [CmdletBinding()]
-    Param(
+    PARAM(
         [Parameter(Mandatory=$true, ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true, Position=0)]
         [alias("Computer")]
         [ValidateLength(3,35)]
@@ -1145,7 +1167,7 @@ function Resolve-DNSLegacy.ps1{
         [Parameter(Position=2)]
         [string] $ErrorFile
     )
-    Begin{
+    BEGIN{
         # if not specified, move it to random temp file
         if(!$ErrorFile -OR (!(test-path $ErrorFile))){
             $ErrorFile = [System.IO.Path]::GetTempFileName().replace('.tmp','.txt') ;
@@ -1164,7 +1186,7 @@ function Resolve-DNSLegacy.ps1{
         $IP = ""
         $object = [pscustomobject]@{}
     }#end begin
-    Process{
+    PROCESS{
         foreach($computer in $Computername){
             $Lookup = nslookup $computer $DNSServerIP 2> $ErrorFile
                 $Lookup | Where{$_} | foreach{
@@ -1190,7 +1212,7 @@ function Resolve-DNSLegacy.ps1{
             $object = [pscustomobject]@{}
         } ; 
     } ; #end process
-    End{} ; 
+    END{} ; 
 }
 
 #*------^ Resolve-DNSLegacy.ps1 ^------
@@ -1215,6 +1237,7 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISIONS
+    * 3:46 PM 11/2/2021 flipped some echos to wv ;  CBH minor cleanup
     * 2:28 PM 8/16/2021 spliced in simple summarize of ipv4 CIDR subnets (range, # usable ips in range etc), leveraging combo of Mark Wragg get-subnet() and a few bits from Brian Farnsworth's Get-IPv4Subnet() (which pulls summaries wo fully enumeratinfg every ip - much faster)
     * 12:25 PM 8/13/2021Add ip4/6 syntax testing/simple validation (via 
     test-IpAddressCidrRange, sourced in verb-network, local deferral copy) ; 
@@ -1227,27 +1250,23 @@ function Resolve-SPFRecord {
     .DESCRIPTION
     resolve-SPFRecord.ps1 - query & parse/validate the current SPF DNS records, including all included services. 
     
-    from [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
-    Supported SPF directives and functions
+    From [PowerShell Tip: Resolve SPF Records - Cloudbrothers - cloudbrothers.info/](https://cloudbrothers.info/en/powershell-tip-resolve-spf/):
+    ## Supported SPF directives and functions: 
      - include
      - mx
      - a
      - ip4 und ip6
      - redirect
      - Warning for too many include entries
-    Not supported
+    ## Not supported: 
      - exp
      - Makros
      - Usage
      
-    For the query of the corresponding TXT records in the DNS only the paramater name is needed. The domain to be queried must be specified here, and the script does the rest.
-    Resolve-SPFRecord -Name domainname.tld
-    It is recommended to output the result with 'Format-Table' for better readability.
-    Resolve-SPFRecord -Name domainname.tld | ft
-    Alternative DNS server
-    Optionally, the Server parameter can be used. Defaults to defaults to cloudflare resolver 1.1.1.1 (secondary is 1.0.0.1):
-    [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
-    With this you change the DNS server to be queried. This can be helpful, for example, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
+    Optionally, the Server (DNS) parameter can be used. Defaults to cloudflare resolver: 1.1.1.1 (secondary is 1.0.0.1)
+    documented here: [Introducing DNS Resolver, 1.1.1.1 (not a joke) - blog.cloudflare.com/](https://blog.cloudflare.com/dns-resolver-1-1-1-1/)
+    
+    Specify explicit DNS server to be queried. Useful, if you want to test the DNS changes directly on your own root name server shortly after the update, or if there are restrictions on which DNS server your client is allowed to query.
     .PARAMETER Name
     Domain Name[-Name some.tld]
     .PARAMETER Server
@@ -1262,6 +1281,7 @@ function Resolve-SPFRecord {
     [| get-member the output to see what .NET obj TypeName is returned, to use here]
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld
+    For the query of the corresponding TXT records in the DNS only the paramater name is needed
     .EXAMPLE
     PS> Resolve-SPFRecord -Name domainname.tld | ft
     It is recommended to output the result with 'Format-Table' for better readability.
@@ -1281,7 +1301,7 @@ function Resolve-SPFRecord {
     IPAddress                Referrer                  
     ---------                --------                  
     51.4.72.0/24             spf.protection.outlook.com
-    ...
+
     Broader example, group/profile returned referrers, dump summaries on referrers
     .LINK
     https://github.com/tostka/verb-Network
@@ -1472,6 +1492,7 @@ function Resolve-SPFRecord {
                     "?" { "neutral" }
                 } ; 
                 write-verbose "detected Qualifier:$($Qualifier)" ; 
+                write-host -foregroundcolor green "Processing SPFDirectives:`n$(($SPFDirectives|out-string).trim())" ; 
                 $ReturnValues = foreach ($SPFDirective in $SPFDirectives) {
                     switch -Regex ($SPFDirective) {
                         # 9:59 AM 8/13/2021 add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
@@ -1514,7 +1535,7 @@ function Resolve-SPFRecord {
                             #$type = [regex]::match($ret.type ,'(IPAddress|CIDRRange)').captures[0].groups[0].value
                             if($ret.valid){
                                 if($ret.type -match '(IPAddress|CIDRRange)'){
-                                    write-host -ForegroundColor gray "(Validated ip4: entry format is:$($matches[0]))" 
+                                    write-verbose "(Validated ip4: entry format is:$($matches[0]))" 
                                     if($ret.type -eq 'CIDRRange'){
                                         $subnet = Get-Subnet -ip $SPFDirective.replace('ip4:','').replace('ip6:','') -verbose:$($verbose);
                                         if($subnet){
@@ -1600,12 +1621,22 @@ Function Send-EmailNotif {
     .SYNOPSIS
     Send-EmailNotif.ps1 - Mailer function (wraps send-mailmessage)
     .NOTES
-    Author: Todd Kadrie
+    Version     : 1.0.0
+    Author      : Todd Kadrie
     Website:	http://www.toddomation.com
     Twitter:	@tostka, http://twitter.com/tostka
-    Website:	URL
-    Twitter:	URL
-    REVISIONS   :
+    CreatedDate : 2014-08-21
+    FileName    : 
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,Email,SMTP,Gmail
+    AddedCredit : REFERENCE
+    AddedWebsite:	URL
+    AddedTwitter:	URL
+    REVISIONS
+    * 9:58 PM 11/7/2021 updated CBH with complete gmail example ; updated CBH with complete gmail example
+    * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
     * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
     # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
@@ -1621,83 +1652,291 @@ Function Send-EmailNotif {
     # 10:17 AM 8/21/2014 added custom port spec for access to lynms650:8111 from my workstation
     .DESCRIPTION
     Send-EmailNotif.ps1 - Mailer function (wraps send-mailmessage)
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output.
+    If using Gmail for mailings, pre-stock gmail cred file:
+      To Setup a gmail app-password:
+       - Google, logon, Security > 'Signing in to Google' pane:App Passwords > _Generate_:select app, Select device
+       - reuse the app pw above in the credential prompt below, to store the apppassword as a credential in the current profile:
+          get-credfile -PrefixTag gml -SignInAddress XXX@gmail.com -ServiceName Gmail -UserRole user
+    .PARAMETER SMTPFrom
+    Sender address
+    .PARAMETER SmtpTo
+    Recipient address
+    .PARAMETER SMTPSubj
+    Subject
+    .PARAMETER server
+    Server
+    .PARAMETER SMTPPort
+    Port number
+    .PARAMETER useSSL
+    Switch for SSL
+    .PARAMETER SmtpBody
+    Message Body
+    .PARAMETER BodyAsHtml
+    Switch for Body in Html format
+    .PARAMETER SmtpAttachment
+    array of attachement files
+    .PARAMETER Credential
+    Credential (PSCredential obj) [-credential XXXX]
     .EXAMPLE
-        # This normally gets triggered from Cleanup()
-        # constants
-        $smtpFrom = (($scriptBaseName.replace(".","-")) + "@toro.com") ;
-        $smtpSubj= ("Daily Rpt: "+ (Split-Path $transcript -Leaf) + " " + [System.DateTime]::Now) ;
-        #$smtpTo=$tormeta.NotificationDlUs2 ;
-        #$smtpTo=$tormeta.NotificationDlUs ;
-        # 1:02 PM 4/28/2017 hourly run, just send to me
-        $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ; 
-        # 12:09 PM 4/26/2017 need to email transcript before archiving it
-        if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
-        #Load as an attachment into the body text:
-        #$body = (Get-Content "path-to-file\file.html" ) | converto-html ;
-        #$SmtpBody += ("Pass Completed "+ [System.DateTime]::Now + "`nResults Attached: " +$transcript) ;
-        $SmtpBody += "Pass Completed $([System.DateTime]::Now)`nResults Attached:($transcript)" ;
-        if($PassStatus ){
-            $SmtpBody += "`$PassStatus triggers:: $($PassStatus)" ;
+    PS> # This normally gets triggered from Cleanup()
+    # constants
+    $smtpFrom = (($scriptBaseName.replace(".","-")) + "@toro.com") ;
+    $smtpSubj= ("Daily Rpt: "+ (Split-Path $transcript -Leaf) + " " + [System.DateTime]::Now) ;
+    #$smtpTo=$tormeta.NotificationDlUs2 ;
+    #$smtpTo=$tormeta.NotificationDlUs ;
+    # 1:02 PM 4/28/2017 hourly run, just send to me
+    $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ; 
+    # 12:09 PM 4/26/2017 need to email transcript before archiving it
+    if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
+    #Load as an attachment into the body text:
+    #$body = (Get-Content "path-to-file\file.html" ) | converto-html ;
+    #$SmtpBody += ("Pass Completed "+ [System.DateTime]::Now + "`nResults Attached: " +$transcript) ;
+    $SmtpBody += "Pass Completed $([System.DateTime]::Now)`nResults Attached:($transcript)" ;
+    if($PassStatus ){
+        $SmtpBody += "`$PassStatus triggers:: $($PassStatus)" ;
+    } ;
+    $SmtpBody += ('-'*50) ;
+    #$SmtpBody += (gc $outtransfile | ConvertTo-Html) ;
+    # name $attachment for the actual $SmtpAttachment expected by Send-EmailNotif
+    $SmtpAttachment=$transcript ;
+    # 1:33 PM 4/28/2017 test for ERROR|CHANGE
+    if($PassStatus ){
+        $Email = @{
+            smtpFrom = $SMTPFrom ;
+            SMTPTo = $SMTPTo ;
+            SMTPSubj = $SMTPSubj ;
+            #SMTPServer = $SMTPServer ;
+            SmtpBody = $SmtpBody ;
         } ;
-        $SmtpBody += ('-'*50) ;
-        #$SmtpBody += (gc $outtransfile | ConvertTo-Html) ;
-        # name $attachment for the actual $SmtpAttachment expected by Send-EmailNotif
-        $SmtpAttachment=$transcript ;
-
-        # 1:33 PM 4/28/2017 test for ERROR|CHANGE
-        if($PassStatus ){
-            $Email = @{
-                smtpFrom = $SMTPFrom ;
-                SMTPTo = $SMTPTo ;
-                SMTPSubj = $SMTPSubj ;
-                #SMTPServer = $SMTPServer ;
-                SmtpBody = $SmtpBody ;
-            } ;
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Send-EmailNotif w`n$(($Email|out-string).trim())" ; 
-            Send-EmailNotif @Email;
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Send-EmailNotif w`n$(($Email|out-string).trim())" ; 
+        Send-EmailNotif @Email;
+    } else {
+        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):No Email Report: `$Passstatus is $null ; " ;
+    }  ;
+    SMTP Send, using From, To, Subject & Body. 
+    .EXAMPLE
+    PS> $smtpToFailThru=convertFrom-Base64String -string "XXXXXXXXXXx"  ; 
+    if(!$showdebug){
+        if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr2){
+            $smtpTo = (Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr2 ;
+        #}elseif((Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1){
+        #   $smtpTo = (Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1 ;
         } else {
-            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):No Email Report: `$Passstatus is $null ; " ;
-        }  ;
+            $smtpTo=$smtpToFailThru;
+        } ;
+    } else {
+        # debug pass, variant to: NotificationAddr1    
+        #if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationDlUs){
+        if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1){
+            $smtpTo = (Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1 ;
+        } else {
+            $smtpTo=$smtpToFailThru ;
+        } ;
+    };
+    if($tenOrg -eq 'HOM' ){
+        $SMTPServer = "smtp.gmail.com" ; 
+        $smtpFrom = $smtpTo ; # can only send via gmail from the auth address
+    } else {
+        $SMTPServer = $global:smtpserver ; 
+        $smtpFromDom = (Get-Variable  -name "$($TenOrg)Meta").value.o365_OPDomain ; 
+        $smtpFrom = (($CmdletName.replace(".","-")) + "@$( $smtpFromDom  )") ;
+        $smtpFromDom = "gmail.com" ; 
+    } ; 
+    # -----------
+    $smsg = "Mailing Report" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    # variant options:
+    #$smtpSubj= "Proc Rpt:$($ScriptBaseName):$(get-date -format 'yyyyMMdd-HHmmtt')"   ;
+    #Load as an attachment into the body text:
+    #$body = (Get-Content "path-to-file\file.html" ) | converto-html ;
+    #$SmtpBody += ("Pass Completed "+ [System.DateTime]::Now + "`nResults Attached: " +$transcript) ;
+    # 4:07 PM 10/11/2018 giant transcript, no send
+    #$SmtpBody += "Pass Completed $([System.DateTime]::Now)`nResults Attached:($transcript)" ;
+    #$SmtpBody += "Pass Completed $([System.DateTime]::Now)`nTranscript:($transcript)" ;
+    # group out the PassStatus_$($tenorg) strings into a report for eml body
+    if($script:PassStatus){
+        if($summarizeStatus){
+            if(get-command -Name summarize-PassStatus -ea STOP){
+                if($script:TargetTenants){
+                    # loop the TargetTenants/TenOrgs and summarize each processed
+                    #foreach($TenOrg in $TargetTenants){
+                        $SmtpBody += "`n===Processing Summary: $($TenOrg):" ;
+                        if((get-Variable -Name PassStatus_$($tenorg)).value){
+                            if((get-Variable -Name PassStatus_$($tenorg)).value.split(';') |Where-Object{$_ -ne ''}){
+                                $SmtpBody += (summarize-PassStatus -PassStatus (get-Variable -Name PassStatus_$($tenorg)).value -verbose:$($VerbosePreference -eq 'Continue') );
+                            } ;
+                        } else {
+                            $SmtpBody += "(no processing of mailboxes in $($TenOrg), this pass)" ;
+                        } ;
+                        $SmtpBody += "`n" ;
+                    #} ;
+                } ;
+                if($PassStatus){
+                    if($PassStatus.split(';') |Where-Object{$_ -ne ''}){
+                        $SmtpBody += (summarize-PassStatus -PassStatus $PassStatus -verbose:$($VerbosePreference -eq 'Continue') );
+                    } ;
+                } else {
+                    $SmtpBody += "(no `$PassStatus updates, this pass)" ;
+                } ;
+            } else {
+                $smsg = "Unable to gcm summarize-PassStatus!" ; ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} #Error|Warn|Debug
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                throw $smsg
+            }  ;
+        } else {
+            # dump PassStatus right into the email
+            $SmtpBody += "`n`$script:PassStatus: $($script:PassStatus):" ;
+        } ;
+        if($outRpt -AND ($ProcMov.count -OR  $ProcTV.count) ){
+            $smtpBody += $outRpt ;
+        } ;
+        if($SmtpAttachment){
+            $smtpBody +="(Logs Attached)"
+        };
+        $SmtpBody += "`n$('-'*50)" ;
+        # Incl $transcript in body, where fewer than limit of processed items logged in PassStatus
+        # If using $Transcripts, there're 3 TenOrg-lvl transcripts, as an array, not approp
+        if( ($script:PassStatus.split(';') |?{$_ -ne ''}|measure).count -lt $TranscriptItemsLimit){
+            # add full transcript if less than limit entries in array
+            $SmtpBody += "`nTranscript:$(gc $transcript)`n" ;
+        } else {
+            # attach $trans
+            #if(!$ArchPath ){ $ArchPath = get-ArchivePath } ;
+            $ArchPath = 'c:\tmp\' ;
+            # path static trans from archpath
+            #$archedTrans = join-path -path $ArchPath -childpath (split-path $transcript -leaf) ;
+            # OR: if attaching array of transcripts (further down) - summarize fullname into body
+            if($Alltranscripts){
+                $Alltranscripts |ForEach-Object{
+                    $archedTrans = join-path -path $ArchPath -childpath (split-path $_ -leaf) ;
+                    $smtpBody += "`nTranscript accessible at:`n$($archedTrans)`n" ;
+                } ;
+            } ;
+        };
+    }
+    $SmtpBody += "Pass Completed $([System.DateTime]::Now)" + "`n" + $MailBody ;
+    # raw text body rendered in OL loses all CrLfs - do rendered html/css <pre/pre> approach
+    $styleCSS = "<style>BODY{font-family: Arial; font-size: 10pt;}" ;
+    $styleCSS += "TABLE{border: 1px solid black; border-collapse: collapse;}" ;
+    $styleCSS += "TH{border: 1px solid black; background: #dddddd; padding: 5px; }" ;
+    $styleCSS += "TD{border: 1px solid black; padding: 5px; }" ;
+    $styleCSS += "</style>" ;
+    $html = @"
+    <html>
+    <head>
+    $($styleCSS)
+    <title>$title</title></head>
+    <body>
+    <pre>
+    $($smtpBody)
+    </pre>
+    </body>
+    </html>
+    "@ ;
+    $smtpBody = $html ;
+    # Attachment options:
+    # 1. attach raw pathed transcript
+    #$SmtpAttachment=$transcript ;
+    # 2. IfMail: Test for ERROR
+    #if($script:passstatus.split(';') -contains 'ERROR'){
+    # 3. IfMail $PassStatus non-blank
+    if([string]::IsNullOrEmpty($script:PassStatus)){
+        $smsg = "No Email Report: `$script:PassStatus isNullOrEmpty" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } else {
+        $Email = @{
+            smtpFrom = $SMTPFrom ;
+            SMTPTo = $SMTPTo ;
+            SMTPSubj = $SMTPSubj ;
+            SMTPServer = $SMTPServer ;
+            SmtpBody = $SmtpBody ;
+            SmtpAttachment = $SmtpAttachment ;
+            BodyAsHtml = $false ; # let the htmltag rgx in Send-EmailNotif flip on as needed
+            verbose = $($VerbosePreference -eq "Continue") ;
+        } ;
+        # for gmail sends: add rqd params - note: GML requires apppasswords (non-user cred)
+        $Email.add('Credential',$mailcred.value) ;
+        $Email.add('useSSL',$true) ;
+        $smsg = "Send-EmailNotif w`n$(($Email|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        Send-EmailNotif @Email ;
+    } ;
+    Full blown gmail mailer BP
     .LINK
+    https://github.com/tostka/verb-Network
     #>
-
-    <# send-mailmessage params: (set up param aliases)
+    <# Underlying available send-mailmessage params: (set up param aliases)
     Send-MailMessage [-To] <String[]> [-Subject] <String> [[-Body] <String>] [[-SmtpServer] <String>] [-Attachments
     <String[]>] [-Bcc <String[]>] [-BodyAsHtml] [-Cc <String[]>] [-Credential <PSCredential>]
     [-DeliveryNotificationOption <DeliveryNotificationOptions>] [-Encoding <Encoding>] [-Port <Int32>] [-Priority
     <MailPriority>] [-UseSsl] -From <String> [<CommonParameters>]
     #>
-    [CmdletBinding()]
+    [CmdletBinding(DefaultParameterSetName='SMTP')]
     PARAM(
-        [parameter(Mandatory=$true)]
-        [alias("from")]
+        [parameter(Mandatory=$true,HelpMessage="Sender address")]
+        [alias("from","SenderAddress")]
         [string] $SMTPFrom,
-        [parameter(Mandatory=$true)]
-        [alias("To")]
+        [parameter(Mandatory=$true,HelpMessage="Recipient address")]
+        [alias("To","RecipientAddress")]
         [string] $SmtpTo,
-        [parameter(Mandatory=$true)]
-        [alias("subj","Subject")]
+        [parameter(Mandatory=$true,HelpMessage="Subject")]
+        [alias("Subject")]
         [string] $SMTPSubj,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Server")]
         [alias("server")]
         [string] $SMTPServer,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Port number")]
         [alias("port")]
-        [string] $SMTPPort,
-        [parameter(Mandatory=$true)]
+        [int] $SMTPPort,
+        [parameter(ParameterSetName='Smtp',HelpMessage="Switch for SSL")]        
+        [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Switch for SSL")]
+        [int] $useSSL,
+        [parameter(Mandatory=$true,HelpMessage="Message Body")]
         [alias("Body")]
         [string] $SmtpBody,
-        [parameter(Mandatory=$false)]
-        [string] $BodyAsHtml,
-        [parameter(Mandatory=$false)]
+        [parameter(HelpMessage="Switch for Body in Html format")]
+        [switch] $BodyAsHtml,
+        [parameter(HelpMessage="array of attachement files")]
         [alias("attach","Attachments","attachment")]
-        $SmtpAttachment
+        $SmtpAttachment,
+        [parameter(ParameterSetName='Gmail',HelpMessage="Switch to trigger stock Gmail send options (req Cred & useSSL)")]
+        [switch] $GmailSend,
+        [parameter(ParameterSetName='Smtp',HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]        
+        [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
+        [System.Management.Automation.PSCredential]$Credential
     )
+<# #-=-=-=MUTUALLY EXCLUSIVE PARAMS OPTIONS:-=-=-=-=-=
+# designate a default paramset, up in cmdletbinding line
+[CmdletBinding(DefaultParameterSetName='SETNAME')]
+  # * set blank, if none of the sets are to be forced (eg optional mut-excl params)
+  # * force exclusion by setting ParameterSetName to a diff value per exclusive param
+# example:single $Computername param with *multiple* ParameterSetName's, and varying Mandatory status per set
+    [Parameter(ParameterSetName='LocalOnly', Mandatory=$false)]
+    $LocalAction,
+    [Parameter(ParameterSetName='Credential', Mandatory=$true)]
+    [Parameter(ParameterSetName='NonCredential', Mandatory=$false)]
+    $ComputerName,
+    # $Credential as tied exclusive parameter
+    [Parameter(ParameterSetName='Credential', Mandatory=$false)]
+    $Credential ;    
+    # effect: 
+    -computername is mandetory when credential is in use
+    -when $localAction param (w localOnly set) is in use, neither $Computername or $Credential is permitted
+    write-verbose -verbose:$verbose "ParameterSetName:$($PSCmdlet.ParameterSetName)"
+    Can also steer processing around which ParameterSetName is in force:
+    if ($PSCmdlet.ParameterSetName -eq 'LocalOnly') {
+        return "some localonly stuff" ; 
+    } ;     
+#-=-=-=-=-=-=-=-=
+#>
     $verbose = ($VerbosePreference -eq "Continue") ; 
+    if ($PSCmdlet.ParameterSetName -eq 'gmail') {
+        $useSSL = $true; 
+    } ;     
     # before you email conv to str & add CrLf:
     $SmtpBody = $SmtpBody | out-string
     # just default the port if missing, and always use it
@@ -1737,6 +1976,16 @@ Function Send-EmailNotif {
         verbose = $verbose ; 
     } ;
 
+    if($Credential){
+        write-verbose "Adding specified credential" ; 
+        $Email.add('Credential',$Credential) ; 
+    } ; 
+    
+    if($useSSL){
+        write-verbose "Adding specified credential" ; 
+        $Email.add('useSSL',$useSSL) ; 
+    } ; 
+    
     [array]$validatedAttachments = $null ;
     if ($SmtpAttachment) {
         # attachment send
@@ -2328,8 +2577,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU1VhTjJyQCur9mr2ztzZM3vfC
-# fyegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQULoVccHKRbvbxJeHs+9w1U9v+
+# C5igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -2344,9 +2593,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRT6FtO
-# VcujXkZ2gxKwINPRRtr8oTANBgkqhkiG9w0BAQEFAASBgCaWN8MJ/y3FYEYccQQi
-# SYUQGZ6ktCM2aAIvTUCWoNEjtL8lGEOr0E7kvrjZvFALbdXt0YObuBK9vAWd2L2k
-# 7f0IyASnEkN4PuYTp+dZofuhXOH1r4Ea0uii4oe2984QeCBimy0zq15Hl15RXDZj
-# 8wUKO9ntY+mdz06XLE+iYsHM
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQb2GK3
+# 91GUpFlcP1gToWwiDaqn8TANBgkqhkiG9w0BAQEFAASBgFwFp6/bFdYn3l3d/OCw
+# mjx7EvK3XItN59XE6/GwhAEq3xdnLmfgheveq+b3vXhjmWIG8N5OfV/9HyWOB464
+# BJus5qszxVFywmasg5LjHrDM8O0BsOqH5Hn5E3ZT5yBpNCT8nbcQJgvmdr5/UMhB
+# Mbx5vJ1Ug24HQv/HGuuPcFRR
 # SIG # End signature block

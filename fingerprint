@@ -334,15 +334,17 @@ Resolve-SPFRecord:PipelineVariable
 Resolve-SPFRecord:pv
 Send-EmailNotif:SMTPFrom
 Send-EmailNotif:from
+Send-EmailNotif:SenderAddress
 Send-EmailNotif:SmtpTo
 Send-EmailNotif:To
+Send-EmailNotif:RecipientAddress
 Send-EmailNotif:SMTPSubj
-Send-EmailNotif:subj
 Send-EmailNotif:Subject
 Send-EmailNotif:SMTPServer
 Send-EmailNotif:server
 Send-EmailNotif:SMTPPort
 Send-EmailNotif:port
+Send-EmailNotif:useSSL
 Send-EmailNotif:SmtpBody
 Send-EmailNotif:Body
 Send-EmailNotif:BodyAsHtml
@@ -350,6 +352,8 @@ Send-EmailNotif:SmtpAttachment
 Send-EmailNotif:attach
 Send-EmailNotif:Attachments
 Send-EmailNotif:attachment
+Send-EmailNotif:GmailSend
+Send-EmailNotif:Credential
 Send-EmailNotif:Verbose
 Send-EmailNotif:vb
 Send-EmailNotif:Debug
