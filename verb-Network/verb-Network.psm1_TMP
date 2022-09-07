@@ -1,11 +1,11 @@
-# verb-network.psm1
+﻿# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 1.0.32.0
+Version     : 2.1.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -27,10 +27,12 @@ https://github.com/tostka/verb-Network
 #>
 
 
-$script:ModuleRoot = $PSScriptRoot ;
-$script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $script:ModuleRoot = $PSScriptRoot ;
+    $script:ModuleVersion = (Import-PowerShellDataFile -Path (get-childitem $script:moduleroot\*.psd1).fullname).moduleversion ;
+    $runningInVsCode = $env:TERM_PROGRAM -eq 'vscode' ;
 
 #*======v FUNCTIONS v======
+
 
 
 
@@ -108,6 +110,7 @@ function Add-IntToIPv4Address {
 
 #*------^ Add-IntToIPv4Address.ps1 ^------
 
+
 #*------v Connect-PSR.ps1 v------
 Function Connect-PSR {
     <#
@@ -184,6 +187,7 @@ Function Connect-PSR {
 
 #*------^ Connect-PSR.ps1 ^------
 
+
 #*------v Disconnect-PSR.ps1 v------
 Function Disconnect-PSR {
     <# 
@@ -249,6 +253,7 @@ Function Disconnect-PSR {
 
 #*------^ Disconnect-PSR.ps1 ^------
 
+
 #*------v download-file.ps1 v------
 function download-file {
     <#
@@ -302,6 +307,7 @@ function download-file {
 
 #*------^ download-file.ps1 ^------
 
+
 #*------v download-filecurl.ps1 v------
 function download-filecurl {
     <#
@@ -342,6 +348,7 @@ function download-filecurl {
 }
 
 #*------^ download-filecurl.ps1 ^------
+
 
 #*------v download-fileNoSSL.ps1 v------
 function download-fileNoSSLNoSSL {
@@ -393,6 +400,7 @@ function download-fileNoSSLNoSSL {
     }
 
 #*------^ download-fileNoSSL.ps1 ^------
+
 
 #*------v get-DNSServers.ps1 v------
 function get-DNSServers{
@@ -476,6 +484,7 @@ function get-DNSServers{
 
 #*------^ get-DNSServers.ps1 ^------
 
+
 #*------v get-IPSettings.ps1 v------
 function get-IPSettings {
     <#
@@ -520,6 +529,7 @@ $IPSpecs = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localho
 }
 
 #*------^ get-IPSettings.ps1 ^------
+
 
 #*------v Get-NetIPConfigurationLegacy.ps1 v------
 function Get-NetIPConfigurationLegacy {
@@ -661,6 +671,7 @@ function Get-NetIPConfigurationLegacy {
 
 #*------^ Get-NetIPConfigurationLegacy.ps1 ^------
 
+
 #*------v get-NetworkClass.ps1 v------
 function get-NetworkClass {
     <#
@@ -722,6 +733,272 @@ function get-NetworkClass {
 }
 
 #*------^ get-NetworkClass.ps1 ^------
+
+
+#*------v Get-RestartInfo.ps1 v------
+function Get-RestartInfo {
+    <#
+    .SYNOPSIS
+    Get-RestartInfo.ps1 - Returns reboot / restart event log info for specified computer
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2022-
+    FileName    : 
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell
+    AddedCredit : Mike Kanakos/compwiz32 
+    AddedWebsite: https://www.commandline.ninja
+    AddedTwitter:	
+    REVISIONS
+    * 2:14 PM 8/22/2022 expanded, have it dynamically locate a manual reboot in last $MaxDay days; runs setuplog evts & summary, and app log msinstaller evts summar; added minior formatting updates & CBH expansion
+    * CREATED: 2016-09-27
+    * LASTEDIT: 2019-12-17
+    * CREDIT: Biswajit Biswas
+    .DESCRIPTION
+    Queries the system event log and returns all log entries related to reboot & shutdown events (event ID 1074)
+    MISC: Function based on script found at:
+    https://social.technet.microsoft.com/wiki/contents/articles/17889.powershell-script-for-shutdownreboot-events-tracker.aspx
+    .PARAMETER ComputerName
+    Specifies a computer to add the users to. Multiple computers can be specified with commas and single quotes
+    (-Computer 'Server01','Server02')
+    .PARAMETER Credential
+    Specifies the user you would like to run this function as
+    .PARAMETER MaxDays
+    Maximum days ago, that a manual reboot should be checked for (drives logic between manual reboot detection, and finding last reboot of *any* type).
+    .EXAMPLE
+    Get-RestartInfo
+    This command will return all the shutdown/restart eventlog info for the local computer.
+    PS C:\Scripts\> Get-RestartInfo
+    Computer : localhost
+    Date     : 1/7/2019 5:16:50 PM
+    Action   : shutdown
+    Reason   : No title for this reason could be found
+    User     : NWTRADERS.MSFT\Tom_Brady
+    Process  : C:\WINDOWS\system32\shutdown.exe (CRDNAB-PC06LY52)
+    Comment  :
+    Computer : localhost
+    Date     : 1/4/2019 5:36:58 PM
+    Action   : shutdown
+    Reason   : No title for this reason could be found
+    User     : NWTRADERS.MSFT\Tom_Brady
+    Process  : C:\WINDOWS\system32\shutdown.exe (CRDNAB-PC06LY52)
+    Comment  :
+    Computer : localhost
+    Date     : 1/4/2019 9:10:11 AM
+    Action   : restart
+    Reason   : Operating System: Upgrade (Planned)
+    User     : NT AUTHORITY\SYSTEM
+    Process  : C:\WINDOWS\servicing\TrustedInstaller.exe (CRDNAB-PC06LY52)
+    Comment  :
+    .EXAMPLE
+    PS> Get-RestartInfo SERVER01 | Format-Table -AutoSize
+            Computer    Date                  Action  Reason                                  User
+            --------    ----                  ------  ------                                  ----
+            SERVER01    12/15/2018 6:21:45 AM restart No title for this reason could be found NT AUTHORITY\SYSTEM
+            SERVER01    11/17/2018 6:57:53 AM restart No title for this reason could be found NT AUTHORITY\SYSTEM
+            SERVER01    9/29/2018  6:47:50 AM restart No title for this reason could be found NT AUTHORITY\SYSTEM
+            Example using the default original code 
+    .EXAMPLE
+    PS> get-restartinfo -ComputerName 'SERVER1','SERVER2' -Verbose ;
+        14:09:10:
+        #*======v Get-RestartInfo:SERVER1 v======
+        VERBOSE: (pulling reboot events System 1074)
+        VERBOSE: Constructed structured query:
+        <QueryList><Query Id="0" Path="system"><Select Path="system">*[(System/EventID=1074)]</Select></Query></QueryList>.
+        Manual Reboot detected!
+        TimeCreated  : 8/21/2022 10:02:26 PM
+        ProviderName : USER32
+        Id           : 1074
+        Message      : The process C:\Windows\system32\winlogon.exe (SERVER1) has initiated the restart of computer SERVER1 on behalf of user DOMAIN\ACCOUNT for the following reason: No title for this reason could be found
+                        Reason Code: 0x500ff
+                        Shutdown Type: restart
+                        Comment:
+        VERBOSE: (calculating Start & End as -/+ 20 mins of newest 1074)
+        14:09:12:
+        #*------v $SetupEvts : v------
+        VERBOSE: Constructed structured query:
+        <QueryList><Query Id="0" Path="setup"><Select Path="setup">*[(System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.000Z' and @SystemTime&lt;='2022-08-22T03:22:26.000Z'])]</Select></Query></QueryList>.
+
+        Date                  EventID Process                          Reason
+        ----                  ------- -------                          ------
+        8/21/2022 9:58:32 PM        4 Update for Windows (KB2775511)
+        8/21/2022 9:58:33 PM        2 "Update for Windows (KB2775511)"
+        8/21/2022 10:03:43 PM       2 KB2775511                        Installed
+
+
+        14:09:12:
+        #*------^ $SetupEvts : ^------
+        14:09:12:
+        #*------v $patchevts : v------
+        14:09:12:Get-WinEvent w
+        Name                           Value
+        ----                           -----
+        EndTime                        8/21/2022 10:22:26 PM
+        LogName                        Application
+        ProviderName                   {MsiInstaller, Microsoft-Windows-RestartManager}
+        StartTime                      8/21/2022 9:42:26 PM
+        id                             {1033, 1035, 1036, 1040...}
+        VERBOSE: Found matching provider: MsiInstaller
+        VERBOSE: The MsiInstaller provider writes events to the Application log.
+        VERBOSE: Found matching provider: Microsoft-Windows-RestartManager
+        VERBOSE: The Microsoft-Windows-RestartManager provider writes events to the Application log.
+        VERBOSE: The Microsoft-Windows-RestartManager provider writes events to the Microsoft-Windows-RestartManager/Operational log.
+        VERBOSE: Constructed structured query:
+        <QueryList><Query Id="0" Path="application"><Select Path="application">*[System/Provider[@Name='msiinstaller' or @Name='microsoft-windows-restartmanager'] and (System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.000Z' and
+        @SystemTime&lt;='2022-08-22T03:22:26.000Z']) and ((System/EventID=1033) or (System/EventID=1035) or (System/EventID=1036) or (System/EventID=1040) or (System/EventID=1042) or (System/EventID=100000) or (System/EventID=100001))]</Select></Query></QueryList>.
+        14:09:13:PatchEvts 1035|1036: w
+        Date                  EventID Process                      Reason Message
+        ----                  ------- -------                      ------ -------
+        8/21/2022 10:03:40 PM    1035 Configuration Manager Client 1033   Windows Installer reconfigured the product. Product Name: Configuration Manager Client. Product Version: 4.00.6487.2000. Product Language: 1033. Manufacturer: Microsoft Corporation. Reconfigura...
+
+        14:09:13:
+        #*------^ $patchevts : ^------
+        14:09:13:
+        #*======^ Get-RestartInfo:SERVER1 ^======
+    Example running an array of computers, verbose, demo'ing typical manual reboot System setup & Application patch-related events summary
+    .LINK
+    https://github.com/tostka/verb-IO
+    https://github.com/compwiz32
+    #>
+    [CmdletBinding()]
+    Param(
+        [Parameter(ValueFromPipeline,ValueFromPipelineByPropertyName)]
+        [alias("Name","MachineName","Computer")]
+        [string[]]
+        $ComputerName = 'localhost',
+        [ValidateNotNull()]
+        [System.Management.Automation.PSCredential]
+        [System.Management.Automation.Credential()]
+        $Credential = [System.Management.Automation.PSCredential]::Empty,
+        [int]$MaxDays = 7 
+    )
+    
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $prpSU = 'Date','EventID','Process','Reason' ; 
+    }
+    PROCESS {
+        Foreach($Computer in $ComputerName){
+            
+            $sBnr="`n#*======v $($CmdletName):$($Computer) v======" ; 
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+
+            $Connection = Test-Connection $Computer -Quiet -Count 2
+            If(!$Connection) {
+                Write-Warning "Computer: $Computer appears to be offline!"
+            } Else {
+                write-verbose "(pulling reboot events System 1074)" ; 
+                if(($sevts = Get-WinEvent -computername $computer -FilterHashtable @{logname = 'System'; id = 1074} -MaxEvents 1) -AND ((new-timespan -start $sevts.TimeCreated -End (get-date)).TotalDays -lt $MaxDays)){ 
+                    <# TimeCreated  : 8/22/2022 2:09:47 AM
+                    ProviderName : USER32
+                    ProviderId   :
+                    Id           : 1074
+                    Message      : The process C:\Windows\system32\winlogon.exe (LYNMS640) has initiated the restart of computer SERVER o
+                                    n behalf of user DOMAIN\ADMIN for the following reason: No title for this reason could be found
+                                    Reason Code: 0x500ff
+                                    Shutdown Type: restart
+                                    Comment:
+                    #>
+
+                    write-host -foregroundcolor green "Manual Reboot detected!`n$(($sevts[0] | fl $prpRbt|out-string).trim())" ; 
+                    write-verbose "(calculating Start & End as -/+ 20 mins of newest 1074)" ; 
+                    $start = (get-date $sevts[0].TimeCreated).addminutes(-20) ; 
+                    $end = (get-date $sevts[0].TimeCreated).addminutes(20) ;
+                    $sBnrS="`n#*------v `$SetupEvts : v------" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+
+                    $sfltr = @{ LogName = "Setup"; StartTime = $start; EndTime = $end ; };
+            
+                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                    $SetupEvts = Get-WinEvent -ComputerName $computer -FilterHashtable $sfltr | 
+                        ForEach-Object {
+                            $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
+                            $EventData.Date = $_.TimeCreated
+                            $EventData.User = $_.Properties[6].Value
+                            $EventData.Process = $_.Properties[0].Value
+                            $EventData.Action = $_.Properties[4].Value
+                            $EventData.Reason = $_.Properties[2].Value
+                            $EventData.ReasonCode = $_.Properties[3].Value
+                            $EventData.Comment = $_.Properties[5].Value
+                            $EventData.Computer = $Computer
+                            $EventData.EventID = $_.id
+                            $EventData.Message = $_.Message
+                            $EventData | Select-Object Date, Computer, EventID, Process, Action, User, Reason, Message ; 
+                        } ; 
+                
+                
+
+                    $SetupEvts |  sort Date | ft -a $prpSU ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+
+                    $sBnrS="`n#*------v `$patchevts : v------" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+                    # AP patch installer evts
+                    [int32[]]$ID = @(1033,1035,1036,1040,1042,100000,100001) ; 
+                    [string[]]$provs = @('MsiInstaller','Microsoft-Windows-RestartManager') ; 
+                    $cfltr = @{ LogName = "Application"; StartTime = $start; EndTime = $end ; ProviderName = $provs; id = $id};
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-WinEvent w`n$(($cfltr|out-string).trim())" ; 
+                    $patchevts = Get-WinEvent -ComputerName $computer -FilterHashtable $cfltr  | 
+                        ForEach-Object {
+                            $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
+                            $EventData.Date = $_.TimeCreated
+                            $EventData.User = $_.Properties[6].Value
+                            $EventData.Process = $_.Properties[0].Value
+                            $EventData.Action = $_.Properties[4].Value
+                            $EventData.Reason = $_.Properties[2].Value
+                            $EventData.ReasonCode = $_.Properties[3].Value
+                            $EventData.Comment = $_.Properties[5].Value
+                            $EventData.Computer = $Computer
+                            $EventData.EventID = $_.id
+                            $EventData.Message = $_.Message
+                            $EventData | Select-Object Date, Computer, EventID, Process, Action, User, Reason, Message ; 
+                        } ; 
+                    #$patchevts |?{$_.id -match '(1035|1036)'} ; 
+                    $prpsAp = 'Date','EventID','Process','Reason','Message' ; 
+
+                    #write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):PatchEvts 1035|1036: w`n$(($patchevts |?{$_.Eventid -match '(1035|1036)'}  |  sort Date | ft -a $prpsAp  |out-string).trim())`n" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):PatchEvts 1035|1036: w`n$(($patchevts | sort Date | ft -a $prpsAp  |out-string).trim())`n" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+
+                } else { 
+                    $sBnrS="`n#*------v `$bootevts : v------" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                        ForEach-Object {
+                            $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
+                            $EventData.Date = $_.TimeCreated
+                            $EventData.User = $_.Properties[6].Value
+                            $EventData.Process = $_.Properties[0].Value
+                            $EventData.Action = $_.Properties[4].Value
+                            $EventData.Reason = $_.Properties[2].Value
+                            $EventData.ReasonCode = $_.Properties[3].Value
+                            $EventData.Comment = $_.Properties[5].Value
+                            $EventData.Computer = $Computer
+                            $EventData.EventID = $_.id
+                            $EventData.Message = $_.Message
+                            $EventData | Select-Object Date, Computer, EventID, Process, Action, User, Reason, Message ; 
+                        } ; 
+                    #$bootEvents |?{$_.id -match '(1035|1036)'} ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):bootEvents`n$(($bootEvents | sort Date | ft -a $prpSU |out-string).trim())`n" ; 
+                    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+
+
+                } ; 
+                
+
+            } # if-E
+            write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))`n" ;
+        } #end Foreach Computer Loop
+    } #end Process block
+}
+
+#*------^ Get-RestartInfo.ps1 ^------
+
 
 #*------v get-Subnet.ps1 v------
 function get-Subnet {
@@ -847,7 +1124,7 @@ function get-Subnet {
 
             $NetworkAddr = [ipaddress]($MaskAddr.address -band $IPAddr.address) ; 
             #$BroadcastAddr = [ipaddress](([ipaddress]::parse("255.255.255.255").address -bxor $MaskAddr.address -bor $NetworkAddr.address)) ; 
-            # inacc, returning 255.255.255.255 for 170.92.0.0/16
+            # inacc, returning 255.255.255.255 for 170.92.1.0/16
             # Add-IntToIPv4Address -IPv4Address 10.10.0.252 -Integer 10
             $BroadcastAddr = [ipaddress](Add-IntToIPv4Address -IP $NetworkAddr.IPAddressToString  -Integer ($maxHosts+1)) ; 
             $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
@@ -918,6 +1195,7 @@ function get-Subnet {
 }
 
 #*------^ get-Subnet.ps1 ^------
+
 
 #*------v get-tsusers.ps1 v------
 function get-tsUsers {
@@ -1045,6 +1323,7 @@ function get-tsUsers {
 
 #*------^ get-tsusers.ps1 ^------
 
+
 #*------v get-whoami.ps1 v------
 function get-whoami {
         <#
@@ -1079,6 +1358,174 @@ function get-whoami {
     }
 
 #*------^ get-whoami.ps1 ^------
+
+
+#*------v Invoke-BypassPaywall.ps1 v------
+function Invoke-BypassPaywall{
+    <#
+    .SYNOPSIS
+    Invoke-BypassPaywall.ps1 - open a webpage locally, bypassing a paywall
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2022-07-18
+    FileName    : 
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell
+    AddedCredit : cybercastor
+    AddedWebsite:	https://www.reddit.com/user/cybercastor
+    AddedTwitter:	
+    REVISIONS
+    * 2:25 PM 7/20/2022 added/expanded CBH, spliced in his later posted new-RandomFilename dependant function.
+    * 7/18/22 cybercastor posted rev
+    .DESCRIPTION
+    Invoke-BypassPaywall.ps1 - open a webpage locally, bypassing a paywall
+
+    [Invoke-BypassPaywall](https://www.reddit.com/r/PowerShell/comments/w1ypp2/invokebypasspaywall_open_a_webpage_locally/)
+    Invoke-BypassPaywall : open a webpage locally, bypassing a paywall
+    Script Sharing
+    Invoke-BypassPaywall : open a webpage locally, bypassing a paywall
+    EDIT
+    Update: for those who asked about the cmdlet New-RandomFilename . It's indeed a function I made in one of my module. sorry about that.
+    Core module Miscellaneous.ps1
+    .EXAMPLE
+    PS> Invoke-BypassPaywall 'https://www.washingtonpost.com/world/2022/07/15/eu-russia-sanctions-ukraine/'
+    washingtonpost.com demo
+    .EXAMPLE
+    PS> .Invoke-BypassPaywall 'https://www.theatlantic.com/ideas/archive/2022/07/russian-invasion-ukraine-democracy-changes/661451'
+    theatlantic.com demo
+    .LINK
+    https://github.com/tostka/verb-XXX
+    https://www.reddit.com/r/PowerShell/comments/w1ypp2/invokebypasspaywall_open_a_webpage_locally/
+    #>
+    [CmdletBinding(SupportsShouldProcess)]
+    param(
+        [Parameter(Mandatory=$true, ValueFromPipeline=$true, HelpMessage="url", Position=0)]
+        [string]$Url
+    )
+    BEGIN{
+        if(-not (get-command New-RandomFilename)){
+            #*------v Function New-RandomFilename v------
+            function New-RandomFilename{
+                <#
+                SYNOPSIS
+                New-RandomFilename.ps1 - Create a RandomFilename
+                .NOTES
+                Version     : 1.0.0
+                Author      : Todd Kadrie
+                Website     :	http://www.toddomation.com
+                Twitter     :	@tostka / http://twitter.com/tostka
+                CreatedDate : 2022-07-18
+                FileName    : 
+                License     : (none asserted)
+                Copyright   : (none asserted)
+                Github      : https://github.com/tostka/verb-io
+                Tags        : Powershell
+                AddedCredit : cybercastor
+                AddedWebsite:	https://www.reddit.com/user/cybercastor
+                AddedTwitter:	
+                REVISIONS
+                * 2:25 PM 7/20/2022 added/expanded CBH, spliced in his later posted new-RandomFilename dependant function ; subst ValidateRange for $maxlen tests.
+                * 7/18/22 cybercastor posted rev
+                .DESCRIPTION
+                New-RandomFilename.ps1 - Create a new random filename
+
+                [Invoke-BypassPaywall](https://www.reddit.com/r/PowerShell/comments/w1ypp2/invokebypasspaywall_open_a_webpage_locally/)
+    
+                .PARAMETER Path
+                Host directory for new file (defaults `$ENV:Temp)
+                .PARAMETER Extension
+                Extension for new file (defaults 'tmp')
+                .PARAMETER MaxLen
+                Length of new file name (defaults 6, 4-36 range)
+                .PARAMETER CreateFile
+                Switch to create new empty file matching the specification.
+                .PARAMETER CreateDirectory
+                Switch to create a new hosting directory below `$Path,  with a random (guid) name (which will be 36chars long).
+                .EXAMPLE
+                PS> $fn = New-RandomFilename -Extension 'html'
+                Create a new randomfilename with html ext
+                .EXAMPLE
+                PS> .Invoke-BypassPaywall 'https://www.theatlantic.com/ideas/archive/2022/07/russian-invasion-ukraine-democracy-changes/661451'
+                theatlantic.com demo
+                .LINK
+                https://github.com/tostka/verb-IO
+                https://www.reddit.com/r/PowerShell/comments/w1ypp2/invokebypasspaywall_open_a_webpage_locally/               
+                #>
+                [CmdletBinding(SupportsShouldProcess)]
+                param(
+                    [Parameter(Mandatory=$false)]
+                    [string]$Path = "$ENV:Temp",
+                    [Parameter(Mandatory=$false)]
+                    [string]$Extension = 'tmp',
+                    [Parameter(Mandatory=$false)]
+                    [ValidateRange(4,36)]
+                    [int]$MaxLen = 6,
+                    [Parameter(Mandatory=$false)]
+                    [switch]$CreateFile,
+                    [Parameter(Mandatory=$false)]
+                    [switch]$CreateDirectory
+                )    
+                try{
+                    #if($MaxLen -lt 4){throw "MaxLen must be between 4 and 36"}
+                    #if($MaxLen -gt 36){throw "MaxLen must be between 4 and 36"}
+                    [string]$filepath = $Null
+                    [string]$rname = (New-Guid).Guid
+                    Write-Verbose "Generated Guid $rname"
+                    [int]$rval = Get-Random -Minimum 0 -Maximum 9
+                    Write-Verbose "Generated rval $rval"
+                    [string]$rname = $rname.replace('-',"$rval")
+                    Write-Verbose "replace rval $rname"
+                    [string]$rname = $rname.SubString(0,$MaxLen) + '.' + $Extension
+                    Write-Verbose "Generated file name $rname"
+                    if($CreateDirectory -eq $true){
+                        [string]$rdirname = (New-Guid).Guid
+                        $newdir = Join-Path "$Path" $rdirname
+                        Write-Verbose "CreateDirectory option: creating dir: $newdir"
+                        $Null = New-Item -Path $newdir -ItemType "Directory" -Force -ErrorAction Ignore
+                        $filepath = Join-Path "$newdir" "$rname"
+                    }
+                    $filepath = Join-Path "$Path" $rname
+                    Write-Verbose "Generated filename: $filepath"
+
+                    if($CreateFile -eq $true){
+                        Write-Verbose "CreateFile option: creating file: $filepath"
+                        $Null = New-Item -Path $filepath -ItemType "File" -Force -ErrorAction Ignore 
+                    }
+                    return $filepath
+                
+                }catch{
+                    Show-ExceptionDetails $_ -ShowStack
+                }
+            }
+            #*------^ END Function New-RandomFilename ^------
+        } ; 
+    } ; 
+    PROCESS{
+        $fn = New-RandomFilename -Extension 'html'
+      
+        Write-Host -n -f DarkRed "[BypassPaywall] " ; Write-Host -f DarkYellow "Invoke-WebRequest -Uri `"$Url`""
+
+        $Content = Invoke-WebRequest -Uri "$Url"
+        $sc = $Content.StatusCode    
+        if($sc -eq 200){
+            $cnt = $Content.Content
+            Write-Host -n -f DarkRed "[BypassPaywall] " ; Write-Host -f DarkGreen "StatusCode $sc OK"
+            Set-Content -Path "$fn" -Value "$cnt"
+            Write-Host -n -f DarkRed "[BypassPaywall] " ; Write-Host -f DarkGreen "start-process $fn"
+            start-process "$fn"
+        }else{
+            Write-Host -n -f DarkRed "[BypassPaywall] " ; Write-Host -f DarkYellow "ERROR StatusCode $sc"
+        }
+    } ; 
+}
+
+#*------^ Invoke-BypassPaywall.ps1 ^------
+
 
 #*------v Invoke-SecurityDialog.ps1 v------
 function Invoke-SecurityDialog {
@@ -1124,6 +1571,7 @@ function Invoke-SecurityDialog {
 
 #*------^ Invoke-SecurityDialog.ps1 ^------
 
+
 #*------v Reconnect-PSR.ps1 v------
 Function Reconnect-PSR {
     <#
@@ -1160,6 +1608,7 @@ Function Reconnect-PSR {
 }
 
 #*------^ Reconnect-PSR.ps1 ^------
+
 
 #*------v Resolve-DNSLegacy.ps1 v------
 function Resolve-DNSLegacy.ps1{
@@ -1260,6 +1709,7 @@ function Resolve-DNSLegacy.ps1{
 }
 
 #*------^ Resolve-DNSLegacy.ps1 ^------
+
 
 #*------v Resolve-SPFRecord.ps1 v------
 function Resolve-SPFRecord {
@@ -1658,6 +2108,7 @@ function Resolve-SPFRecord {
 }
 
 #*------^ Resolve-SPFRecord.ps1 ^------
+
 
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
@@ -2074,6 +2525,7 @@ Function Send-EmailNotif {
 
 #*------^ Send-EmailNotif.ps1 ^------
 
+
 #*------v summarize-PassStatus.ps1 v------
 function summarize-PassStatus {
     <#
@@ -2162,6 +2614,7 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 
 #*------^ summarize-PassStatus.ps1 ^------
 
+
 #*------v summarize-PassStatusHtml.ps1 v------
 function summarize-PassStatusHtml {
     <#
@@ -2236,6 +2689,7 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 }
 
 #*------^ summarize-PassStatusHtml.ps1 ^------
+
 
 #*------v test-IpAddressCidrRange.ps1 v------
 function test-IpAddressCidrRange{
@@ -2343,66 +2797,93 @@ function test-IpAddressCidrRange{
 
 #*------^ test-IpAddressCidrRange.ps1 ^------
 
+
 #*------v Test-Port.ps1 v------
 function Test-Port {
-
     <#
     .SYNOPSIS
     Test-Port() - test the specified ip/fqdn port combo
     .NOTES
-    Author: Todd Kadrie
-    Website:	http://toddomation.com
-    Twitter:	http://twitter.com/tostka
-
-    REVISIONS   :
-    # call: Test-Port $server $port
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2022-04-12
+    FileName    : test-port.ps1
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    REVISIONS
+    # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
     # 10:42 AM 4/15/2015 fomt cleanup, added help
     # vers: 8:42 AM 7/24/2014 added proper fail=$false
     # vers: 10:25 AM 7/23/2014 disabled feedback, added a return
+    .DESCRIPTION
+    Test-Port() - test the specified ip/fqdn port combo
+    Excplicitly does not have pipeline support, to make it broadest backward-compatibile, as this func name has been in use goine way back in my code.
     .PARAMETER  Server
     Server fqdn, name, ip to be connected to
     .PARAMETER  port
     Port number to be connected to
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output.
     .EXAMPLE
-    .EXAMPLE
+    PS> test-port -ComputerName hostname -Port 1234 -verbose
+    Check hostname port 1234, with verbose output
     .LINK
-    *----------^ END Comment-based Help  ^---------- #>
-
+    https://github.com/tostka/verb-network
+    #>
     PARAM(
-        [parameter(Mandatory=$true)]
-        [alias("s")]
+        [parameter(Position=0,Mandatory=$true)]
+        [alias("s",'ComputerName','TargetName')]
         [string]$Server,
-        [parameter(Mandatory=$true)]
-        [alias("p")]
-        [int]$Port
+        [parameter(Position=1,Mandatory=$true)]
+        [alias("p",'TcpPort')]
+        [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+        [int32]$Port
     )
-
-    # 10:46 AM 4/15/2015 validate port in supported range: 0 -65536
-    if( $Port -notmatch "^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$" ) {
-        throw "$($Port) is an INVALID port. ABORTING";
-    } else {
-        $ErrorActionPreference = "SilentlyContinue"
+    # tree down an if than and only use .net/win-specific netsockets if nothing else avail
+    if($host.version.major -ge 6 -AND (gcm test-connection)){
+        write-verbose "(Psv6+:using PS native:test-connection -Targetname  $($server) -tcpport $($port)...)" ; 
+        # has *ugly* output and down-state handling, so wrap & control the output
+        TRY {$PortTest = test-connection -targetname $Server -tcpport $port -Count 1 -ErrorAction SilentlyContinue -ErrorVariable Err } CATCH { $PortTest = $Null } ;
+        if($PortTest -ne $null ){
+            write-verbose "Success" ; 
+            return $true ; 
+        } else {
+            write-verbose "Failure" ; 
+            return $False;
+        } ; 
+    } elseif (gcm Test-NetConnection){
+        write-verbose "(Psv5:using NetTCPIP:Test-NetConnection -computername $($server) -port $($port)...)" ; 
+        # (test-netconnection  -computername boojum -port 3389 -verbose).PingSucceeded
+        if( (Test-NetConnection -computername $Server -port $port).TcpTestSucceeded ){
+            write-verbose "Success" ; 
+            return $true ; 
+        } else {
+            write-verbose "Failure" ; 
+            return $False;
+        } ; 
+    } elseif([System.Environment]::OSVersion.Platform -eq 'Win32NT'){ 
+        write-verbose "(Falling back to PsWin:Net.Sockets.TcpClient)" ; 
         $Socket = new-object Net.Sockets.TcpClient
         $Socket.Connect($Server, $Port)
-
         if ($Socket.Connected){
-            #write-host "We have successfully connected to the server" -ForegroundColor Yellow -BackgroundColor Black
             $Socket.Close()
-            # 9:54 AM 7/23/2014 added return true/false
+            write-verbose "Success" ; 
             return $True;
         } else {
-            #write-host "The port seems to be closed or you cannot connect to it" -ForegroundColor Red -BackgroundColor Black
+            write-verbose "Failure" ; 
             return $False;
         } # if-block end
         $Socket = $null
-    } # if-E port-range valid
+    } else {
+        throw "Unsupported OS/Missing depedancy module! (missing PSCore6+, NetTCPIP, .net.sockets.tcpClient)! Aborting!" ;
+    } ; 
+    #} # if-E port-range valid
 }
 
 #*------^ Test-Port.ps1 ^------
+
 
 #*------v test-PrivateIP.ps1 v------
 function test-PrivateIP {
@@ -2463,6 +2944,7 @@ function test-PrivateIP {
 
 #*------^ test-PrivateIP.ps1 ^------
 
+
 #*------v Test-RDP.ps1 v------
 function Test-RDP {
     <#
@@ -2499,6 +2981,7 @@ function Test-RDP {
 }
 
 #*------^ Test-RDP.ps1 ^------
+
 
 #*------v Convert-Int64toIP.ps1 v------
 function convert-Int64toIP {
@@ -2555,6 +3038,7 @@ function convert-Int64toIP {
 }
 
 #*------^ Convert-Int64toIP.ps1 ^------
+
 
 #*------v convert-IPtoInt64.ps1 v------
 function Convert-IPtoInt64 {
@@ -2613,7 +3097,10 @@ function Convert-IPtoInt64 {
 
 #*------^ convert-IPtoInt64.ps1 ^------
 
+
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-Subnet,get-tsUsers,get-whoami,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,Get-RestartInfo,get-Subnet,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+
+
 
