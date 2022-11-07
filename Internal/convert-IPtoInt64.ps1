@@ -1,4 +1,4 @@
-#*------v Function Convert-IPtoInt64 v------
+﻿#*------v Function Convert-IPtoInt64 v------
 function Convert-IPtoInt64 {
 <#
     .SYNOPSIS

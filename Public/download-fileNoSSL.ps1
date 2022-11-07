@@ -1,4 +1,4 @@
-    #*------v Function download-fileNoSSL v------
+﻿    #*------v Function download-fileNoSSL v------
     function download-fileNoSSLNoSSL {
     <#
     .SYNOPSIS

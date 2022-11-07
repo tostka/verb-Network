@@ -1,4 +1,4 @@
-#*------v Function get-NetworkClass v------
+﻿#*------v Function get-NetworkClass v------
 function get-NetworkClass {
     <#
     .SYNOPSIS

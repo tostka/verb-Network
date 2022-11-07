@@ -1,4 +1,4 @@
-    #*------v Function get-whoami v------
+﻿    #*------v Function get-whoami v------
     function get-whoami {
         <#
         .SYNOPSIS

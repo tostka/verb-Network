@@ -1,4 +1,4 @@
-#*------v Function download-filecurl v------
+﻿#*------v Function download-filecurl v------
 function download-filecurl {
     <#
     .SYNOPSIS

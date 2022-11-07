@@ -1,4 +1,4 @@
-#*------v Function get-Subnet v------
+﻿#*------v Function get-Subnet v------
 function get-Subnet {
     <#
     .SYNOPSIS

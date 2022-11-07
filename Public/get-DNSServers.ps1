@@ -1,4 +1,4 @@
-#*----------v Function get-DNSServers() v----------
+﻿#*----------v Function get-DNSServers() v----------
 function get-DNSServers{
     <#
     .SYNOPSIS

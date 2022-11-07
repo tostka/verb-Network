@@ -1,4 +1,4 @@
-#*------v Function Reconnect-PSR v------
+﻿#*------v Function Reconnect-PSR v------
 Function Reconnect-PSR {
     <#
     .SYNOPSIS

@@ -1,4 +1,4 @@
-    #*------v Function download-file v------
+﻿    #*------v Function download-file v------
     function download-file {
     <#
     .SYNOPSIS

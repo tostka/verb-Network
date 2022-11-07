@@ -1,4 +1,4 @@
-#*------v summarize-PassStatus.ps1 v------
+﻿#*------v summarize-PassStatus.ps1 v------
 function summarize-PassStatus {
     <#
     .SYNOPSIS

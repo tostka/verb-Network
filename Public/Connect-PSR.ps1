@@ -1,4 +1,4 @@
-#*------v Connect-PSR.ps1 v------
+﻿#*------v Connect-PSR.ps1 v------
 Function Connect-PSR {
     <#
     .SYNOPSIS

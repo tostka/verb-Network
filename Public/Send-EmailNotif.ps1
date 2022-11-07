@@ -1,4 +1,4 @@
-#*------v Send-EmailNotif.ps1 v------
+﻿#*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
     .SYNOPSIS

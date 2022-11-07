@@ -1,4 +1,4 @@
-#*------v Function Invoke-SecurityDialog v------
+﻿#*------v Function Invoke-SecurityDialog v------
 function Invoke-SecurityDialog {
     <#
     .SYNOPSIS

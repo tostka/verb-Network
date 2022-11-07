@@ -1,4 +1,4 @@
-#*----------v Function Resolve-DNSLegacy() v----------
+﻿#*----------v Function Resolve-DNSLegacy() v----------
 function Resolve-DNSLegacy.ps1{
     <#
     .SYNOPSIS

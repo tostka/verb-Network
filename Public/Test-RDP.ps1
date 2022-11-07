@@ -1,4 +1,4 @@
-#*------v Function Test-RDP v------
+﻿#*------v Function Test-RDP v------
 function Test-RDP {
     <#
     .SYNOPSIS

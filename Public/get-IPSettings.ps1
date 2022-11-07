@@ -1,4 +1,4 @@
-#*------v Function get-IPSettings v------
+﻿#*------v Function get-IPSettings v------
 function get-IPSettings {
     <#
     .SYNOPSIS

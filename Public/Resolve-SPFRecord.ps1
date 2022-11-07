@@ -1,4 +1,4 @@
-#*------v Function Resolve-SPFRecord v------
+﻿#*------v Function Resolve-SPFRecord v------
 function Resolve-SPFRecord {
     <#
     .SYNOPSIS

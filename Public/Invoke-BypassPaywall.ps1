@@ -1,4 +1,4 @@
-# Invoke-BypassPaywall.ps1
+﻿# Invoke-BypassPaywall.ps1
 
 #*------v Function Invoke-BypassPaywall v------
 function Invoke-BypassPaywall{

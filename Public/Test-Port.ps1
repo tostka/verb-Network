@@ -1,4 +1,4 @@
-#*------v Function Test-Port v------
+﻿#*------v Function Test-Port v------
 function Test-Port {
     <#
     .SYNOPSIS

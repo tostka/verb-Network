@@ -1,4 +1,4 @@
-#*------v Function test-IpAddressCidrRange v------
+﻿#*------v Function test-IpAddressCidrRange v------
 function test-IpAddressCidrRange{
     <#
     .SYNOPSIS

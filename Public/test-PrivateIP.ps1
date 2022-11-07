@@ -1,4 +1,4 @@
-#*------v Function test-PrivateIP v------
+﻿#*------v Function test-PrivateIP v------
 function test-PrivateIP {
 <#
     .SYNOPSIS
