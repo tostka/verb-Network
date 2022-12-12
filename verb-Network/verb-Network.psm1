@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 2.1.0.0
+Version     : 2.2.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -939,7 +939,7 @@ function Get-RestartInfo {
                     $sBnrS="`n#*------v `$patchevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
                     # AP patch installer evts
-                    [int32[]]$ID = @(1033,1035,1036,1040,1042,100000,100001) ; 
+                    [int32[]]$ID = @(1033,1035,1036,1040,1042.2.0000,100001) ; 
                     [string[]]$provs = @('MsiInstaller','Microsoft-Windows-RestartManager') ; 
                     $cfltr = @{ LogName = "Application"; StartTime = $start; EndTime = $end ; ProviderName = $provs; id = $id};
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-WinEvent w`n$(($cfltr|out-string).trim())" ; 
@@ -1124,7 +1124,7 @@ function get-Subnet {
 
             $NetworkAddr = [ipaddress]($MaskAddr.address -band $IPAddr.address) ; 
             #$BroadcastAddr = [ipaddress](([ipaddress]::parse("255.255.255.255").address -bxor $MaskAddr.address -bor $NetworkAddr.address)) ; 
-            # inacc, returning 255.255.255.255 for 170.92.1.0/16
+            # inacc, returning 255.255.255.255 for 170.92.0.0/16
             # Add-IntToIPv4Address -IPv4Address 10.10.0.252 -Integer 10
             $BroadcastAddr = [ipaddress](Add-IntToIPv4Address -IP $NetworkAddr.IPAddressToString  -Integer ($maxHosts+1)) ; 
             $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
@@ -3108,8 +3108,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU6HCg9bjTPUKBjlzp8r3rORo6
-# nYagggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/xh6IC8VnJt6r8MVCVbgbOIL
+# aC2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3124,9 +3124,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSxqBfG
-# 9R9kshBmt86sJ+NvybBCUDANBgkqhkiG9w0BAQEFAASBgJIum7ahoS0NE7ejfjl6
-# LdhzXtUgqE4cNBNZYWuK6RfTkxQYK7Krx/M6p618XCKphvwmSw45zw1hnueT58R5
-# wrNcmtdI7DD3yTqzb85bN92FQ0iF41QbMq5aZhEGFdtCLei9k6IgonN70f2GETvo
-# WJ28tre1aQVWWLMB+HuJYKMU
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQmIWP/
+# +IEbgETItf+azP0I3/JWUzANBgkqhkiG9w0BAQEFAASBgEcJQYLQiqZjxjZILjki
+# FnjaSYsU1F0R6pd1BB3rSxzK22BXsB6vRd0oRCldw4GIZnm7pgjWRwPG4aYFBrDa
+# qgbQ510zBvO9HeP3//3Lwoe09cI/abC8SrE3E0nEB23EL0RtdsQOamNtI8x3PKFK
+# ovM1Gow5LOFeKcSuHYE4PSr7
 # SIG # End signature block
