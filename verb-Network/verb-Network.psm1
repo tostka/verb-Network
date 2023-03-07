@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 2.2.0.0
+Version     : 2.2.1.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -254,152 +254,388 @@ Function Disconnect-PSR {
 #*------^ Disconnect-PSR.ps1 ^------
 
 
-#*------v download-file.ps1 v------
-function download-file {
+#*------v Get-DnsDkimRecord.ps1 v------
+function Get-DnsDkimRecord {
     <#
     .SYNOPSIS
-    download-file.ps1 - simple download client
+    Get-DnsDkimRecord.ps1 - Function to resolve a DKIM record of a domain, under common or specified selectors for a domain.
     .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2020-04-17
-    FileName    : download-file.ps1
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka
-    Tags        : Powershell,Internet,Download,File
+    Version     : 0.0.
+    Author      :  (T13nn3s )
+    Website     : https://binsec.nl
+    Twitter     : @T13nn3s / https://twitter.com/T13nn3s
+    CreatedDate : 2022-04-06
+    FileName    : Get-DnsDkimRecord.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/powershell
+    Tags        : Powershell,DNS,Email,SPF
+    AddedCredit : Todd Kadrie
+    AddedWebsite: toddomation.com
+    AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
-    11:31 AM 4/17/2020 added CBH
+    * 6:09 PM 1/10/2023 TK revised: ren'd Get-DnsDkimRecord-> Get-DnsDkimRecord; 
+    Added/updated CBH, and citations to variety of related link websites ; 
+    Defaulted -Server to 1.1.1.1 (public default resolution) ; 
+    added a bunch of verbose echoes for tshooting ; 
+    added elseif test for not just v=dkim1 & k=, but accept p= public key (functional min requirement the other 2 tags are common but not required for function);
+    [DKIM DNS record overview – Validity Help Center - help.returnpath.com/](https://help.returnpath.com/hc/en-us/articles/222481088-DKIM-DNS-record-overview)
+    added trailing RturnedType to outputk, and tested for SOA and suppressed spurious last kdimselector as output. 
+    Also updates DKIMAdvisory output to reflect failed generic selectors search (e.g. user should spec known-selector as next step).
+    fundemental logic rewrite: when a selector is specified, it defaults to the 'accepteddomain' fqdn *only*:
+    $($DkimSelector)._domainkey.$($Name)"
+    issue: that doesn't accomodate custom SAAS vendor DKIM's or their CNAME pointers (which could be any arbitrary hostname on the domain). 
+    retry the failure on an explicit selector.name(.com) pass.; 
+    Finally just simplified into a single loop regardless of source or if looping static array; 
+    spliced in block to dump out full chain on multi dns records returned (more detail on -verbose)
+    * 11/02/2022 T13nn3s posted rev v1.5.2
     .DESCRIPTION
-    download-file.ps1 - simple download client
-    .PARAMETER  url
-    Url to be downloaded
-    .PARAMETER  DestinationName
-    Full path to destiontion file for download
+    Get-DnsDkimRecord.ps1 - Checks DKIM records under common or specified selectors for a domain.
+
+    Reasonable listing of common selectors here
+    [Email Provider Commonly Used DKIM Selectors : Sendmarc - help.sendmarc.com/](https://help.sendmarc.com/support/solutions/articles/44001891845-email-provider-commonly-used-dkim-selectors)
+
+
+    .PARAMETER Name
+    Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]
+    .PARAMETER DkimSelector
+    Specify a custom DKIM selector.[-DkimSelector myselector
+    .PARAMETER Server
+    DNS Server to use.[-Server 8.8.8.8]
     .INPUTS
-    None. Does not accepted piped input.
+    Accepts piped input.
     .OUTPUTS
-    None. Returns no objects or output
+    System.object
     .EXAMPLE
-    download-file -url https://xxx -destinationname c:\pathto\file.ext
-    .LINK
-    #>
-        [CmdletBinding()]
-        PARAM ([string]$url, [string]$DestinationName)
-        $rgxURLParse = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" ;
-        if ($url -match $rgxURLParse) {
-            $host = $matches[4] ;
-            if (test-connection -ComputerName $host -count 1) {
-                $client = new-object system.net.WebClient
-                $client.Headers.Add("user-agent", "PowerShell")
-                $client.downloadfile($url, $DestinationName)
-            }
-            else {
-                throw "unable to Ping $()" ;
-            } ;
-        }
-        else {
-            throw "Unparsable url, to fqdn:$($url)" ;
-        } ;
-    }
+    PS>  $results = get-dnsdkimrecord -name SOMEDOMAIN.com 
+    PS>  $results ; 
 
-#*------^ download-file.ps1 ^------
+        Name         : DOMAIN.com
+        DkimRecord   : v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQE[TRIMMED]qizt5Duv4WbgY/lXePnSA9iQIDAQAB;
+        DkimSelector : selector2
+        ReturnedType : TXT
+        DKIMAdvisory : DKIM-record found.
 
-
-#*------v download-filecurl.ps1 v------
-function download-filecurl {
-    <#
-    .SYNOPSIS
-    download-filecurl.ps1 - simple download wrapper around curl cmdline util
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2020-04-17
-    FileName    : download-filecurl.ps1
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka
-    Tags        : Powershell,Internet,Download,File
-    REVISIONS
-    11:31 AM 4/17/2020 added CBH
-    .DESCRIPTION
-    download-filecurl.ps1 - simple download client
-    .PARAMETER  url
-    Url to be downloaded
-    .PARAMETER  DestinationName
-    Full path to destiontion file for download
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output
+    Simple expansion on targeted domain, assign results to variable .
     .EXAMPLE
-    download-filecurl -url https://xxx -destinationname c:\pathto\file.ext
+    PS>  $result = get-dnsdkimrecord -name DOMAIN.com -verbose -Selector hs1-20997172._domainkey ; 
+    PS>  if($result.DkimRecord){
+    PS>      $smsg = "DKIM record returned on query:`n" 
+    PS>      $smsg += "`n$(($result.DkimRecord | format-list |out-string).trim())" ;
+    PS>      write-host $smsg ; 
+    PS>      if($pkey = $result.DkimRecord.split(';') | ?{$_ -match 'p=[a-zA-z0-9]+'}){
+    PS>          $smsg = "`nMatched Public Key tag:`n$(($pkey | format-list |out-string).trim())" ;
+    PS>          write-host $smsg ; 
+    PS>      } else { 
+    PS>          $smsg += "`nNO PUBLIC KEY MATCHED IN RETURNED RECORD!`n$(($pkey | format-list |out-string).trim())" ;
+    PS>          write-warning $smsg ;
+    PS>      } ; 
+    PS>  } else { 
+    PS>      $smsg = "`nNO DKIM RECORD RETURNED ON QUERY:`N" 
+    PS>      $smsg += "`n$(($result.DkimRecord | format-list |out-string).trim())" ;
+    PS>      write-warning $smsg ; 
+    PS>  } ; 
+
+        DKIM record returned on query:
+
+        k=rsa;t=s;p=MIIBIjANBgkqhk[TRIMMED]klCj9qU9oocSLd3PlChiBQHgz7e9wGbtIgV2xVwIDAQAB
+
+        Matched Public Key:
+        p=MIIBIjANBgkqhk[TRIMMED]klCj9qU9oocSLd3PlChiBQHgz7e9wGbtIgV2xVwIDAQAB
+
+    Example processing the returned TXT DKIM record and outputing the public key tag.
+    DESCRIPTION    
+.LINK
+    https://github.com/T13nn3s/Invoke-SpfDkimDmarc/blob/main/public/Get-DMARCRecord.ps1
+    https://www.powershellgallery.com/packages/DomainHealthChecker/1.5.2/Content/public%5CGet-DnsDkimRecord.ps1
+    https://binsec.nl/powershell-script-for-spf-dmarc-and-dkim-validation/
+    https://github.com/T13nn3s
     .LINK
+    https://github.COM/tostka/verb-Network/
     #>
-    PARAM ([string]$url, [string]$DestinationName)
-    $CurlArgument = '-o $($DestinationName)', '$($url)' ;
-    if (($PSVersionTable.PSEdition -eq 'Desktop') -OR ($IsCoreCLR -AND $IsWindows) -OR !$PSVersionTable.PSEdition) {$CURLEXE = "$env:windir\System32\curl.exe" } ; 
-    elseif ($IsCoreCLR -AND $IsLinux) {$CURLEXE = 'curl'} ;
-    & $CURLEXE @CurlArgument ;
+    [CmdletBinding()]
+    # Set-Alias gdkim -Value Get-DnsDkimRecord   # move trailing alias here
+    [Alias('gdkim')]
+    PARAM(
+        [Parameter(Mandatory = $True, ValueFromPipeline = $True, 
+            HelpMessage = "Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]")]
+        [string]$Name,
+        [Parameter(Mandatory = $False,
+            HelpMessage = "An array of custom DKIM selector strings.[-DkimSelector myselector")]
+        [Alias('Selector')]
+        [string[]]$DkimSelector,
+        [Parameter(Mandatory = $false,
+            HelpMessage = "DNS Server to use.[-Server 8.8.8.8]")]
+        [string]$Server='1.1.1.1'
+    ) ; 
+    BEGIN {
+        $verbose = ($VerbosePreference -eq "Continue") ; 
+        #if ($PSBoundParameters.ContainsKey('Server')) {
+        # above doesn't work if $Server is defaulted value
+        if ($PSBoundParameters.ContainsKey('Server') -OR $Server) {
+            $SplatParameters = @{
+                'Server'      = $Server ; 
+                'ErrorAction' = 'SilentlyContinue' ; 
+            } ; 
+        } Else {
+            $SplatParameters = @{
+                'ErrorAction' = 'SilentlyContinue' ; 
+            } ; 
+        } ; 
+        
+        #$whReportSub = @{BackgroundColor = 'Gray' ; ForegroundColor = 'DarkMagenta' } ;
+        $whElement = @{BackgroundColor = 'Yellow' ; ForegroundColor = 'Black' } ;
+        #$whQualifier = @{BackgroundColor = 'Blue' ; ForegroundColor = 'White' } ;
+
+        $prpCNAME = 'Type','Name','NameHost' ; 
+        $prpTXT = 'Type','Name','Strings' ; 
+        $prpSOA = 'Type','Name','PrimaryServer' ; 
+
+        # Custom list of DKIM-selectors
+        # https://help.sendmarc.com/support/solutions/articles/44001891845-email-provider-commonly-used-dkim-selectors
+        $DKSelArray = @(
+            'selector1' # Microsoft
+            'selector2' # Microsoft
+            'google', # Google
+            'everlytickey1', # Everlytic
+            'everlytickey2', # Everlytic
+            'eversrv', # Everlytic OLD selector
+            'k1', # Mailchimp / Mandrill
+            'mxvault' # Global Micro
+            'dkim' # Hetzner
+            's1' # generic
+            's2' # generic
+        ) ; 
+
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+
+        $DKimObject = New-Object System.Collections.Generic.List[System.Object] ; 
+        
+        if(-not $DkimSelector){
+            $DkimSelector = $DKSelArray ; 
+            $noSelectorSpecified = $true ; 
+            #$smsg = "Running specified `Name:$($Name) through common selector names:" ; 
+            $smsg = "Running with common selector names:" ; 
+            $smsg += "`n($($DKSelArray -join '|'))..." ; 
+            #write-host -Object $smsg @whElement ; 
+        } else {
+            $noSelectorSpecified = $false ; 
+            #$smsg = "Running specified `Name:$($Name) through specified -DkimSelector selector names:" ; 
+            $smsg = "Running specified -DkimSelector selector names:" ; 
+            $smsg += "`n($($DkimSelector -join '|'))..." ; 
+            #write-host -Object $smsg @whElement ;
+        }; 
+        write-host -Object $smsg @whElement ; 
+    } ; 
+    PROCESS { 
+        $Error.Clear() ; 
+
+        
+
+        foreach($item in $Name) {
+
+            $sBnr="#*======v Name: $($item) v======" ; 
+            $whBnr = @{BackgroundColor = 'Magenta' ; ForegroundColor = 'Black' } ;
+            write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+
+            $foundSelector = $false ; 
+
+            foreach ($DSel in $DkimSelector) {
+
+                $smsg = "DkimSelector:$($DSel) specified for domain Name:$($item)" ; 
+                $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel)._domainkey.$($item)" ; 
+                write-verbose $smsg ; 
+                if($DKIM = Resolve-DnsName -Type TXT -Name "$($DSel)._domainkey.$($item)" @SplatParameters){
+
+                } else { 
+                    # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
+                    $smsg = "Fail on prior TXT qry" ; 
+                    $smsg += "`nRetrying TXT qry:-Name $($DSel).$($item)"
+                    $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($item)"  ;
+                    write-verbose $smsg ; 
+                    $DKIM = Resolve-DnsName -Type TXT -Name "$($DSel).$($item)" @SplatParameters ; 
+                } ;  
+
+                if(($DKIM |  measure).count -gt 1){
+                    write-verbose "Multiple Records returned on qry: Likely resolution chain CNAME->(CNAME->)TXT`nuse the TXT record in the chain" ;   
+
+                    # dump the chain
+                    # ---
+                    $rNo=0 ; 
+                    foreach($rec in $DKIM){
+                        $rNo++ ; 
+                        $RecFail = $false ; 
+                        $smsg = "`n`n==HOP: $($rNo): " ;
+                        switch ($rec.type){
+                            'CNAME' {
+                                $smsg += "$($rec.Type): $($rec.Name) ==> $($rec.NameHost):" ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($verbose -AND (get-command Convertto-Markdowntable -ea 0)){
+                                    $smsg += $rec | select $prpCNAME | Convertto-Markdowntable -Border ; 
+                                } else { 
+                                    $smsg += "`n$(($rec | ft -a $prpCNAME |out-string).trim())" ; 
+                                } ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                            } 
+                            'TXT' { 
+                                $smsg += "$($rec.Type):Value record::`n" ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($verbose -AND (get-command Convertto-Markdowntable -ea 0)){
+                                    $smsg += $rec | select $prpTXT[0..1] | Convertto-Markdowntable -Border ; 
+                                    $smsg += "`n" ;
+                                    $smsg += $rec | select $prpTXT[2] | Convertto-Markdowntable -Border ; 
+                                } else { 
+                                    $smsg += "`n$(($rec | ft -a  $prpTXT[0..1] |out-string).trim())" ; 
+                                    $smsg += "`n" ;
+                                    $smsg += "`n$(($rec | ft -a $prpTXT[2]|out-string).trim())" ; 
+                                } ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                                }elseif($rec.Strings -match 'p=\w+'){
+                                    # per above, this matches only the bare minimum!
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                                }else {
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key!" ;
+                                    $smsg += "`n(strings should start with 'v=DKIM1', or at minimum include a p=xxx public key)`n`n" ; 
+                                    $RecFail = $true ; 
+                                } ; 
+                            } 
+                            'SOA' {
+                                $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
+                                $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
+                                #throw $smsg ;
+                                $RecFail = $true ; 
+                            }
+                            default {throw "Unrecognized record TYPE!" ; $RecFail = $true ; } 
+                        } ; 
+
+                        if($RecFail -eq $true){
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } else { 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ; 
+
+                    };  # loop-E
+                    #---
+
+                    #if($DKIM |?{$_.type -eq 'TXT'}){
+                    if($DKIM.type -contains 'TXT'){
+                        $DKIM  = $DKIM |?{$_.type -eq 'TXT'} ; 
+                        $rtype = $DKIM.type ; 
+                        $DKIM  = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
+                        if ($DKIM -eq $null) {
+                            $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
+                        } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
+                            $DkimAdvisory = "DKIM-record found." ;
+                            if($noSelectorSpecified -AND ($DSel -match "^selector1|everlytickey1|s1$") ){
+                                $smsg = "$($DkimSelector) is one of a pair of records, contining, to run the second partner record" ; 
+                                write-host $smsg ; 
+                            }elseif($noSelectorSpecified -eq $false){
+                                write-verbose "always run all explicit -DkimSelector values" ; 
+                            } else { 
+                                #break ; 
+                                $foundSelector = $true ; 
+                            } ; 
+                        # TK: test variant p= public key as fall back
+                        } elseif ($DKIM -match 'p=\w+' ) {
+                                # test above is too restrictive, min tag for functional dkim is a 'p=XXX' public key, not DKIM & k= tags)
+                                $DkimAdvisory = "*Minimum requirement* (p=XXX) Public Key found: Likely DKIM-record present." ;
+                                if($noSelectorSpecified -AND ($DSel -match "^selector1|everlytickey1|s1$") ){
+                                    $smsg = "$($DkimSelector) is one of a pair of records, contining, to run the second partner record" ; 
+                                    write-host $smsg ; 
+                                }elseif($noSelectorSpecified -eq $false){
+                                    write-verbose "always run all explicit -DkimSelector values" ; 
+                                } else { 
+                                    #break ; 
+                                    $foundSelector = $true ; ; 
+                                } ; 
+                        } else {;
+                                $DkimAdvisory = "We couldn't find a DKIM record associated with your domain." ;
+                                $DkimAdvisory += "`n$($rType) record returned, unrecognized:" ; 
+                                $DkimAdvisory += "`n$(($DKIM | format-list |out-string).trim())" ;
+                        } ; 
+                    } ;
+                } elseif ($DKIM.Type -eq "CNAME") {
+                    while ($DKIM.Type -eq "CNAME") {
+                        $DKIMCname = $DKIM.NameHost ; 
+                        $DKIM = Resolve-DnsName -Type TXT -name "$DKIMCname" @SplatParameters ;
+                    } ; # loop-E
+                    $rType = $DKIM.Type ; 
+                    #$DkimAdvisory = _test-DkimString -DKIM $DKIM -selector $DSel
+                    $DKIM = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
+                    if ($DKIM -eq $null) {
+                        $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
+                    } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
+                        $DkimAdvisory = "DKIM-record found." ;
+                    # TK: test variant p= public key as fall back
+                    } elseif ($DKIM -match 'p=\w+' ) {
+                            # test above is too restrictive, min tag for functional dkim is a 'p=XXX' public key, not DKIM & k= tags)
+                            $DkimAdvisory = "*Minimum requirement* (p=XXX) Public Key found: Likely DKIM-record present." ;
+                            #break ; # can't break here, it leaps the emit end of the loop
+                    } else {;
+                            $DkimAdvisory = "We couldn't find a DKIM record associated with your domain." ;
+                            $DkimAdvisory += "`n$($rType) record returned, unrecognized:" ; 
+                            $DkimAdvisory += "`n$(($DKIM | format-list |out-string).trim())" ;
+                    } ; 
+
+                } else {
+                    $DKIM = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
+                    if ($DKIM -eq $null) {
+                        $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
+                    } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
+                        $DkimAdvisory = "DKIM-record found." ;
+                    } ;
+                } ;
+
+                $DkimReturnValues = New-Object psobject ;
+                $DkimReturnValues | Add-Member NoteProperty "Name" $item ;
+                $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIM ;
+                if($rType -eq 'SOA'){
+                    write-verbose "asserting DkimSelector:`$null" ;
+                    $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $null ;
+                    if($noSelectorSpecified){
+                        $DkimAdvisory = $DkimAdvisory.replace('domain.',"domain, against a common Selectors list:`n($($DKSelArray -join '|')).") ; 
+                    }; 
+                } else { 
+                    $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
+                } ; 
+                $DkimReturnValues | Add-Member NoteProperty "ReturnedType" $rType ;
+                $DkimReturnValues | Add-Member NoteProperty "DKIMAdvisory" $DkimAdvisory ;
+                $DkimObject.Add($DkimReturnValues) ;
+                $DkimReturnValues | write-output ;
+
+                if($foundSelector){
+                    Break ; 
+                } ; 
+            } # loop-E DkimSelectors
+
+            
+
+            write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+
+        } # loop-E Name
+    } END {
+        
+    } ;
 }
 
-#*------^ download-filecurl.ps1 ^------
-
-
-#*------v download-fileNoSSL.ps1 v------
-function download-fileNoSSLNoSSL {
-    <#
-    .SYNOPSIS
-    download-fileNoSSLNoSSL.ps1 - simple download client - overridding the SSL trust requirement to get the file (insecure, for testing)
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2020-04-17
-    FileName    : download-fileNoSSL.ps1
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka
-    Tags        : Powershell,Internet,Download,File
-    REVISIONS
-    * 11:31 AM 4/17/2020 added CBH
-    * 3:04 PM 8/13/2014
-    .DESCRIPTION
-    download-fileNoSSL.ps1 - simple download client - overridding the SSL trust requirement to get the file (insecure, for testing)
-    .PARAMETER  url
-    Url to be downloaded
-    .PARAMETER  DestinationName
-    Full path to destiontion file for download
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output
-    .EXAMPLE
-    $url = "http://www.cs.wisc.edu/~ballard/bofh/excuses" ; 
-    $DestinationName = "c:\temp\temp.html" ; 
-    download-file $url $DestinationName
-    .LINK
-    http://blogs.technet.com/b/bshukla/archive/2010/04/12/ignoring-ssl-trust-in-powershell-system-net-webclient.aspx
-    #>
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true } ;
-        $client = new-object system.net.WebClient ;
-        if ($DestinationName) {
-            $client.DownloadString($url) | out-file -FilePath $local;
-        }
-        else {
-            # stream to console
-            $client.DownloadString($url) ;
-        } # if-block end
-        # not sure if toggle back is necesesary, but try it
-        [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $false } ;
-    }
-
-#*------^ download-fileNoSSL.ps1 ^------
+#*------^ Get-DnsDkimRecord.ps1 ^------
 
 
 #*------v get-DNSServers.ps1 v------
@@ -541,7 +777,7 @@ function Get-NetIPConfigurationLegacy {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 20210114-1055AM
+    CreatedDate : 2.2.1114-1055AM
     FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
@@ -674,65 +910,374 @@ function Get-NetIPConfigurationLegacy {
 
 #*------v get-NetworkClass.ps1 v------
 function get-NetworkClass {
-    <#
-    .SYNOPSIS
-    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2021-08-16
-    FileName    : get-NetworkClass.ps1
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,IP,Subnet
-    AddedCredit : Mark Wragg
-    AddedWebsite: https://github.com/markwragg
-    AddedTwitter: 
-    REVISIONS
-    * 2:49 PM 11/2/2021 refactor/fixed CBH
-    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
-    * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
-    .DESCRIPTION
-    get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
-    .PARAMETER IP
-    The IP address to test[-IP 192.168.0.1]
-    .EXAMPLE
-    '10.1.1.1' | Get-NetworkClass
-    Result
-    ------
-    A
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
-    #>
+            <#
+            .SYNOPSIS
+            get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
+            .NOTES
+            Version     : 1.0.0
+            Author      : Todd Kadrie
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2021-08-16
+            FileName    : get-NetworkClass.ps1
+            License     : (none asserted)
+            Copyright   : (none asserted)
+            Github      : https://github.com/tostka/verb-Network
+            Tags        : Powershell,Network,IP,Subnet
+            AddedCredit : Mark Wragg
+            AddedWebsite: https://github.com/markwragg
+            AddedTwitter: 
+            REVISIONS
+            * 3:53 PM 1/10/2023 modified to return a [psobject] rather than a string ; 
+            * 2:49 PM 11/2/2021 refactor/fixed CBH
+            * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+            * 9/10/2019 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+            .DESCRIPTION
+            get-NetworkClass.ps1 - Use to determine the network class of a given IP address.
+            .INPUTS
+            Accepts pipeline input.
+            .OUTPUTS
+            System.Object
+            .PARAMETER IP
+            The IP address to test[-IP 192.168.0.1]
+            .EXAMPLE
+            '10.1.1.1' | Get-NetworkClass
+            Result
+            ------
+            A
+            .LINK
+            https://github.com/tostka/verb-Network
+            .LINK
+            https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/Test-PrivateIP.ps1
+            #>
 
-    ###Requires -Modules DnsClient
-    [CmdletBinding()]
-    PARAM (
-        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="The IP address to test[-IP 192.168.0.1]")]
-        [string]$IP
-    )
-    BEGIN {
-        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
-        $Verbose = ($VerbosePreference -eq 'Continue') ; 
-    } ;  # BEG-E
-    PROCESS {
-        switch ($IP.Split('.')[0]) {
-            { $_ -in 0..127 } { 'A' }
-            { $_ -in 128..191 } { 'B' }
-            { $_ -in 192..223 } { 'C' }
-            { $_ -in 224..239 } { 'D' }
-            { $_ -in 240..255 } { 'E' }
-        } ;
-    } ;  # PROC-E
-    END {}
-}
+            ###Requires -Modules DnsClient
+            [CmdletBinding()]
+            PARAM (
+                [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="The IP address to test[-IP 192.168.0.1]")]
+                [string]$IP
+            )
+            BEGIN {
+                ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+                $Verbose = ($VerbosePreference -eq 'Continue') ; 
+            } ;  # BEG-E
+            PROCESS {
+                $class = switch ($IP.Split('.')[0]) {
+                    { $_ -in 0..127 } { 'A' }
+                    { $_ -in 128..191 } { 'B' }
+                    { $_ -in 192..223 } { 'C' }
+                    { $_ -in 224..239 } { 'D' }
+                    { $_ -in 240..255 } { 'E' }
+                } ;
+            
+            } ;  # PROC-E
+            END {
+                [pscustomobject]$class | write-output ; 
+            } ; 
+        }
 
 #*------^ get-NetworkClass.ps1 ^------
+
+
+#*------v get-NetworkSubnet.ps1 v------
+function get-NetworkSubnet {
+            <#
+            .SYNOPSIS
+            get-NetworkSubnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
+            .NOTES
+            Version     : 1.0.0
+            Author      : Todd Kadrie
+            Website     :	http://www.toddomation.com
+            Twitter     :	@tostka / http://twitter.com/tostka
+            CreatedDate : 2020-
+            FileName    : 
+            License     : (none asserted)
+            Copyright   : (none asserted)
+            Github      : https://github.com/tostka/verb-XXX
+            Tags        : Powershell
+            AddedCredit : Mark Wragg (markwragg)
+            AddedWebsite: https://github.com/markwragg
+            AddedTwitter:	URL
+            AddedCredit : Michael Samuel
+            AddedWebsite: https://stackoverflow.com/users/12068738/michael-samuel
+            AddedTwitter:	URL
+            REVISIONS
+            * 10:16 AM 1/9/2023 ren: get-NetworkSubnet -> get-NetworkSubnet (alias'd  orig name); 
+            Tried overide of HostAddressCount .tostring to emit a formatted output (#,###): was blanking the member value, so flipped to a formatted variant property (and still using tostring() on receiving end, needed to do math on the result).
+            * 4:08 PM 1/6/2023 adapt get-NetworkSubnet for ipv6 (seeing a ton of ranges in spf includes), used... 
+            [Parsing IPv6 CIDR into first address and last address in Powershell - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/42118198/parsing-ipv6-cidr-into-first-address-and-last-address-in-powershell)
+            ...Michael Samuel's Sep 15, 2019 at 2:03 sample ipv6 CIDR range calculator code (from comment on q above), and Ron Maupin's comment about diff between Ipv4 maxhosts cacl & ipv6:
+            It really comes down to subtract the mask from 128, instead of ipv4's from 32. Math is the same otherwise.
+            * 2:53 PM 11/2/2021 refactor/fix CBH
+            * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
+            * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
+            * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
+            .DESCRIPTION
+            get-NetworkSubnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
+            Use to get subnet details  for a given network address and mask, including network address, broadcast address, network class, address range, host addresses and host address count.
+            .PARAMETER IP
+            The network IP address or IP address with subnet mask via slash notation.
+            .PARAMETER MaskBits
+            The numerical representation of the subnet mask.
+            .PARAMETER Enumerate
+            Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
+            .EXAMPLE
+            get-NetworkSubnet 10.1.2.3/24
+            Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
+            .EXAMPLE
+            get-NetworkSubnet 192.168.0.1 -MaskBits 23
+            Returns the subnet details for the specified network and mask.
+            .EXAMPLE
+            get-NetworkSubnet
+            Returns the subnet details for the current local IP.
+            .EXAMPLE
+            '10.1.2.3/24','10.1.2.4/24' | get-NetworkSubnet
+            Returns the subnet details for two specified networks.    
+            .LINK
+            https://github.com/tostka/verb-Network
+            .LINK
+            https://github.com/markwragg/PowerShell-Subnet/blob/master/Subnet/Public/get-NetworkSubnet.ps1
+            #>
+            ##Requires -Modules DnsClient
+            [CmdletBinding()]
+            [Alias('get-Subnet')]
+            PARAM (
+                [parameter(ValueFromPipeline,HelpMessage="The network IP address or IP address with subnet mask via slash notation.[-IP 192.168.0.1]")]
+                [string]$IP,
+                [parameter(HelpMessage="The numerical representation of the subnet mask.[-MaskBits 23]")]
+                [ValidateRange(0, 32)]
+                [Alias('CIDR')]
+                [int]$MaskBits,
+                #[parameter(HelpMessage="Use to force the return of all host IP addresses regardless of the subnet size (skipped by default for subnets larger than /16).[-Force]")]
+                #[switch]$Force
+                [parameter(HelpMessage="Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]")]
+                [switch]$Enumerate
+            )
+            BEGIN {
+                ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+                $Verbose = ($VerbosePreference -eq 'Continue') ; 
+
+            } ;  # BEG-E
+            PROCESS {
+
+                if ($PSBoundParameters.ContainsKey('MaskBits')) { 
+                    $Mask = $MaskBits  ; 
+                } ; 
+
+                if (-not $IP) { 
+                    $LocalIP = (Get-NetIPAddress -Verbose:$($PSBoundParameters['Verbose'] -eq $true) | Where-Object { $_.AddressFamily -eq 'IPv4' -and $_.PrefixOrigin -ne 'WellKnown' }) ; 
+                    $IP = $LocalIP.IPAddress ; 
+                    If ($Mask -notin 0..32) { $Mask = $LocalIP.PrefixLength } ; 
+                } ; 
+
+                if ($IP -match '/\d') { 
+                    #$IPandMask = $IP -Split '/'  ; 
+                    $IP,$Mask = $IP -Split '/'  ; 
+                } ; 
+        
+                $Class = Get-NetworkClass -IP $IP -Verbose:$($PSBoundParameters['Verbose'] -eq $true) ; 
+
+                <# detecting ipv6 - core was written for ipv4...
+                # ip4 CIDR range: 0 to 32
+                # ip6 CIDR range: 0 to 128 - need to update to accomodate cidr ip6
+                if($Address -like "*:*" -AND [int]$cidr[1] -ge 0 -AND [int]$cidr[1] -le 128){
+                    # CIDR ip6
+                    write-verbose "valid ipv6 CIDR subnet syntax" ;
+                    $report.Valid = $true ; 
+                } elseif([int]$cidr[1] -ge 0 -and [int]$cidr[1] -le 32){}
+                #>
+
+                if($IP -like "*:*" -AND [int]$Mask -ge 0 -AND [int]$Mask -le 128){
+                    
+                    # IPv6 has no classes, and reportedly IPv4 classes A, B and C have been deprecated since the publication of RFC 1519 in 1993. So fogetabout it
+                    $Class = '(Classless)' ; 
+
+                    $IPAddr = [ipaddress]::Parse($IP) ; 
+
+                    # -------
+                    #convert IPv6 CIDR to IPv6 range
+                    
+                    $AllAddresses = '::-ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff'
+                    #$ipv6cidr = $_
+                    $ipv6cidr = $IP,$MASK -join '/' ;  
+                    $sw = [Diagnostics.Stopwatch]::StartNew();
+                    if ($ipv6cidr -match "[0-9a-f:]+[:]" -and $_ -ne $AllAddresses) {
+                        $EndBinaryArray = $StartBinaryArray = $null
+                        $NetBits = $($ipv6cidr.Split("/").Replace('::', ''))[1]
+                        #Convert To Binary
+                        $BinaryEquivalent = $(($ipv6cidr.Split("/").Replace('::', ''))[0].Split(':').ForEach(
+                                {
+                                    $Decimal = '0x' + $_
+                                    [Convert]::ToString($([Uint32]($Decimal)), 2).PadLeft(16, '0')
+                                }
+                            )
+                        ) ; 
+                        $BitLength = $BinaryEquivalent.length * 16 ; 
+                        $HostId = $BinaryEquivalent -join "" ; 
+                        #Adjust for NetMask
+                        if ($Netbits -lt $BitLength) {
+                            $Difference = $BitLength - $NetBits ; 
+                            $HostnetworkId = $HostId -Replace ".{$Difference}$" ; 
+                        } ; 
+                        if ($Netbits -gt $BitLength) {
+                            $Difference = $Netbits - $BitLength ; 
+                            $HostnetworkId = [String]::Format("$HostId{0}", $("0" * $Difference)) ; 
+                        } ; 
+                        if ($Netbits -eq $BitLength) {
+                            $HostnetworkId = $HostId ; 
+                        } ; 
+                        $BinaryStart = $HostnetworkId.PadRight(128, '0') ; 
+                        $BinaryEnd = $HostnetworkId.PadRight(128, '1') ; 
+                        #Convert Back to Decimal then to Hex
+                        While ($BinaryStart) {
+                            $Bytes, $BinaryStart = ([char[]]$BinaryStart).where( { $_ }, 'Split', 16) ; 
+                            [Array]$StartBinaryArray += $Bytes -join '' ; 
+                        } ; 
+                        $finalstartip = $HexStartArray = ($StartBinaryArray.ForEach( { '{0:X4}' -f $([Convert]::ToInt32("$_", 2)) })) -join ":" ; 
+                        While ($BinaryEnd) {
+                            $Bytes, $BinaryEnd = ([char[]]$BinaryEnd).where( { $_ }, 'Split', 16) ; 
+                            [Array]$EndBinaryArray += $Bytes -join '' ; 
+                        } ; 
+                        $finalendip = $HexEndArray = ($EndBinaryArray.ForEach( { '{0:X4}' -f $([Convert]::ToInt32("$_", 2)) })) -join ":" ; 
+                        "[{0}] Start: {1} End: {2}" -f $ipv6cidr, $HexStartArray, $HexEndArray ; 
+                        $ipv6range+=$finalstartip+'-'+$finalendip ; 
+                    } ; 
+                    if ($ipv6cidr -eq $AllAddresses) {
+                        "[{0}] Start: {1} End: {2}" -f $ipv6cidr, '000:000:000:0000:0000:0000:0000', 'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff' ; 
+                        $ipv6range+='000:000:000:0000:0000:0000:0000'+'-'+'ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff' ; 
+                    } ; 
+                    $sw.Stop() ;
+                    write-verbose ("Elapsed Time: {0:dd}d {0:hh}h {0:mm}m {0:ss}s {0:fff}ms" -f $sw.Elapsed) ; 
+
+                    <#[ip - ipv6 number of Host Address - Network Engineering Stack Exchange - networkengineering.stackexchange.com/](https://networkengineering.stackexchange.com/questions/49094/ipv6-number-of-host-address)
+                        
+                        Just like with IPv4, you subtract the mask length from the size of the address 
+                        (32 for IPv4, and 128 for IPv6) to get the number of host bits. Take two to the 
+                        power of the number of host bits, and that is how many host addresses you have. 
+                        With IPv4, you must subtract two from that number (except for /31 and /32 
+                        networks) because you cannot use the network or broadcast addresses. With IPv6, 
+                        you can actually use any address in the hosts addresses
+
+                        The standard IPv6 network size is /64, so you will have 128 - 64 = 64 
+                        host bits, and that is 2^64 = 18,446,744,073,709,551,616 host addresses in a 
+                        standard 64-bit IPv6 network
+
+                        cidr ipv6 subnet: 
+                        $cidr = '2a01:4180:4051:0400::/64' ;
+                        $ip,$mask = $cidr.split('/') ; 
+                        [bigint]$maxhosts = [math]::Pow(2,(128-$Mask)) - 2 ;
+                        # also subtracts the bcast & network addrs from the net pool, they're aren't assignable
+                        write-verbose "echo with commas for legibility)
+                        $maxhosts.tostring("#,###")
+                        18,446,744,073,709,551,616 
+                    #>
+                    # fast way to get a count, wo full expansion
+                    #IPV4: $maxHosts=[math]::Pow(2,(32-$Mask)) - 2 ; 
+                    #IPV6:
+                    $maxHosts=[math]::Pow(2,(128-$Mask)) - 2 ;
+
+                    $NetworkAddr = [ipaddress]$finalstartip ; 
+                    $BroadcastAddr = [ipaddress]$finalendip; 
+                    $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
+                    $MaskAddr = "/$($MASK)" ; # just send back the CIDR mask, simpler
+                    #$HostStartAddr = (Convert-IPtoInt64 -ip $NetworkAddr.ipaddresstostring) + 1 ; 
+                    #$HostEndAddr = (Convert-IPtoInt64 -ip $broadcastaddr.ipaddresstostring) - 1 ; 
+
+                    if ($Enumerate) {
+                        write-warning "This function does not support fully eunmerating ipv6 subnets!" ; 
+
+                    } ; 
+
+                }else{
+        
+                    if ($Mask -notin 0..32) {
+                        $Mask = switch ($Class) {
+                            'A' { 8 }
+                            'B' { 16 }
+                            'C' { 24 }
+                            #'Single' { 32 } # just marking 32 indicates a single IP, not used in code below
+                            default { 
+                                throw "Subnet mask size was not specified and could not be inferred because the address is Class $Class." 
+                            }
+                        } ; 
+                        Write-Warning "Subnet mask size was not specified. Using default subnet size for a Class $Class network of /$Mask." ; 
+                    } ; 
+
+                    $IPAddr = [ipaddress]::Parse($IP) ; 
+                    $MaskAddr = [ipaddress]::Parse((Convert-Int64toIP -int ([convert]::ToInt64(("1" * $Mask + "0" * (32 - $Mask)), 2)))) ; 
+
+                    # fast way to get a count, wo full expansion
+                    $maxHosts=[math]::Pow(2,(32-$Mask)) - 2 ; 
+
+                    $NetworkAddr = [ipaddress]($MaskAddr.address -band $IPAddr.address); 
+                    $BroadcastAddr = [ipaddress](Add-IntToIPv4Address -IP $NetworkAddr.IPAddressToString  -Integer ($maxHosts+1)) ; 
+                    $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
+        
+                    $HostStartAddr = (Convert-IPtoInt64 -ip $NetworkAddr.ipaddresstostring) + 1 ; 
+                    $HostEndAddr = (Convert-IPtoInt64 -ip $broadcastaddr.ipaddresstostring) - 1 ; 
+        
+
+                    #if ($Mask -ge 16 -or $Force) {
+                    if ($Enumerate) {
+                        Write-Progress "Calcualting host addresses for $NetworkAddr/$Mask.." ; 
+                        if ($Mask -ge 31) {
+                            $HostAddresses = ,$NetworkAddr ; 
+                            if ($Mask -eq 31) {
+                                $HostAddresses += $BroadcastAddr ; 
+                            } ; 
+
+                            $HostAddressCount = $HostAddresses.Length ; 
+                            $NetworkAddr = $null ; 
+                            $BroadcastAddr = $null ; 
+                        } else {
+                            $HostAddresses = for ($i = $HostStartAddr; $i -le $HostEndAddr; $i++) {
+                                Convert-Int64toIP -int $i ; 
+                            }
+                            $HostAddressCount = ($HostEndAddr - $HostStartAddr) + 1 ; 
+                        }                     
+                    } ; 
+                    # more interested in the count than specific ips
+                    <#else {
+                        Write-Warning "Host address enumeration was not performed because it would take some time for a /$Mask subnet. `nUse -Force if you want it to occur." ; 
+                    } ; 
+                    #>
+   
+                } ;
+
+                $report = [ordered]@{
+                    IPAddress        = $IPAddr
+                    MaskBits         = $Mask
+                    NetworkAddress   = $NetworkAddr.IPAddressToString 
+                    BroadcastAddress = $broadcastaddr.IPAddressToString
+                    SubnetMask       = $MaskAddr
+                    NetworkClass     = $Class
+                    Range            = $Range
+                } ; 
+                if($Enumerate){
+                    $report.add('HostAddresses',$HostAddresses) ;
+                    $report.add('HostAddressCount',$HostAddressCount );
+                    # back to add a formatted variant
+                    $report.add('HostAddressCountString',$HostAddressCount.tostring("#,###") );
+                } else {
+                    $report.add('HostAddressCount',$maxHosts);
+                    $report.add('HostAddressCountString',$maxHosts.tostring("#,###") );
+                } ; ;
+                <# for some reason overriding outstring completely blanks the hostaddresscount, if it's not an array, include it in the output, right of the |
+                # have to capture and post-add-member the override, can't be done on the source hashtable
+                $out = New-Object PSObject -Property $report ;
+                # overload the HostAddressCount tostring with a formatted output, can't use tostring('#,###'), so use the -f with the .net formatting string for commas (0:N for 2decimal pts; 0:N0 for no decimals)
+                #$out.HostAddressCount | Add-Member -MemberType ScriptMethod -Name ToString -Value {
+                $out.HostAddressCount = $out.HostAddressCount | Add-Member -MemberType ScriptMethod -Name ToString -Value {
+                    '{0:N0}' -f $_.HostAddressCount 
+                } -Force -PassThru
+                $out | write-output ;  
+                #>
+                New-Object PSObject -Property $report | write-output ; 
+            } ; # PROC-E
+            END {}
+        }
+
+#*------^ get-NetworkSubnet.ps1 ^------
 
 
 #*------v Get-RestartInfo.ps1 v------
@@ -894,7 +1439,7 @@ function Get-RestartInfo {
             } Else {
                 write-verbose "(pulling reboot events System 1074)" ; 
                 if(($sevts = Get-WinEvent -computername $computer -FilterHashtable @{logname = 'System'; id = 1074} -MaxEvents 1) -AND ((new-timespan -start $sevts.TimeCreated -End (get-date)).TotalDays -lt $MaxDays)){ 
-                    <# TimeCreated  : 8/22/2022 2:09:47 AM
+                    <# TimeCreated  : 8/22/2022.2.19:47 AM
                     ProviderName : USER32
                     ProviderId   :
                     Id           : 1074
@@ -939,7 +1484,7 @@ function Get-RestartInfo {
                     $sBnrS="`n#*------v `$patchevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
                     # AP patch installer evts
-                    [int32[]]$ID = @(1033,1035,1036,1040,1042.2.0000,100001) ; 
+                    [int32[]]$ID = @(1033,1035,1036,1040,1042,100000,100001) ; 
                     [string[]]$provs = @('MsiInstaller','Microsoft-Windows-RestartManager') ; 
                     $cfltr = @{ LogName = "Application"; StartTime = $start; EndTime = $end ; ProviderName = $provs; id = $id};
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Get-WinEvent w`n$(($cfltr|out-string).trim())" ; 
@@ -998,203 +1543,6 @@ function Get-RestartInfo {
 }
 
 #*------^ Get-RestartInfo.ps1 ^------
-
-
-#*------v get-Subnet.ps1 v------
-function get-Subnet {
-    <#
-    .SYNOPSIS
-    get-Subnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     :	http://www.toddomation.com
-    Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 2020-
-    FileName    : 
-    License     : MIT License
-    Copyright   : (c) 2020 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : REFERENCE
-    AddedWebsite:	URL
-    AddedTwitter:	URL
-    REVISIONS
-    * 2:53 PM 11/2/2021 refactor/fix CBH
-    * 12:33 PM 8/16/2021 renamed/added -Enumerate for prior -force, turned off autoexpansion (unless -enumerate), shifted to maxhosts calc to gen count, vs full expansion & count
-    * 1:29 PM 8/12/2021 tweaked CBH, minor param inline help etc.
-    * 1:29 PM 5/12/2021 Mark Wragg posted rev (corresponds to PSG v1.1.14)
-    .DESCRIPTION
-    get-Subnet.ps1 - Returns subnet details for the local IP address, or a given network address and mask.
-    Use to get subnet details  for a given network address and mask, including network address, broadcast address, network class, address range, host addresses and host address count.
-    .PARAMETER IP
-    The network IP address or IP address with subnet mask via slash notation.
-    .PARAMETER MaskBits
-    The numerical representation of the subnet mask.
-    .PARAMETER Enumerate
-    Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]
-    .EXAMPLE
-    Get-Subnet 10.1.2.3/24
-    Returns the subnet details for the specified network and mask, specified as a single string to the -IP parameter.
-    .EXAMPLE
-    Get-Subnet 192.168.0.1 -MaskBits 23
-    Returns the subnet details for the specified network and mask.
-    .EXAMPLE
-    Get-Subnet
-    Returns the subnet details for the current local IP.
-    .EXAMPLE
-    '10.1.2.3/24','10.1.2.4/24' | Get-Subnet
-    Returns the subnet details for two specified networks.    
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://github.com/markwragg/PowerShell-Subnet/tree/master/Subnet/Public
-    #>
-    ##Requires -Modules DnsClient
-    [CmdletBinding()]
-    PARAM (
-        [parameter(ValueFromPipeline,HelpMessage="The network IP address or IP address with subnet mask via slash notation.[-IP 192.168.0.1]")]
-        [string]$IP,
-        [parameter(HelpMessage="The numerical representation of the subnet mask.[-MaskBits 23]")]
-        [ValidateRange(0, 32)]
-        [Alias('CIDR')]
-        [int]$MaskBits,
-        #[parameter(HelpMessage="Use to force the return of all host IP addresses regardless of the subnet size (skipped by default for subnets larger than /16).[-Force]")]
-        #[switch]$Force
-        [parameter(HelpMessage="Use to calc & return all host IP addresses regardless of the subnet size (skipped by default)).[-Eunumerate]")]
-        [switch]$Enumerate
-    )
-    BEGIN {
-        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
-        $Verbose = ($VerbosePreference -eq 'Continue') ; 
-    } ;  # BEG-E
-    PROCESS {
-
-        if ($PSBoundParameters.ContainsKey('MaskBits')) { 
-            $Mask = $MaskBits  ; 
-        } ; 
-
-        if (-not $IP) { 
-            $LocalIP = (Get-NetIPAddress | Where-Object { $_.AddressFamily -eq 'IPv4' -and $_.PrefixOrigin -ne 'WellKnown' }) ; 
-            $IP = $LocalIP.IPAddress ; 
-            If ($Mask -notin 0..32) { $Mask = $LocalIP.PrefixLength } ; 
-        } ; 
-
-        if ($IP -match '/\d') { 
-            $IPandMask = $IP -Split '/'  ; 
-            $IP = $IPandMask[0] ; 
-            $Mask = $IPandMask[1] ; 
-        } ; 
-        
-        $Class = Get-NetworkClass -IP $IP ; 
-
-        <# detecting ipv6 - core was written for ipv4...
-        # ip4 CIDR range: 0 to 32
-        # ip6 CIDR range: 0 to 128 - need to update to accomodate cidr ip6
-        if($Address -like "*:*" -AND [int]$cidr[1] -ge 0 -AND [int]$cidr[1] -le 128){
-            # CIDR ip6
-            write-verbose "valid ipv6 CIDR subnet syntax" ;
-            $report.Valid = $true ; 
-        } elseif([int]$cidr[1] -ge 0 -and [int]$cidr[1] -le 32){}
-        #>
-
-        if($IP -like "*:*" -AND [int]$Mask -ge 0 -AND [int]$Mask -le 128){
-                write-warning "ipv6 CIDR detected: unsupported to expand subnet specs with this function" ; 
-                $false | write-output ; 
-        }else{
-        
-            if ($Mask -notin 0..32) {
-                $Mask = switch ($Class) {
-                    'A' { 8 }
-                    'B' { 16 }
-                    'C' { 24 }
-                    #'Single' { 32 } # just marking 32 indicates a single IP, not used in code below
-                    default { 
-                        throw "Subnet mask size was not specified and could not be inferred because the address is Class $Class." 
-                    }
-                } ; 
-                Write-Warning "Subnet mask size was not specified. Using default subnet size for a Class $Class network of /$Mask." ; 
-            } ; 
-
-            $IPAddr = [ipaddress]::Parse($IP) ; 
-            $MaskAddr = [ipaddress]::Parse((Convert-Int64toIP -int ([convert]::ToInt64(("1" * $Mask + "0" * (32 - $Mask)), 2)))) ; 
-
-            # fast way to get a count, wo full expansion
-            $maxHosts=[math]::Pow(2,(32-$Mask)) - 2 ; 
-
-            $NetworkAddr = [ipaddress]($MaskAddr.address -band $IPAddr.address) ; 
-            #$BroadcastAddr = [ipaddress](([ipaddress]::parse("255.255.255.255").address -bxor $MaskAddr.address -bor $NetworkAddr.address)) ; 
-            # inacc, returning 255.255.255.255 for 170.92.0.0/16
-            # Add-IntToIPv4Address -IPv4Address 10.10.0.252 -Integer 10
-            $BroadcastAddr = [ipaddress](Add-IntToIPv4Address -IP $NetworkAddr.IPAddressToString  -Integer ($maxHosts+1)) ; 
-            $Range = "$NetworkAddr ~ $BroadcastAddr" ; 
-        
-            $HostStartAddr = (Convert-IPtoInt64 -ip $NetworkAddr.ipaddresstostring) + 1 ; 
-            $HostEndAddr = (Convert-IPtoInt64 -ip $broadcastaddr.ipaddresstostring) - 1 ; 
-        
-
-            #if ($Mask -ge 16 -or $Force) {
-            if ($Enumerate) {
-                Write-Progress "Calcualting host addresses for $NetworkAddr/$Mask.." ; 
-                if ($Mask -ge 31) {
-                    $HostAddresses = ,$NetworkAddr ; 
-                    if ($Mask -eq 31) {
-                        $HostAddresses += $BroadcastAddr ; 
-                    } ; 
-
-                    $HostAddressCount = $HostAddresses.Length ; 
-                    $NetworkAddr = $null ; 
-                    $BroadcastAddr = $null ; 
-                } else {
-                    $HostAddresses = for ($i = $HostStartAddr; $i -le $HostEndAddr; $i++) {
-                        Convert-Int64toIP -int $i ; 
-                    }
-                    $HostAddressCount = ($HostEndAddr - $HostStartAddr) + 1 ; 
-                }                     
-            } ; 
-            # more interested in the count than specific ips
-            <#else {
-                Write-Warning "Host address enumeration was not performed because it would take some time for a /$Mask subnet. `nUse -Force if you want it to occur." ; 
-            } ; 
-            #>
-
-            $report = [ordered]@{
-                IPAddress        = $IPAddr
-                MaskBits         = $Mask
-                NetworkAddress   = $NetworkAddr
-                BroadcastAddress = $broadcastaddr
-                SubnetMask       = $MaskAddr
-                NetworkClass     = $Class
-                Range            = $Range
-            } ; 
-            if($Enumerate){
-                $report.add('HostAddresses',$HostAddresses) ;
-                $report.add('HostAddressCount',$HostAddressCount );
-            } else {
-                $report.add('HostAddressCount',$maxHosts);
-            } ; ;
-
-            <#[pscustomobject]@{
-                IPAddress        = $IPAddr
-                MaskBits         = $Mask
-                NetworkAddress   = $NetworkAddr
-                BroadcastAddress = $broadcastaddr
-                SubnetMask       = $MaskAddr
-                NetworkClass     = $Class
-                Range            = $Range
-                HostAddresses    = $HostAddresses
-                HostAddressCount = $HostAddressCount
-            } ; 
-            #>
-
-            New-Object PSObject -Property $report | write-output ;    
-        } ;
-
-    } ; # PROC-E
-    END {}
-}
-
-#*------^ get-Subnet.ps1 ^------
 
 
 #*------v get-tsusers.ps1 v------
@@ -2110,6 +2458,785 @@ function Resolve-SPFRecord {
 #*------^ Resolve-SPFRecord.ps1 ^------
 
 
+#*------v save-WebDownload.ps1 v------
+function save-WebDownload {
+    <#
+    .SYNOPSIS
+    save-WebDownload - Download Uri file from Inet (via Invoke-WebRequest iwr), without need to know destination filename (parses filename out of headers of the download).
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : save-WebDownload.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    AddedCredit : poshftw
+    AddedWebsite: https://old.reddit.com/r/PowerShell/comments/moxy5v/downloading_a_file_with_powershell_without/
+    AddedTwitter: URL
+    AddedCredit : Jimmy McNatt
+    AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
+    AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
+    REVISIONS
+    * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
+    path<file/dir code - it's not used with explicit params ; seems to work; fliped 
+    the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
+    fails; ; rounded out, added missing code to detect successful first dl attempt. 
+    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
+    Reworked a lot of the echos, added wlt support for all echos. 
+    Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
+    * 3:50 PM 2/24/2023 add: relative-path resolution on inbound $Path; code 
+    [system.io.fileinfo] code to differntiate Leaf file from Container status of 
+    Path ;  Logic to validate functional combo of existing/leaf/container -Path. Expanded wlt support throughout.
+    * 11:46 AM 2/23/2023 retooled poshftw's original concept, expanding to fail back to obtain a redir for parsing. 
+    .DESCRIPTION
+    save-WebDownload - Download Uri file from Inet (via Invoke-WebRequest iwr), without need to know destination filename (parses filename out of headers of the download).
+
+    Uses two levels of logic to try to obtain remote download filename (where it's a redirect or v-dir as a target uri):
+    1) Leverages poshftw's Invoke-WebRequest -Method Head parse code, to pre-retrieve the Header and back out the target filename 
+        (which is then used as final Invoke-WebRequest -Outfile). 
+    2) And for sites that don't support -Header (chocolatey.org throws 501 not implemented), it falls back to to 
+        trying to obtain and parse a redirect with the full file target present and detectable.
+        (leveraging redirect-grabing specs pointed out by Jimmy McNatt in his post [PowerShell – Capturing a Redirected URL from a Web Request – JMCNATT.NET - jmcnatt.net/](https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/)
+    
+    Where the above fail though, you're just going to have to spec a generic -Outfile/DestinationFile, 
+    if you really can't pre-determine what the version etc returned remotely is going to be.
+
+    Note:-ThrottleDelay will pickup on and use any configured global $ThrottleMs value, for the PROCESS block loop pause.
+
+    Originally implemented a generic -path param, which could be either a leaf file or a directory spec. 
+    Issue: Can't tell the difference from the OS: c:\name could be either a non-extension dir name, or a non-ext file in the root. 
+    Same issue with c:\name.ext, dirs can technically have periods/extensions like files.
+    It's the property of the object - as set by the creating user that 
+    determine which is which. 
+    
+    [system.io.fileinfo] complicates it further by sticking a 'd' directory attribute in the mod on *both* a *non-existant* 
+    full file spec and a non-exist dir spec. 
+    
+    So I eventually *abandoned* use of generic -Path, and force user to spec either explicitly: 
+        -DestinationFile  (leaf path spec)
+        -Destation (dir spec)
+    And, to simplify the equation, now requirre that the parent dir _pre-exist_ when -DestinationFile is used.
+
+
+    .PARAMETER Uri
+    Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+    .PARAMETER Destination
+    Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']
+    .PARAMETER DestinationFile
+    Full path to destination file for download[-DestinationFile 'c:\path-to\']
+    .PARAMETER ThrottleDelay
+    Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    save-webdownload -Uri https://community.chocolatey.org/api/v2/package/chocolatey -Destination c:\tmp\ -verbose
+    Demo download of a redirected generic url, to the derived filename into c:\tmp dir.
+    .EXAMPLE
+    save-webdownload -Uri https://fqdn/dir -Path c:\tmp\file.ext ;
+    Demo standard Path-specified download
+    .EXAMPLE
+    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.1.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
+    $dlpkgs | save-webdownload -Destination C:\tmp\2023-02-23 -verbose  ;
+    Demo pkgs array in variable, pipelined in, with destination folder (implies will attempt to obtain download file name from headers).
+    .LINK
+    #>
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=0,
+            HelpMessage="Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+            [uri[]]$Uri,
+        [Parameter(Mandatory=$false,Position=1,
+            HelpMessage = "Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']")]
+            [string]$Destination,
+        [Parameter(Mandatory=$false,Position=2,
+            HelpMessage = "Full path to destination file for download[-DestinationFile 'c:\path-to\']")]
+            [string]$DestinationFile,
+        [Parameter(Mandatory=$false,Position=2,
+            HelpMessage = "Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]")]
+            [int]$ThrottleDelay
+    ) ; 
+    BEGIN {
+        $rgxHeaders = 'filename=(?:\")*(?<filename>.+?)(?:\")*$' ; 
+        $rgxHtmlAnchor = '<a href="(.*)">' ; 
+
+        if(-not $ThrottleDelay -AND ((get-variable -name ThrottleMs -ea 0).value)){
+            $ThrottleDelay = $ThrottleMs ; 
+            $smsg = "(no -ThrottleDelay specified, but found & using `$global:ThrottleMs:$($ThrottleMs)ms" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        } ; 
+
+        $verbose = $($VerbosePreference -eq "Continue") ;
+
+
+        if($Destination  -AND $DestinationFile){
+            $smsg = "BOTH: -Destination & -DestinationFile specified!" ; 
+            $smsg += "`nPlease choose one or the other, NOT BOTH!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+            BREAK ; 
+        } ; 
+
+        if(-not $Destination -AND -not $DestinationFile){
+            $Destination = (Get-Location).Path
+        } ; 
+
+        # also if -DestinationFile, -URI cannot be an array (df forces explicit filename per uri).
+        if($DestinationFile -AND ($uri.OriginalString -is [array])){
+            $smsg = "-DestinationFile specified:`n($($DestinationFile))" ; 
+            $smsg += "`nalong with an array of -uri:" ; 
+            $smsg += "`n$(($uri.OriginalString|out-string).trim())" ; 
+            $smsg += "-DestinationFile requires a *single* inbound -Uri to funciton properly" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+            BREAK ; 
+        } 
+
+        TRY {
+            $smsg = "Normalized out any relative paths to absolute:" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if($Destination ){
+                $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination) ;
+            } ; 
+            if($DestinationFile){
+                $DestinationFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DestinationFile) ;
+            } ; 
+            <#
+            # alt: hack of resolve-path (which norm can't resolve non-exist paths), grabbing resolved path out of the error of a fail, as TargetObject prop.
+            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
+            $Path = Resolve-Path $path -ErrorAction SilentlyContinue -ErrorVariable _frperror ; 
+            if (-not($Destination)) {$Destination = $_frperror[0].TargetObject} ; 
+            #>
+            
+            $smsg = "Cast `$Destination/`$DestinationFile to [system.io.fileinfo]" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+            if($Destination){
+                [system.io.fileinfo]$Destination = $Destination ;
+            } ; 
+            if($DestinationFile){
+                [system.io.fileinfo]$DestinationFile = $DestinationFile ;
+            } ; 
+
+            [boolean]$PathIsFile = [boolean]$PathExists = $false ; 
+
+
+            if($Destination -and (test-path -path $Destination)){
+                # we should *require* that dirs exist, if doing dyn paths
+                $PathExists = $true
+                # so if exists, check it's type:
+                $tobj = get-item -path  $Destination -ea STOP; 
+                $PathIsFile =  -not($tobj.PSIsContainer) ; 
+                if($PathExists -AND $PathIsFile -eq $false){
+                    $Path = $Destination
+                } ; 
+            } elseif($Destination -AND -not (test-path -path $Destination)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
+
+                $smsg = "NON-EXISTANT -Destination specified!" ; 
+                $smsg += "`n$(($Destination.fullname|out-string).trim())" 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                # PLAN B: CREATE THE MISSING PROMPTED
+                $smsg = "`n`nDO YOU WANT TO *CREATE* THE MISSING SPECIFIED -DESTINATION!?" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
+                else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+                if ($bRet.ToUpper() -eq "YYY") {
+                    $smsg = "(Moving on)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    $pltNI = @{
+                        ItemType ="directory" ;
+                        Path = $Destination.fullname ; 
+                        erroraction = 'STOP' ;
+                        whatif = $($whatif) ;
+                    } ;
+                    $smsg = "New-Item  w`n$(($pltNI|out-string).trim())" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    $Path = new-item @pltNI ; 
+                    if(test-path $Path){
+                        $PathExists = $true ;
+                        $PathIsFile = $false ; 
+                    } else { 
+                        $PathExists = $false ;
+                        $PathIsFile = $false ; 
+                    } ; 
+
+                } else {
+                     $smsg = "Invalid response. Exiting" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    break ; 
+                }  ; 
+
+            } elseif($DestinationFile -AND (test-path -path $DestinationFile)){
+                # existing file spec, overwrite default
+                $Path = $DestinationFile ; 
+                $PathExists = $true ;
+                $PathIsFile = $true ; 
+            } elseif($DestinationFile -AND -not (test-path -path $DestinationFile)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
+                # non-existant file spec
+                # does interrum dir exist?    
+                $throwWarn = $false ; 
+                if(-not $Destination){
+                    $Destination = split-path $DestinationFile ; 
+                    $smsg = "blank `$Destination w populated `$DestinationFile:`nderived $Destination from `$DestinationFile" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                } ; 
+                $smsg = "-DestinationFile as specified`n$($DestinationFile)`n...is *non-existant* file path:"
+                if(test-path $Destination  ){
+                    $smsg += "`nConfirmed presence of specified parent dir:`n$($Destination)" ; 
+
+                    $path = $DestinationFile ; 
+                    $PathExists = $false ;
+                    $PathIsFile = $true ; 
+
+                } else {
+                    $smsg += "`n*COULD NOT* Confirm presence of specified parent dir:`n$($Destination.fullname)" ; 
+                    $smsg += "`nA PRE-EXISTING parent is required for -DestinationFile downloads!" ; 
+                    $throwWarn = $true ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    break ; 
+                } ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+            }
+            
+            if($Path){
+                
+                # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
+                $smsg = "Resolved `$Path:`n$($Path)" ;             
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+
+            } else { 
+                $smsg = "`$Path is unpopulated!`n$($Path)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ; 
+                break ; 
+            }
+
+        } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                throw $ErrTrapd ; 
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        } ; 
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+
+        foreach($item in $Uri){
+            TRY {
+                [boolean]$isDone = $false ; 
+                if($PathIsFile){
+                    $smsg = "(-Path detected as Leaf object: Using as destination filename)" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose $smsg } ; } ; 
+
+                    $pltIWR=[ordered]@{
+                        Uri=$item ;
+                        OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $ret = Invoke-WebRequest @pltIWR ; 
+
+                    $OutFilePath = $Path ; 
+                    $isDone = $true ; 
+
+                } elseif(-not $PathIsFile -AND -not $PathExists) { 
+                    $smsg = "-Path detected as NON-EXISTANT Container object:" ; 
+                    $smsg += "`n a pre-existing Container (or full path to file) must be specified for this function to work properly" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    break ; 
+                } else {
+                    # not existing file, or missing file: Directory 
+                    $PathIsFile = $false ; 
+                    $smsg = "-Path detected as existing Container object: Attempting to derive the target filename from download Headers..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+
+                    $pltIWR=[ordered]@{
+                        Uri = $item ;
+                        Method = 'Head' ;
+                        #OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $iwr = Invoke-WebRequest @pltIWR ; 
+
+
+
+                    if ($iwr.Headers['Content-Disposition'] -match $rgxHeaders) {
+                        $OutFilePath = Join-Path $Path $Matches['filename'] ; 
+                        $smsg = "Derived filename/OutFilePath:`n" ; 
+                        $smsg += "`n$($OutFilePath)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        else{ write-host $smsg } ;
+                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                    }  else {
+                        $smsg = ("Couldn't derive the filename from {0}" -f $item) ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING $smsg } ; 
+                        throw $smsg ; 
+                    } ; 
+                    $isDone = $false ; # trigger trailing final dl below
+                } ; 
+            }CATCH [System.Net.WebException]{
+                $ErrTrapd=$Error[0] ;
+                if($ErrTrapd.Exception -match '\(501\)'){
+                    # choco returns 501 on both the -Method Head fail, and on lack of support for Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                    # on the 501 error - choco, which lacks header support - we can trap the redir for parsing:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                    $smsg = "=>Remote server returned a 501 (not implemented error)" ; 
+                    $smsg += "`n`n-->Re-Attempting:Obtain & parse redirection info for request..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+
+                    TRY{
+                        $pltIWR=[ordered]@{
+                            Uri = $item ;
+                            Method = 'Get' ; 
+                            MaximumRedirection = 0 ; 
+                            #Method = 'Head' ;
+                            #OutFile = $Path ; 
+                            erroraction = 'SilentlyContinue' ; # maxi redir resolve *relies* on silentlycontinue; use StOP and it fails.
+                        } ;
+                        $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                        if($Results = Invoke-WebRequest @pltIWR){
+                            # checking for a redirect return, to parse:
+                            <# Redirect error returned, sample:
+                            StatusCode        : 302
+                            StatusDescription : Found
+                            Content           : <html><head><title>Object moved</title></head><body>
+                                                <h2>Object moved to <a href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</a>.</h2>
+                                                </body></html>
+                            RawContent        : HTTP/1.1 302 Found
+                                                Transfer-Encoding: chunked
+                                                Connection: keep-alive
+                                                X-AspNetMvc-Version: 3.0
+                                                X-Frame-Options: deny
+                                                CF-Cache-Status: DYNAMIC
+                                                Strict-Transport-Security: max-age=12960000
+                                                X-Conten...
+                            Forms             : {}
+                            Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [X-AspNetMvc-Version, 3.0], [X-Frame-Options, deny]...}
+                            Images            : {}
+                            InputFields       : {}
+                            Links             : {@{innerHTML=here; innerText=here; outerHTML=<A href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</A>;
+                                                outerText=here; tagName=A; href=https://packages.chocolatey.org/chocolatey.1.3.0.nupkg}}
+                            ParsedHtml        : mshtml.HTMLDocumentClass
+                            RawContentLength  : 171
+                            #>
+                            $lines = $results.Content.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) ; 
+                            if($lines = $lines | ?{$_ -like '*href*'}){
+                                if([uri]$RedirUrl = [regex]::match($lines,$rgxHtmlAnchor).groups[1].captures[0].value){
+                                    if($OutFilePath = Join-Path $Path -childpath $RedirUrl.LocalPath.replace('/','')){
+                                        $smsg = "Resolved redirect to a filename, for OutputPath:" ;
+                                        $smsg += "`n$($OutFilePath)" ;  
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                        else{ write-host $smsg } ;
+                                        $isDone = $false ; # trigger trailing final dl below
+                                    } else { 
+                                        $smsg += "Unable to Construct a workable `$OutputFilePath from returned data:" ; 
+                                        $smsg += "`nPlease specify a full leaf file -Path specification and retry (even a dummy filename will work)" ; 
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                        else{ write-WARNING $smsg } ; 
+                                        throw $smsg ; 
+                                        break ; 
+                                    } ; 
+                                } ; 
+                            } else { 
+                                $smsg += "Unable to locate a `$returned.Content line containing an '*href*', for further parsing. Aborting" ; 
+                                $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                else{ write-WARNING $smsg } ; 
+                                throw $smsg ; 
+                                break ; 
+                            } ; 
+
+                        } else {
+                            #parse off and offer the leaf name of the uri 
+                            TRY{
+                                if($samplefilename = [System.IO.Path]::GetFileName($uri) ){
+                                    # returns 'chocolatey' from expl url
+                                    $smsg = "(removing illegal fs chars from resolved leaf name)" ; 
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $samplefilename = [RegEx]::Replace($samplefilename, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                                } else {
+                                    $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ; 
+
+                            }CATCH{
+                                $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ; 
+                            $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
+                            $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                            if($samplefilename){
+                                $smsg += "(possibly the url 'generic' filename:$($samplefilename).extension" ; 
+                            } ; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                            else{ write-WARNING $smsg } ; 
+                            throw $smsg ; 
+                            break ; 
+                        } ; 
+                    } CATCH {
+                        # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                        $ErrTrapd=$Error[0] ;
+                        $smsg = ("Couldn't get the file from {0}" -f $item) ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                        else{ write-warning $smsg } ;
+                    } ; 
+                    
+                } elseif( ($ErrTrapd.Exception -match '\(429\)') -OR ($ErrTrapd.Exception -match 'Too\sMany\sRequests')){
+                    # choco throttling error returned:
+                    <# [https://docs.chocolatey.org/en-us/troubleshooting#im-getting-a-429-too-many-requests-issue-when-attempting-to-use-the-community-package-repository](https://docs.chocolatey.org/en-us/troubleshooting#im-getting-a-429-too-many-requests-issue-when-attempting-to-use-the-community-package-repository)
+                        This means your IP address has been flagged for too many requests. Please see Rate Limiting for details and actions.
+                        Reference Errors:
+                            Exception calling "DownloadFile" with "2" argument(s): The remote server returned an error: (429) Too Many Requests
+                            The remote server returned an error: (429) Too Many Requests. Too Many Requests
+                        [https://docs.chocolatey.org/en-us/community-repository/community-packages-disclaimer#rate-limiting](https://docs.chocolatey.org/en-us/community-repository/community-packages-disclaimer#rate-limiting)
+                        Rate Limiting
+                            NOTE
+                            Purchasing licenses will not have any effect on rate limiting of the community package repository. Please read carefully below to understand why this was put in place and steps you can take to reduce issues if you run into it. HINT: It's not an attempt to get you to pay for commercial editions.
+                            As a measure to increase site stability and prevent excessive use, the Chocolatey website uses rate limiting on requests for the community repository. Rate limiting was introduced in November 2018. Most folks typically won't hit rate limits unless they are automatically tagged for excessive use. If you do trigger the rate limit, you will see a (429) Too Many Requests. When attempting to install Chocolatey you will see the following:
+                            If you go to a package page and attempt to use the download link in the left menu, you will see the following:
+                            Error 1015 Ray ID ...xxx
+                            You are being rate limited. 
+                            The owner of this website (chocolatey.org) has banned you temporarily from accessing this website.
+                        What To Do When You Are Rate Limited
+                            NOTE
+                            A rate limit will automatically expire after an hour, but if you hit the limit again, it will block for another hour.
+                        If you have found that you have been rate limited, please see How To Avoid Excessive Use. Implementing best practices for organizational use will limit chances of being rate limited again in the future.
+                            Individual users being rate limited should reach out as per the next section and let us know as we are constantly adjusting limits to find a happy medium and need to have as much data to work with as possible. In addition to providing the requested information, make sure to also mention you are "individual use" and provide details on what caused the rate limiting. We may ask you to provide logs for further inspection.
+                            Organizational use will be asked to set up best practices for Chocolatey deployments.
+                    #>
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    $smsg = "SERVER THROTTLING!:`nException:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg += "`nToo many requests too quickly, wait for block to expire and" ; 
+                    $smsg += "`ntry increasing delay" ; 
+                    $smsg += "(for choco, the throttling only reset after an HOUR!)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
+                    break ; 
+                } else { 
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg = "`nUnrecognized error, aborting further processing" ; 
+                    $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    break ; 
+                } ; 
+            } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = ("Couldn't get the file from {0}" -f $item) ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                throw $ErrTrapd ; 
+            } ; 
+
+            <# alts to trying to retrieve the filename:
+                1) you can also have iopath cut the trailing /name and use it as a name:
+                $filename = [System.IO.Path]::GetFileName($url) # returns 'chocolatey' from expl url
+                $OutFilePath = Join-Path $Path -ChildPath $filename ; 
+                # it's 'descriptive' of the dl, but in the choco case, completely loses the rev spec from the proper filename.
+                2) you can use Start-BitsTransfer, if server supports it: *choco doesn't*:
+                Import-Module BitsTransfer
+                Start-BitsTransfer -source $url ; 
+                Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                At line:1 char:1
+                + Start-BitsTransfer -source $url
+                + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    + CategoryInfo          : InvalidOperation: (:) [Start-BitsTransfer], Exception
+                    + FullyQualifiedErrorId : StartBitsTransferCOMException,Microsoft.BackgroundIntelligentTransfer.Management.NewBitsTransferCommand
+            #>
+
+            TRY {
+                if(-not $isDone){
+                    if($OutFilePath){
+                        $pltIWR=[ordered]@{
+                            Uri=$item ;
+                            OutFile = $OutFilePath ; 
+                            erroraction = 'STOP' ;
+                        } ;
+                        $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                        #Invoke-WebRequest -Uri $item -OutFile $OutFilePath ; 
+                        $ret = Invoke-WebRequest @pltIWR ; 
+                        $isDone = $true ; 
+                    } else { 
+                        $smsg = "Unpopulated `$OutFilePath!`n$($OutFilePath)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        throw $smsg ; 
+                        break ; 
+                    } ; 
+                } else { 
+                    $smsg = "(url already pre-downloaded on initial attempt)" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                # emit outfilepath to pipeline, as we've resolved the source, and may not know it
+                if($isDone  -AND (test-path $OutFilePath)){
+                    write-host "Validated download:" 
+                    $OutFilePath | write-output ; 
+                } ; 
+                
+            } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = ("Got the filename, but couldn't download the file from {0} to {1}" -f $item, $OutFilePath) ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+            } ; 
+            # if the throttle spec is pre-defined (profile level), pause to avoid throttling
+            if($ThrottleDelay){
+                start-sleep -Milliseconds $ThrottleDelay ; 
+            } ; 
+        } ;   # loop-E
+    } ;  # if-PROC
+}
+
+#*------^ save-WebDownload.ps1 ^------
+
+
+#*------v save-WebDownloadCurl.ps1 v------
+function save-WebDownloadCurl {
+    <#
+    .SYNOPSIS
+    save-WebDownloadCurl.ps1 - simple download wrapper around curl cmdline util
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : save-WebDownloadCurl.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    REVISIONS
+    *12:18 PM 3/7/2023 fixed underlying splatting break (had been trying to build [str] cmdline -> use array so-called spatting (not really a splatted hashtable); 
+    added strong typing/cast to [uri], as pre-validation; ren download-filecurl -> save-WebDownloadCurl (aliased orig) ;
+    ren $url->$uri, aliased url; ren'd DestinationName -> DestinationFile (aliased orig);
+    11:31 AM 4/17/2020 added CBH
+    .DESCRIPTION
+    save-WebDownloadCurl.ps1 - simple download client, wraps cmdline curl executable (supports *nix as well).
+    .PARAMETER uri
+        Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]
+        .PARAMETER DestinationFile
+        Full path to destination file for download[-DestinationFile 'c:\path-to\']
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    save-WebDownloadCurl -uri https://xxx -DestinationFile c:\pathto\file.ext
+    .LINK
+    #>
+    PARAM (
+        [Parameter(Mandatory=$true,Position=0,
+                HelpMessage="Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+            [Alias('url')]
+            #[string]
+            [uri]$uri, 
+        [Parameter(Position=1,
+                HelpMessage="Full path to destination file for download[-DestinationFile 'c:\path-to\']")] 
+            [Alias('DestinationName')]
+            [string]$DestinationFile
+    )
+    #$CurlArgument = "-o '$($DestinationFile)', --url '$($uri)'" ; 
+    #$CurlArgument = '"$($uri)" -o "$($destinationfile)"' ; 
+
+    #[string]$CurlArgument = "'$($uri.OriginalString)'" ; 
+    #$CurlArgument += " -o '$($destinationfile)'" ; 
+    # use splatting:
+    <#$CurlArgument = '-u', 'xxx@gmail.com:yyyy',
+                '-X', 'POST',
+                'https://xxx.bitbucket.org/1.0/repositories/abcd/efg/pull-requests/2229/comments',
+                '--data', 'content=success'
+    #>
+    $CurlArgument = '-s', '-L', '-o', "$($destinationfile)", "$($uri.OriginalString)"
+    if (($PSVersionTable.PSEdition -eq 'Desktop') -OR ($IsCoreCLR -AND $IsWindows) -OR !$PSVersionTable.PSEdition) {$CURLEXE = "$env:windir\System32\curl.exe" } 
+    elseif ($IsCoreCLR -AND $IsLinux) {$CURLEXE = 'curl'} ;
+    & $CURLEXE @CurlArgument ;
+}
+
+#*------^ save-WebDownloadCurl.ps1 ^------
+
+
+#*------v save-WebDownloadDotNet.ps1 v------
+function save-WebDownloadDotNet {
+        <#
+        .SYNOPSIS
+        save-WebDownloadDotNet.ps1 - simple download client
+        .NOTES
+        Version     : 1.0.0
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2020-04-17
+        FileName    : save-WebDownloadDotNet.ps1
+        License     : MIT License
+        Copyright   : (c) 2020 Todd Kadrie
+        Github      : https://github.com/verb-network
+        Tags        : Powershell,Internet,Download,File
+        REVISIONS
+        * 11:36 AM 3/7/2023 validated; ren download-file -> save-WebDownloadDotNet (aliased orig) ; spliced over NoSSL support from download-fileNoSSL.ps1(retiring that func in favor of this) ;  add param specs, ren $url->$uri, aliased url; ren'd DestinationName -> DestinationFile (aliased orig); add position to params
+        11:31 AM 4/17/2020 added CBH
+        .DESCRIPTION
+        save-WebDownloadDotNet.ps1 - simple .Net-based download client
+        If no -DestinationFile specified, the content is returned to pipeline.
+        .PARAMETER uri
+        Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]
+        .PARAMETER DestinationFile
+        Full path to destination file for download[-DestinationFile 'c:\path-to\']
+        .PARAMETER NoPing
+        Switch to suppress Ping/Test-Connection pretest[-NoPing]
+        .PARAMETER NoSSL
+        Switch to suppress SSL requirement (for sites with failing certs)[-NoSSL]
+        .INPUTS
+        None. Does not accepted piped input.
+        .OUTPUTS
+        None. Returns no objects or output
+        .EXAMPLE
+        save-WebDownloadDotNet -url https://xxx -DestinationFile c:\pathto\file.ext
+        .LINK
+        http://blogs.technet.com/b/bshukla/archive/2010/04/12/ignoring-ssl-trust-in-powershell-system-net-webclient.aspx
+        #>
+        [CmdletBinding()]
+        [Alias('download-file')]
+        PARAM (
+            [Parameter(Mandatory=$true,Position=0,
+                HelpMessage="Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+            [Alias('url')]
+            [string]$uri, 
+            [Parameter(Position=1,
+                HelpMessage="Full path to destination file for download[-DestinationFile 'c:\path-to\']")] 
+            [Alias('DestinationName')]
+            [string]$DestinationFile,
+            [Parameter(
+                HelpMessage="Switch to suppress Ping/Test-Connection pretest[-NoPing]")] 
+            [switch]$NoPing,
+            [Parameter(
+                HelpMessage="Switch to suppress SSL requirement (for sites with failing certs)[-NoSSL]")] 
+            [switch]$NoSSL
+        )
+        $rgxURLParse = "^(([^:/?#]+):)?(//([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?" ;
+        if ($uri -match $rgxURLParse) {
+            if($NoSSL){
+                write-warning "-NoSSL specified: disabling system.net.WebClient Certificate Validation!" ; 
+                [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true } ;
+            } ; 
+            $server = $matches[4] ;
+            [boolean]$bPing = $false ; 
+            if (-not $NoPing -AND (test-connection -ComputerName $server -count 1)) {
+                $bPing = $true ;
+            }elseif ($NoPing) {
+                $bPing = $true ;
+            } else {
+                throw "unable to Ping $()" ;
+            } ;
+            if($bPing){
+                $client = new-object system.net.WebClient
+                $client.Headers.Add("user-agent", "PowerShell")
+                if($DestinationFile){
+                    write-host "-DestinationFile: Saving download to:`n$($DestinationFile)..." ; 
+                    $client.downloadfile($uri, $DestinationFile)
+                } else { 
+                    write-verbose "streaming URI to pipeline..." ; 
+                    $client.DownloadString($uri) | write-output ; 
+                } ; 
+            } ; 
+            # not sure if toggle back is necesesary, but try it
+            if($NoSSL){
+                write-verbose "-NoSSL specified, re-enabling system.net.WebClient Certificate Validation" ; 
+                [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $false } ;
+            } ; 
+        } else {
+            throw "Unparsable url, to fqdn:$($uri)" ;
+        } ;
+    }
+
+#*------^ save-WebDownloadDotNet.ps1 ^------
+
+
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
@@ -2691,111 +3818,735 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 #*------^ summarize-PassStatusHtml.ps1 ^------
 
 
-#*------v test-IpAddressCidrRange.ps1 v------
-function test-IpAddressCidrRange{
+#*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
+function Test-DnsDkimCnameToTxtKeyTDO {
     <#
     .SYNOPSIS
-    test-IpAddressCidrRange.ps1 - evaluate an IP Address specification as either IPAddress|CidrRange|IPAddressRange
+    Test-DnsDkimCnameToTxtKeyTDO - Trace a local CNAME DKIM DNS record, to it's endpoint TXT DKIM key-holding record (and validate it's actually a DKIM key). 
     .NOTES
-    Version     : 1.0.0
+    Version     : 0.0.5
     Author      : Todd Kadrie
     Website     : http://www.toddomation.com
     Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2020-
-    FileName    : 
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-Network
-    Tags        : Powershell,Network,IPAddress
-    AddedCredit : cyruslab (from public forum post, cited as 'https://powershell.org/forums/topic/detecting-if-ip-address-entered/', now gone)
-    AddedWebsite: https://cyruslab.net/2018/04/26/powershellcheck-valid-ip-address-subnet-or-ip-address-range/
-    AddedTwitter: 
+    CreatedDate : 2022-11-03
+    FileName    : Test-DnsDkimCnameToTxtKeyTDO
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell
     REVISIONS
-    * 10:51 AM 8/13/2021 added to verb-network ; updated base code to work with ip6 CIDR notation ; fixed 
-    bug in if/then comparisions: need to coerce subnet mask to integer, for 
-    comparison (esp under ip6) ; converted to function updated format to OTB, added 
-    CBH, minor param inline help etc. 
-    * 4/26/2016 cyruslab posted ps code from earlier unattributed powershell.org forums post (non-function)
+    * 5:41 PM 12/30/2022 expanded rgx public-key test, added dkim key tag 
+        requirements doc, test is down to essential p=xxx public key only ;  updated 
+        CBH demos w fancy EXO DKIM per-domain looped validation; ported to func, 
+        working; init;  
     .DESCRIPTION
-    test-IpAddressCidrRange.ps1 - evaluate an IP Address specification as either IPAddress|CidrRange|IPAddressRange
-    .PARAMETER Address
-    IPAddress, CIDR notation, or IP range specification to be tested[-Address 192.168.0.1]
+    Test-DnsDkimCnameToTxtKeyTDO - Trace a local CNAME DKIM DNS record, to it's endpoint TXT DKIM key-holding record (and validate it's actually a DKIM key). 
+
+       Along the way, I did a *a fair amount* of coding logic...
+
+        1. running looped CNAME resolve-dnsname's, 
+        2. detecting a returned SOA type (when the next record was a TXT), 
+        3. then switching resolution to a final TXT resolve-dnsname pass.
+    
+    ... to quickly deliver local domain CNAME to remote SAAS vendor DKIM key TXT validation
+     (when, 'It NO WORKY!' tickets came through against 3rd-party operated services). 
+
+    Had that version *working*, and *then* while testing, I noticed a 'feature' of resolve-dnsname:
+
+    Feed a cname fqdn through resolve-dnsname, WITHOUT A TYPE spec, and it AUTO RECURSES!
+        - If it's a CNAME -> CNAME -> TXT chain, you'll get back 3 records: CNAME, CNAME, SOA (fail indicator). 
+        - Postfilter out the SOA, and you've got the series of initial hops to the TXT.
+        - Then Run a final -type TXT on the last CNAME's NameHost, and you get the TXT back (with the DKIM key)
+   
+    > Note: have to strongly type output assignment as Array to get proper Op.addition support for the trailing TXT record.
+
+    $results = @(resolve-dnsname CNAME.domain.tld  -server 1.1.1.1 |? type -ne 'SOA') ; 
+    $results += @($results | select -last 1  | %{resolve-dnsname -type TXT -server 1.1.1.1 -name $_.namehost}) ; 
+
+    => 99% of my prior non-reporting & content validating code, could be reduced down to the above 2 LINES! [facepalm]
+
+    I've retained the rem'd out original code (in case they write the 'autorecurse' feature out, down the road), but boiled this down to that essential logic above.
+
+    Uses my verb-IO module convertTo-MarkdownTable() to box-format the output, diverts to format-table -a when it's not available. 
+
+    .PARAMETER DkimDNSName
+    Local AcceptedDomain CNAME DKIM DNS record, to be trace-resolved to key-holding TXT record. [-DkimDNSName 'host.domain.com']
+    .PARAMETER PublicDNSServerIP
+    Public DNS server (defaults to Cloudflare's 1.1.1.1, could use Google's 8.8.8.8)[-PublicDNSServerIP '8.8.8.8']
+    .PARAMETER outputObject
+    Switch that triggers output of results to pipeline [-outputObject] 
     .INPUTS
-    Does not accept piped input
+    None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
-    System.SystemObject with Type (IPAddress|CIDRRange|IPAddressRange) and boolean Valid properties
+    None. Returns no objects or output (.NET types)
     .EXAMPLE
-    PS> $ret= test-IpAddressCidrRange -Address 192.168.1.1 ;
-    if(($ret.type -eq 'IPAddress' -AND $ret.valid){'Valid IP'} ; 
-    Test IP Address
+    PS> Test-DnsDkimCnameToTxtKeyTDO -DkimDNSName HOST.DOMAIN.COM -verbose ;
+    Demo resursive CNAME to TXT DKIM key resolve of DKIM CNAME DNS record name
     .EXAMPLE
-    PS> $ret= test-IpAddressCidrRange -Address 91.198.224.29/32
-    if(( $ret.type -eq 'CIDRRange' -AND $ret.valid){'Valid CIDR'} ; 
-    Test CIDR notation block
+    PS> Test-DnsDkimCnameToTxtKeyTDO -DkimDNSName 'selector1._domainkey.DOMAIN.TLD','HOST.DOMAIN.com' ; 
+        11:25:09:#*======v Test-DnsDkimCnameToTxtKeyTDO v======
+        11:25:09:
+        #*------v PROCESSING : selector1._domainkey.DOMAIN.TLD v------
+        11:25:09:
+
+        ==HOP: 1: CNAME: selector1._domainkey.DOMAIN.TLD ==> selector1-domain-tld._domainkey.TENANT.onmicrosoft.com:
+        | Type  | Name                            | NameHost                                               |
+        | ----- | ------------------------------- | ------------------------------------------------------ |
+        | CNAME | selector1._domainkey.DOMAIN.TLD | selector1-domain-tld._domainkey.TENANT.onmicrosoft.com |
+        
+        11:25:09:
+
+        ==HOP: 2: TXT:Value record::
+
+        | Type | Name                                                   |
+        | ---- | ------------------------------------------------------ |
+        | TXT  | selector1-domain-tld._domainkey.TENANT.onmicrosoft.com |
+
+        | Strings         |
+        | --------------- |
+        | v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3D[TRIMMED]NcHJRPWbPisCiRFPfUGtCNQIDAQAB; |
+        
+        ===:TXT: selector1-domain-tld._domainkey.TENANT.onmicrosoft.com.strings *IS VALIDATED* to contain a DKIM key:
+        
+        11:25:09:
+        #*------^ PROCESSING : selector1._domainkey.DOMAIN.TLD ^------
+        11:25:09:
+        #*------v PROCESSING : HOST.DOMAIN.com v------
+        11:25:09:
+
+        ==HOP: 1: CNAME: HOST.DOMAIN.com ==> HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services:
+        | Type  | Name            | NameHost                                    |
+        | ----- | --------------- | ------------------------------------------- |
+        | CNAME | HOST.DOMAIN.com | HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services |
+        
+        11:25:09:
+
+        ==HOP: 2: CNAME: HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services ==> unnnnnnnn.wlnnn.sendgrid.net:
+        | Type  | Name                                        | NameHost                     |
+        | ----- | ------------------------------------------- | ---------------------------- |
+        | CNAME | HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services | unnnnnnnn.wlnnn.sendgrid.net |
+        
+        WARNING: 11:25:09:
+
+        ==HOP: 3: TXT:Value record::
+
+        | Type | Name                         |
+        | ---- | ---------------------------- |
+        | TXT  | unnnnnnnn.wlnnn.sendgrid.net |
+
+        | Strings         |
+        | --------------- |
+        | v=spf1 ip4:167.11.11.96 ip4:167.11.11.1 ip4:167.11.11.100 ip4:167.11.11.102 -all |
+        
+        ===:TXT: unnnnnnnn.wlnnn.sendgrid.net.strings *DOES NOT VALIDATE* to contain a DKIM key!
+        (strings should start with 'v=DKIM1')
+
+        11:25:09:
+        #*------^ PROCESSING : HOST.DOMAIN.com ^------
+        11:25:09:#*======^ Test-DnsDkimCnameToTxtKeyTDO ^======
+
+    Demo looping array of names, with one with a failure to validate ('cuz the vendor stuffed an SPF where a DKIM TXT record belonged!)
     .EXAMPLE
-    PS> $ret= test-IpAddressCidrRange -Address '192.168.0.1-192.168.0.200' ;
-    if($ret.type -eq 'IPAddressRange' -AND $ret.valid){'Valid CIDR'} ; 
-    Test IP Address range
+    PS>  $domains = Get-xoDkimSigningConfig |Where-Object {$_.Enabled -like "True" -AND $_.name -notlike '*.onmicrosoft.com'} ;
+    PS>  foreach($domain in $domains){
+    PS>      $dNow = Get-date ; 
+    PS>      $lCNAMES1 = "$($domain.Selector1CNAME.split('-')[0])._domainkey.$($domain.Name)" ; 
+    PS>      $lCNAMES2 = "$($domain.Selector2CNAME.split('-')[0])._domainkey.$($domain.Name)" ; 
+    PS>      $PreRollSelector = $domain.SelectorBeforeRotateOnDate ; 
+    PS>      $PostRollSelector = $domain.SelectorAfterRotateOnDate ; 
+    PS>      If($($domain.RotateOnDate.ToUniversalTime()) -gt $($dNow.ToUniversalTime()) ){
+    PS>          $whichSelector = "$($PreRollSelector)Cname" ; 
+    PS>      } else{
+    PS>          $whichSelector = "$($PostRollSelector)Cname" ; 
+    PS>      } ; 
+    PS>      $ActiveSelector = $domain."$whichSelector" ;
+    PS>      $ActivelCNAME = @($lCNAMES1,$lCNAMES2) | ?{$_ -like "$($domain."$whichSelector".split('-')[0])*"} ; 
+    PS>      $INActivelCNAME = @($lCNAMES1,$lCNAMES2) | ?{$_ -notlike "$($domain."$whichSelector".split('-')[0])*"} ; 
+    PS>      $ActivelCNAME | Test-DnsDkimCnameToTxtKeyTDO ; 
+    PS>      write-host "Validate *INACTIVE* local CNAME (exists in local External DNS, but won't be resolvable at vendor)" ; 
+    PS>      $INActivelCNAME | Resolve-DnsName -Type CNAME -server 1.1.1.1 | ft -a 'Type','Name','NameHost' ;
+    PS>  } ; 
+
+        16:01:09:#*======v Test-DnsDkimCnameToTxtKeyTDO v======
+        16:01:09:
+        #*------v PROCESSING : selector2._domainkey.DOMAIN.TLD v------
+        16:01:10:
+
+        ==HOP: 1: CNAME: selector2._domainkey.DOMAIN.TLD ==> selector2-domain-tld._domainkey.TENANT.onmicrosoft.com:
+        | Type  | Name                          | NameHost                                             |
+        | ----- | ----------------------------- | ---------------------------------------------------- |
+        | CNAME | selector2._domainkey.DOMAIN.TLD | selector2-domain-tld._domainkey.TENANT.onmicrosoft.com |
+
+
+        16:01:10:
+
+        ==HOP: 2: TXT:Value record::
+
+        | Type | Name                                                 |
+        | ---- | ---------------------------------------------------- |
+        | TXT  | selector2-domain-tld._domainkey.TENANT.onmicrosoft.com |
+
+        | Strings         |
+        | --------------- |
+        | v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUA[TRIMMED]4/EVxy78tKSfzdMoBV20IDO9GvGnDF1WLdOO48IUi+1Oa4bMoLqizt5Duv4WbgY/lXePnSA9iQIDAQAB; |
+
+        --->TXT: selector2-domain-tld._domainkey.TENANT.onmicrosoft.com.strings *IS VALIDATED* to contain a DKIM key.
+
+        16:01:10:
+        #*------^ PROCESSING : selector2._domainkey.DOMAIN.TLD ^------
+        16:01:10:#*======^ Test-DnsDkimCnameToTxtKeyTDO ^======
+        Validate *INACTIVE* local CNAME (exists in local External DNS, but won't be resolvable at vendor)
+
+         Type Name                          NameHost
+         ---- ----                          --------
+        CNAME selector1._domainkey.DOMAIN.TLD selector1-domain-tld._domainkey.TENANT.onmicrosoft.com
+    
+        # (above continues for each configured enabled domain)
+
+    Fancier demo of walking the enabled EXO DkimSigningConfig domains (non-onmicrosoft, which have no local DNS validation), foreach:
+        - resolve the pair of local CNAME hostnames (MS uses 2, rolled on key rollovers sequentially, only one active at a time).
+        - calculate the active MS Selector, and the matching local CNAME
+        - Then validating the chain from the active local CNAME through to the MS-hosted TXT record and validating it has a DKIM key.
     .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://cyruslab.net/2018/04/26/powershellcheck-valid-ip-address-subnet-or-ip-address-range/
-    #>            
+    https://bitbucket.com/tostka/powershell
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
     PARAM(
-        [Parameter(HelpMessage="IPAddress, CIDR notation, or IP range specification to be tested[-Address 192.168.0.1]")]
-        $Address
+        [Parameter(Mandatory=$true,Position = 0,ValueFromPipeline = $True,HelpMessage="Array of local AcceptedDomain CNAME DKIM DNS record, to be trace-resolved to key-holding TXT record. [-DkimDNSName 'host.domain.com']")]
+        [Alias('Name')]
+        [string[]] $DkimDNSName,
+        [Parameter(HelpMessage="Public DNS server (defaults to Cloudflare's 1.1.1.1, could use Google's 8.8.8.8)[-PublicDNSServerIP '8.8.8.8']")]
+        [Alias('Server')]
+        [ipaddress]$PublicDNSServerIP = '1.1.1.1',
+        [Parameter(HelpMessage="Switch that triggers output of results to pipeline [-outputObject]")]
+        [switch]$outputObject
     ) ;
-    $isIPAddr = ($Address -as [IPaddress]) -as [Bool] ;
-    $report=[ordered]@{
-        Type = $null ;
-        Valid = $false ;
-    } ;
-    write-verbose "specified Address:$($Address)" ;
-    if($isIPAddr){
-        write-verbose "Valid ip address" ;
-        $report.type = 'IPAddress' ;
-        $report.Valid = $true ; 
-    } elseif($Address -like "*/*" -or $Address -like "*-*"){
-        $cidr = $Address.split("/") ;
-        if($cidr){ 
-            $report.type = 'CIDRRange'
-        } ;
-        # ip4 CIDR range: 0 to 32
-        # ip6 CIDR range: 0 to 128 - need to update to accomodate cidr ip6
-        if($Address -like "*:*" -AND [int]$cidr[1] -ge 0 -AND [int]$cidr[1] -le 128){
-            # CIDR ip6
-            write-verbose "valid ipv6 CIDR subnet syntax" ;
-            $report.Valid = $true ; 
-        } elseif([int]$cidr[1] -ge 0 -and [int]$cidr[1] -le 32){
-            write-verbose "valid ipv4 CIDR subnet syntax" ;
-            $report.Valid = $true ; 
-        }elseif($Address -like "*-*"){
-            $report.type = 'IPAddressRange' ; 
-            $ip = $Address.split("-") ; 
-            $ip1 = $ip[0] -as [IPaddress] -as [Bool] ; 
-            $ip2 = $ip[1] -as [IPaddress] -as [Bool] ; 
-            if($ip -and $ip){
-                write-verbose "valid ip address range" ;
-                $report.Valid = $true ;
-            } else{
-                write-verbose "invalid range" ;
-                $report.Valid = $false ;
-            } ;
+    BEGIN{
+        #region CONSTANTS-AND-ENVIRO #*======v CONSTANTS-AND-ENVIRO v======
+        # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+        $verbose = ($VerbosePreference -eq "Continue") ;
+        $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+        write-verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                            
+<# PRIOR CODE THAT HAS BEEN SUBSTANTIALLY REPLACED WITH THE DEMO IN THE CBH:
+
+$pltRDNS=[ordered]@{
+    Name= $null ;
+    Type='CNAME' ;
+    Server=$PublicDNSServerIP ;
+    erroraction = 'SilentlyContinue' ;
+} ;
+$smsg = "Recursive CNAME -> TXT lookup..." ; 
+if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level PROMPT } 
+else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+#Levels:Error|Warn|Info|H1|H2|H3|Debug|Verbose|Prompt
+$pltRDNS.Name= $DkimDNSName;
+$pltRDNS.type = 'CNAME' ; 
+$pltRDNS.erroraction = 'SilentlyContinue' ;
+$depth = 0 ; 
+$CNAMEEnd = $false ; 
+$prpCNAME = 'Type','Name','NameHost' ; 
+$prpTXT = 'Type','Name','Strings' ; 
+$prpSOA = 'Type','Name','PrimaryServer' ; 
+$TypeOrder = 'CNAME','TXT' ; 
+$TypeCurr = 0 ; 
+$ResolvedStack = @() ; 
+$works = $null ; 
+$rNo=1 ; 
+Do {
+    if($works -eq $null){
+        $pltRDNS.Name = $DkimDNSName; 
+    } else { 
+        if(-not $works.namehost){
+            $pltRDNS.name = $priorName
         } else {
-            $report.type = 'INVALID' ;
-            $report.Valid = $false ;
-            write-warning "invalid subnet" ;
+            $pltRDNS.Name = $works.namehost
         } ; 
-    }else{
-        $report.type = 'INVALID' ;
-        $report.Valid = $false ;
-        write-warning "not valid address" ;
+    } ; 
+    $pltRDNS.type = $TypeOrder[$TypeCurr] ; 
+    $depth ++ ; 
+    $smsg = "==Hop:$($rNo):"
+    $smsg += "Resolve-DnsName w`n$(($pltRDNS|out-string).trim())" ; 
+    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+    $works = $null ; 
+    $works = Resolve-DnsName @pltRDNS ; 
+    If($works){
+        switch($works.type){
+            $TypeOrder[$TypeCurr]{
+                $smsg = "record.Type:$($works.Type) returned (expected for this query type)" ; 
+                $smsg += "`n$(($works|out-string).trim())" ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $priorName = $works.NameHost ; 
+                $ResolvedStack += $works ;
+                if($works.Type -eq 'TXT'){
+                    $CNAMEEnd = $true ;
+                    Break ; 
+                } ; 
+                $rNo++ 
+            } 
+            default {
+                $smsg = "($($TypeOrder[$TypeCurr]):attempted lookup fail: type:$($works.type) returned. Retrying as $($TypeOrder[$TypeCurr + 1]))" ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $TypeCurr++ ; 
+            } 
+        }  ; 
+    } else {
+        $smsg = "Resolution attempt FAILED to return populated data!" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    } ;     
+} Until ($CNAMEEnd -eq $true) ; 
+$smsg = "(Lookup chain completed, $($rNo) Hops traced)" ; 
+if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level PROMPT } 
+else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+#Levels:Error|Warn|Info|H1|H2|H3|Debug|Verbose|Prompt
+$rNo=0 ; 
+foreach($rec in $ResolvedStack){
+    $rNo++ ; 
+    $smsg = "`n`n==HOP: $($rNo): " ;
+    switch ($rec.type){
+        'CNAME' {
+            $smsg += "$($rec.Type): $($rec.Name) ==> $($rec.NameHost):" ; 
+            #$smsg += "`n`n$(($rec | ft -a $prpCNAME |out-string).trim())`n" ; 
+            $smsg += "`n" ; 
+            $smsg += $rec | select $prpCNAME | Convertto-Markdowntable -Border ; 
+            $smsg += "`n" ; 
+        } 
+        'TXT' { 
+            $smsg += "$($rec.Type):Value record::`n" ; 
+            #$smsg += "`n$(($rec | ft -a $prpTXT[0..1] |out-string).trim())" ; 
+            #$smsg += "`nStrings(e.g KEY FIELD):`n$(($rec | ft -a $prpTXT[2] | out-string).trim())" ; 
+            $smsg += "`n" ; 
+            #$smsg += $rec | select $prpTXT | Convertto-Markdowntable -Border ; 
+            $smsg += $rec | select $prpTXT[0..1] | Convertto-Markdowntable -Border ; 
+            $smsg += "`n" ;
+            $smsg += $rec | select $prpTXT[2] | Convertto-Markdowntable -Border ; 
+            $smsg += "`n" ; 
+            if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                $domainSummary.TXTActiveValid = $true ; 
+                $smsg += "`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n" ; 
+            }else {
+                $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key`n`n" ; 
+                throw $smsg ; 
+            }
+       } 
+       'SOA' {
+            $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
+            $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
+            throw $smsg ;
+       }
+       default {throw "Unrecognized record TYPE!" } 
+    } ; 
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+};
+write-host " " ; 
+    #>
+
+        $prpCNAME = 'Type','Name','NameHost' ; 
+        $prpTXT = 'Type','Name','Strings' ; 
+        $prpSOA = 'Type','Name','PrimaryServer' ; 
+        $sBnr="#*======v $($CmdletName) v======" ; 
+        $whBnr = @{BackgroundColor = 'Magenta' ; ForegroundColor = 'Black' } ;
+        write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+    } ; 
+    PROCESS{
+        foreach($item in $DkimDNSName){
+
+            $sBnrS="`n#*------v PROCESSING : $($item) v------" ; 
+            $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+            [array]$results = @() ; 
+            $results = @(resolve-dnsname $item -server $PublicDNSServerIP) ; 
+
+            write-verbose "postfilter out the SOA result  (leaving CNAMES)" ; 
+            $results = $results |? type -ne 'SOA' ; 
+
+            write-verbose " then re-search and add the Namehost on the final CNAME as a TXT" ; 
+            $results += @($results | select -last 1  | %{resolve-dnsname -type TXT -server $PublicDNSServerIP -name $_.namehost}) ; 
+
+            write-verbose "Report the formatted/validated output" ;
+            $rNo=0 ; 
+            foreach($rec in $results){
+                $rNo++ ; 
+                $RecFail = $false ; 
+                $smsg = "`n`n==HOP: $($rNo): " ;
+                switch ($rec.type){
+                    'CNAME' {
+                        $smsg += "$($rec.Type): $($rec.Name) ==> $($rec.NameHost):" ; 
+                        $smsg += "`n" ; 
+                        if(get-command Convertto-Markdowntable -ea 0){
+                            $smsg += $rec | select $prpCNAME | Convertto-Markdowntable -Border ; 
+                        } else { 
+                            $smsg += $rec | ft -a $prpCNAME  ; 
+                        } ; 
+                        $smsg += "`n" ; 
+                    } 
+                    'TXT' { 
+                        $smsg += "$($rec.Type):Value record::`n" ; 
+                        $smsg += "`n" ; 
+                        if(get-command Convertto-Markdowntable -ea 0){
+                            $smsg += $rec | select $prpTXT[0..1] | Convertto-Markdowntable -Border ; 
+                            $smsg += "`n" ;
+                            $smsg += $rec | select $prpTXT[2] | Convertto-Markdowntable -Border ; 
+                        } else { 
+                            $smsg += $rec | ft -a  $prpTXT[0..1] ; 
+                            $smsg += "`n" ;
+                            $smsg += $rec | ft -a $prpTXT[2] ; 
+                        } ; 
+                        $smsg += "`n" ; 
+<# 
+    # DKIM TAG REQUIREMENTS
+
+    [DKIM DNS record overview – Validity Help Center - help.returnpath.com/](https://help.returnpath.com/hc/en-us/articles/222481088-DKIM-DNS-record-overview)
+
+    ### Required tag
+
+    -   p= is the public key used by a mailbox provider to match to the DKIM 
+        signature generated using the private key. The value is a string of characters 
+        representing the public key. It is generated along with its corresponding 
+        private key during the DKIM set-up process
+
+    ### Recommended optional tags
+ 
+    -   v= is the version of the DKIM record. The value must be DKIM1 and be 
+        the first tag in the DNS record
+
+    -   t= indicates the domain is testing DKIM or is enforcing a domain 
+        match in the signature header between the "i=" and "d=" tags
+
+    -   t=y indicates the domain is testing DKIM.​ Senders use this tag 
+        when first setting up DKIM to ensure the DKIM signature is verifying correctly. 
+        Some mailbox providers ignore a DKIM signature in test mode, so this tag should 
+        be removed prior to full deployment or changed to t=s if using the "i=" tag in 
+        the DKIM signature header
+
+    -   t=s indicates that any DKIM signature header using the "i=" tag 
+        must have the same domain value on the right-hand side of the @ sign in the 
+        "i=" tag and the "d=" tag (i= local-part@domain.com). The "i=" tag  domain must 
+        not be a subdomain of the "d=" tag. Do not include this tag if the use of a 
+        subdomain is required
+
+    ### Optional tags
+ 
+    -   g= is the granularity of the public key. The value must match the 
+        local-part of the i= flag in the DKIM signature field (i= 
+        local-part@domain.com) or contain a wildcard asterisk (\*). The use of this 
+        flag is intended to constrain which signing address can use the selector 
+        record
+
+    -   h= indicates which hash algorithms are acceptable. The default 
+        value is to allow for all algorithms but you can specify sha1 and sha256. 
+        Signers and verifiers must support sha256. Verifiers must also support sha1
+
+    -   k= indicates the key type. The default value is rsa which must be 
+        supported by both signers and verifiers
+
+    -   n= is a note field intended for administrators, not end users. 
+        The default value is empty and may contain a note that an administrator may 
+        want to read
+
+    -   s= indicates the service type to which this record applies. The 
+        default value is a wildcard asterisk (\*) which matches all service types. The 
+        other acceptable value allowed is the word "email" which indicates that the 
+        message is an electronic mail message. This tag is not the same as a selector record.
+        It is intended to constrain the use of keys if DKIM is used for other 
+        purposes other than email in the future. If used, it is included in the DKIM 
+        DNS TXT record and not the DKIM signature. Should other service types be 
+        defined in the future, verifiers will ignore the DKIM record if it does not 
+        match the type of message sent
+
+ 
+
+#>
+                        #if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                        if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                            $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                        }elseif($rec.Strings -match 'p=\w+'){
+                            # per above, this matches only the bare minimum!
+                            $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                        }else {
+                            $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key!`n(strings should start with 'v=DKIM1', or at minimum include a p=xxx public key)`n`n" ; 
+                            #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                            #else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                            #write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+                            #throw $smsg ; 
+                            #Break ; 
+                            $RecFail = $true ; 
+                        }
+                   } 
+                   'SOA' {
+                        $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
+                        $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
+                        #throw $smsg ;
+                        $RecFail = $true ; 
+                   }
+                   default {throw "Unrecognized record TYPE!" ; $RecFail = $true ; } 
+                } ; 
+
+                if($RecFail -eq $true){
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } else { 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ; 
+
+            };  # loop-E
+
+            if($outputObject){
+                $smsg = "(output results to pipeline)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|Debug|Verbose|Prompt
+                $results | write-output ; 
+            } ; 
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+
+        } ;  # loop-E
+    }  # PROC-E
+    END{
+        write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr.replace('=v','=^').replace('v=','^='))" ;
     } ;
-    New-Object PSObject -Property $report | write-output ;   
 }
 
+#*------^ Test-DnsDkimCnameToTxtKeyTDO.ps1 ^------
+
+
+#*------v test-IpAddressCidrRange.ps1 v------
+function test-IpAddressCidrRange{
+            <#
+            .SYNOPSIS
+            test-IpAddressCidrRange.ps1 - evaluate an IP Address specification as either IPAddress|CidrRange|IPAddressRange
+            .NOTES
+            Version     : 1.0.0
+            Author      : Todd Kadrie
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2020-
+            FileName    : 
+            License     : (none asserted)
+            Copyright   : (none asserted)
+            Github      : https://github.com/tostka/verb-Network
+            Tags        : Powershell,Network,IPAddress
+            AddedCredit : cyruslab (from public forum post, cited as 'https://powershell.org/forums/topic/detecting-if-ip-address-entered/', now gone)
+            AddedWebsite: https://cyruslab.net/2018/04/26/powershellcheck-valid-ip-address-subnet-or-ip-address-range/
+            AddedTwitter: 
+            REVISIONS
+            * 10:51 AM 8/13/2021 added to verb-network ; updated base code to work with ip6 CIDR notation ; fixed 
+            bug in if/then comparisions: need to coerce subnet mask to integer, for 
+            comparison (esp under ip6) ; converted to function updated format to OTB, added 
+            CBH, minor param inline help etc. 
+            * 4/26/2016 cyruslab posted ps code from earlier unattributed powershell.org forums post (non-function)
+            .DESCRIPTION
+            test-IpAddressCidrRange.ps1 - evaluate an IP Address specification as either IPAddress|CidrRange|IPAddressRange
+            .PARAMETER Address
+            IPAddress, CIDR notation, or IP range specification to be tested[-Address 192.168.0.1]
+            .INPUTS
+            Does not accept piped input
+            .OUTPUTS
+            System.SystemObject with Type (IPAddress|CIDRRange|IPAddressRange) and boolean Valid properties
+            .EXAMPLE
+            PS> $ret= test-IpAddressCidrRange -Address 192.168.1.1 ;
+            if(($ret.type -eq 'IPAddress' -AND $ret.valid){'Valid IP'} ; 
+            Test IP Address
+            .EXAMPLE
+            PS> $ret= test-IpAddressCidrRange -Address 91.198.224.29/32
+            if(( $ret.type -eq 'CIDRRange' -AND $ret.valid){'Valid CIDR'} ; 
+            Test CIDR notation block
+            .EXAMPLE
+            PS> $ret= test-IpAddressCidrRange -Address '192.168.0.1-192.168.0.200' ;
+            if($ret.type -eq 'IPAddressRange' -AND $ret.valid){'Valid CIDR'} ; 
+            Test IP Address range
+            .LINK
+            https://github.com/tostka/verb-Network
+            .LINK
+            https://cyruslab.net/2018/04/26/powershellcheck-valid-ip-address-subnet-or-ip-address-range/
+            #>            
+            [CmdletBinding()]
+            PARAM(
+                [Parameter(HelpMessage="IPAddress, CIDR notation, or IP range specification to be tested[-Address 192.168.0.1]")]
+                $Address
+            ) ;
+            $isIPAddr = ($Address -as [IPaddress]) -as [Bool] ;
+            $report=[ordered]@{
+                Type = $null ;
+                Valid = $false ;
+            } ;
+            write-verbose "specified Address:$($Address)" ;
+            if($isIPAddr){
+                write-verbose "Valid ip address" ;
+                $report.type = 'IPAddress' ;
+                $report.Valid = $true ; 
+            } elseif($Address -like "*/*" -or $Address -like "*-*"){
+                $cidr = $Address.split("/") ;
+                if($cidr){ 
+                    $report.type = 'CIDRRange'
+                } ;
+                # ip4 CIDR range: 0 to 32
+                # ip6 CIDR range: 0 to 128 - need to update to accomodate cidr ip6
+                if($Address -like "*:*" -AND [int]$cidr[1] -ge 0 -AND [int]$cidr[1] -le 128){
+                    # CIDR ip6
+                    write-verbose "valid ipv6 CIDR subnet syntax" ;
+                    $report.Valid = $true ; 
+                } elseif([int]$cidr[1] -ge 0 -and [int]$cidr[1] -le 32){
+                    write-verbose "valid ipv4 CIDR subnet syntax" ;
+                    $report.Valid = $true ; 
+                }elseif($Address -like "*-*"){
+                    $report.type = 'IPAddressRange' ; 
+                    $ip = $Address.split("-") ; 
+                    $ip1 = $ip[0] -as [IPaddress] -as [Bool] ; 
+                    $ip2 = $ip[1] -as [IPaddress] -as [Bool] ; 
+                    if($ip -and $ip){
+                        write-verbose "valid ip address range" ;
+                        $report.Valid = $true ;
+                    } else{
+                        write-verbose "invalid range" ;
+                        $report.Valid = $false ;
+                    } ;
+                } else {
+                    $report.type = 'INVALID' ;
+                    $report.Valid = $false ;
+                    write-warning "invalid subnet" ;
+                } ; 
+            }else{
+                $report.type = 'INVALID' ;
+                $report.Valid = $false ;
+                write-warning "not valid address" ;
+            } ;
+            New-Object PSObject -Property $report | write-output ;   
+        }
+
 #*------^ test-IpAddressCidrRange.ps1 ^------
+
+
+#*------v Test-IPAddressInRange.ps1 v------
+function Test-IPAddressInRange {
+            <#
+            .SYNOPSIS
+            Test-IPAddressInRange - Test an array of IP Addreses for presence in specified CIDR-notated subnet range. 
+            .NOTES
+            Version     : 0.0.5
+            Author      : Nick James (omniomi)
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2022-11-03
+            FileName    : Test-IPAddressInRange
+            License     : (none asserted)
+            Copyright   : (none asserted)
+            Github      : https://github.com/tostka/verb-network
+            Tags        : Powershell
+            AddedCredit : Todd Kadrie
+            AddedWebsite: http://www.toddomation.com
+            AddedTwitter: @tostka / http://twitter.com/tostka
+            REVISIONS
+            * 11:57 AM 1/5/2023 TSK flipped $IPAddress type from [string] to [ipaddress]; Added CBH, and example; converted to Adv Func syntax; 
+            added pipeline support on the IPAddress input ; simplfied compound stmts ; added to verb-Network.
+            * Apr 17, 2018 Nick James (omniomi) posted github version from: https://github.com/omniomi/PSMailTools/blob/v0.2.0/src/Private/spf/IPInRange.ps1
+            .DESCRIPTION
+            .SYNOPSIS
+            Test-IPAddressInRange - Test an array of IP Addreses for presence in specified CIDR-notated subnet range.
+            .PARAMETER 
+
+            .INPUTS
+            None. Does not accepted piped input.(.NET types, can add description)
+            .OUTPUTS
+            System.Boolean
+            .EXAMPLE
+            PS> IPInRange 10.10.10.230 10.10.10.10/24 ; 
+                True
+            Feed it an IP and a CIDR address and it returns true or false.
+            .EXAMPLE
+            PS>  if((Test-IPAddressInRange -IPAddress 10.10.10.230,10.10.11.230 -Range 10.10.10.10/24 -verbose) -contains $false){
+            PS>      write-warning 'FAIL!';
+            PS>  } else { write-host "TRUE!"} ;
+                WARNING: FAIL!
+            Test an array of ips against the specified CIDR subnet, and warn if any fails (outside of the subnet).
+            .EXAMPLE
+            PS> @('10.10.10.230','10.10.11.230') | Test-IPAddressInRange -Range 10.10.10.10/24 -verbose ;
+            Pipeline demo, fed with array of ip's.
+            .LINK
+            https://github.com/tostka/verb-network
+            .LINK
+            https://github.com/omniomi/PSMailTools/blob/v0.2.0/src/Private/spf/IPInRange.ps1
+            #>
+            # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+            [outputtype([System.Boolean])]
+            [CmdletBinding()]
+            PARAM(
+                [parameter(Mandatory=$true, Position=0,ValueFromPipeline = $True,HelpMessage="Array of IP Addresses to be compared to specified Range[-IPAddress 192.168.1.1")]
+                [validatescript({([System.Net.IPAddress]$_).AddressFamily -eq 'InterNetwork'})]
+                [ipaddress[]]$IPAddress,
+                [parameter(Mandatory,Position=1,HelpMessage="CIDR-notated subnet specification[-Range 10.10.10.10/24")]
+                [validatescript({
+                    $IP,$Bits  = $_ -split '/' 
+                     (([System.Net.IPAddress]($IP)).AddressFamily -eq 'InterNetwork') 
+                    if (-not($Bits)) {
+                        throw 'Missing CIDR notiation.' 
+                    } elseif (-not(0..32 -contains [int]$Bits)) {
+                        throw 'Invalid CIDR notation. The valid bit range is 0 to 32.' ; 
+                    } ; 
+                })]
+                [alias('CIDR')]
+                [string]$Range
+            ) ;
+            BEGIN{
+                #region CONSTANTS-AND-ENVIRO #*======v CONSTANTS-AND-ENVIRO v======
+                # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
+                ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+                #region BANNER ; #*------v BANNER v------
+                $sBnr="#*======v $(${CmdletName}): v======" ;
+                $smsg = $sBnr ;
+                write-verbose "$($smsg)"  ;
+                #endregion BANNER ; #*------^ END BANNER ^------
+                $verbose = ($VerbosePreference -eq "Continue") ;
+                $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+                write-verbose -message "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
+                #endregion CONSTANTS-AND-ENVIRO ; #*------^ END CONSTANTS-AND-ENVIRO ^------       
+
+                write-verbose "Split range into the address and the CIDR notation" ; 
+                [String]$CIDRAddress,[int]$CIDRBits = $Range.Split('/') ; 
+
+                if ($PSCmdlet.MyInvocation.ExpectingInput) {
+                    write-verbose -message "Data received from pipeline input: '$($InputObject)'" ; 
+                } else {
+                    #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+                    write-verbose -message "(non-pipeline - param - input)" ; 
+                } ; 
+            } ; 
+            PROCESS{
+                foreach($item in $IPAddress){
+                    $sBnrS="`n#*------v PROCESSING : $($item.IPAddressToString) v------" ; 
+                    write-verbose -message "$($sBnrS)" ;
+            
+                    write-verbose "Address from range and the search address are converted to Int32 and the full mask is calculated from the CIDR notation."
+                    [int]$BaseAddress    = [System.BitConverter]::ToInt32((([System.Net.IPAddress]::Parse($CIDRAddress)).GetAddressBytes()), 0) ; 
+                    [int]$Address        = [System.BitConverter]::ToInt32(([System.Net.IPAddress]::Parse($item).GetAddressBytes()), 0) ; 
+                    [int]$Mask           = [System.Net.IPAddress]::HostToNetworkOrder(-1 -shl ( 32 - $CIDRBits)) ; 
+
+                    write-verbose "Determine whether the address is in the range. (-band == bitwise-AND)"
+                    if (($BaseAddress -band $Mask) -eq ($Address -band $Mask)) {
+                        $true ; 
+                    } else {
+                        $false ; 
+                    } ;  
+                    write-verbose -message "$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+
+                } ;  # loop-E
+            }  # PROC-E
+            END{
+                write-verbose -message "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
+            } ;
+        }
+
+#*------^ Test-IPAddressInRange.ps1 ^------
 
 
 #*------v Test-Port.ps1 v------
@@ -3100,7 +4851,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,download-file,download-filecurl,download-fileNoSSLNoSSL,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,Get-RestartInfo,get-Subnet,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-IpAddressCidrRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 
@@ -3108,8 +4859,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU/xh6IC8VnJt6r8MVCVbgbOIL
-# aC2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUh7J7awqRaU9cVvgekkD2o85p
+# W0GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -3124,9 +4875,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,do
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQmIWP/
-# +IEbgETItf+azP0I3/JWUzANBgkqhkiG9w0BAQEFAASBgEcJQYLQiqZjxjZILjki
-# FnjaSYsU1F0R6pd1BB3rSxzK22BXsB6vRd0oRCldw4GIZnm7pgjWRwPG4aYFBrDa
-# qgbQ510zBvO9HeP3//3Lwoe09cI/abC8SrE3E0nEB23EL0RtdsQOamNtI8x3PKFK
-# ovM1Gow5LOFeKcSuHYE4PSr7
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ0m2jd
+# nlbStBUMaqQt66UXxBwCLDANBgkqhkiG9w0BAQEFAASBgEAQc02PftiIEncJCSvO
+# u5PGprWd9/dVW6X/h62AdnJ6uLh4W8mA5v7QvKoBtQESmq7SP5St2mdAT2i34Prw
+# DPhwR1Bw3gr5WMfSIhAt5LEAmSoKUD2dkW6W7Bg6LMs4g1+WGnn2reLqzo0wqxTg
+# BnTxeOuQnPTIcDn9rlelVzk6
 # SIG # End signature block
