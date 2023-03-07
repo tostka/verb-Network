@@ -21,6 +21,8 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
+    * 2:23 PM 3/7/2023 rem'd out prior path<file/dir code - it's not used with explicit params ; seems to work; fliped the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it fails; 
+    rounded out, added missing code to detect successful first dl attempt. 
     * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
@@ -42,12 +44,29 @@ function save-WebDownload {
     Where the above fail though, you're just going to have to spec a generic -Outfile/DestinationFile, 
     if you really can't pre-determine what the version etc returned remotely is going to be.
 
+    Note:-ThrottleDelay will pickup on and use any configured global $ThrottleMs value, for the PROCESS block loop pause.
+
+    Originally implemented a generic -path param, which could be either a leaf file or a directory spec. 
+    Issue: Can't tell the difference from the OS: c:\name could be either a non-extension dir name, or a non-ext file in the root. 
+    Same issue with c:\name.ext, dirs can technically have periods/extensions like files.
+    It's the property of the object - as set by the creating user that 
+    determine which is which. 
+    
+    [system.io.fileinfo] complicates it further by sticking a 'd' directory attribute in the mod on *both* a *non-existant* 
+    full file spec and a non-exist dir spec. 
+    
+    So I eventually *abandoned* use of generic -Path, and force user to spec either explicitly: 
+        -DestinationFile  (leaf path spec)
+        -Destation (dir spec)
+    And, to simplify the equation, now requirre that the parent dir _pre-exist_ when -DestinationFile is used.
+
+
     .PARAMETER Uri
     Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
     .PARAMETER Destination
-    Path to destination for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']
+    Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']
     .PARAMETER DestinationFile
-    Full path to destination file for download[-PathFile 'c:\path-to\']
+    Full path to destination file for download[-DestinationFile 'c:\path-to\']
     .PARAMETER ThrottleDelay
     Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]
     .INPUTS
@@ -70,17 +89,15 @@ function save-WebDownload {
     [CmdletBinding()]
     ###[Alias('Alias','Alias2')]
     PARAM (
-        #[Parameter(Mandatory=$true,ValueFromPipelineByPropertyName=$true,Position=0,
         [Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=0,
             HelpMessage="Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
             [uri[]]$Uri,
         [Parameter(Mandatory=$false,Position=1,
-            HelpMessage = "Path to destination for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']")]
+            HelpMessage = "Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']")]
             [string]$Destination,
         [Parameter(Mandatory=$false,Position=2,
-            HelpMessage = "Full path to destination file for download[-PathFile 'c:\path-to\']")]
+            HelpMessage = "Full path to destination file for download[-DestinationFile 'c:\path-to\']")]
             [string]$DestinationFile,
-        #$ThrottleMs
         [Parameter(Mandatory=$false,Position=2,
             HelpMessage = "Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]")]
             [int]$ThrottleDelay
@@ -111,6 +128,18 @@ function save-WebDownload {
         if(-not $Destination -AND -not $DestinationFile){
             $Destination = (Get-Location).Path
         } ; 
+
+        # also if -DestinationFile, -URI cannot be an array (df forces explicit filename per uri).
+        if($DestinationFile -AND ($uri.OriginalString -is [array])){
+            $smsg = "-DestinationFile specified:`n($($DestinationFile))" ; 
+            $smsg += "`nalong with an array of -uri:" ; 
+            $smsg += "`n$(($uri.OriginalString|out-string).trim())" ; 
+            $smsg += "-DestinationFile requires a *single* inbound -Uri to funciton properly" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+            BREAK ; 
+        } 
 
         TRY {
             $smsg = "Normalized out any relative paths to absolute:" ; 
@@ -158,13 +187,13 @@ function save-WebDownload {
                     $Path = $Destination
                 } ; 
             } elseif($Destination -AND -not (test-path -path $Destination)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
+
                 $smsg = "NON-EXISTANT -Destination specified!" ; 
                 $smsg += "`n$(($Destination.fullname|out-string).trim())" 
-                #$smsg += "`nNOTE: -Destination should be an existing DIRECTORY (not file)" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                 else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                #throw $smsg ; 
-                #BREAK ; 
                 # PLAN B: CREATE THE MISSING PROMPTED
                 $smsg = "`n`nDO YOU WANT TO *CREATE* THE MISSING SPECIFIED -DESTINATION!?" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
@@ -186,6 +215,13 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
                     $Path = new-item @pltNI ; 
+                    if(test-path $Path){
+                        $PathExists = $true ;
+                        $PathIsFile = $false ; 
+                    } else { 
+                        $PathExists = $false ;
+                        $PathIsFile = $false ; 
+                    } ; 
 
                 } else {
                      $smsg = "Invalid response. Exiting" ; 
@@ -198,7 +234,11 @@ function save-WebDownload {
             } elseif($DestinationFile -AND (test-path -path $DestinationFile)){
                 # existing file spec, overwrite default
                 $Path = $DestinationFile ; 
+                $PathExists = $true ;
+                $PathIsFile = $true ; 
             } elseif($DestinationFile -AND -not (test-path -path $DestinationFile)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
                 # non-existant file spec
                 # does interrum dir exist?    
                 $throwWarn = $false ; 
@@ -210,9 +250,11 @@ function save-WebDownload {
                 } ; 
                 $smsg = "-DestinationFile as specified`n$($DestinationFile)`n...is *non-existant* file path:"
                 if(test-path $Destination  ){
-                    $smsg += "`nConfirmed presence of specified parent dir:`n$($Destination.fullname)" ; 
+                    $smsg += "`nConfirmed presence of specified parent dir:`n$($Destination)" ; 
 
                     $path = $DestinationFile ; 
+                    $PathExists = $false ;
+                    $PathIsFile = $true ; 
 
                 } else {
                     $smsg += "`n*COULD NOT* Confirm presence of specified parent dir:`n$($Destination.fullname)" ; 
@@ -228,12 +270,10 @@ function save-WebDownload {
 
             }
             
-            $smsg = "Current `$Path:`n$($Path)" ; 
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-
             if($Path){
-
+                
+                # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
+                <#
                 # eval curr $path spec, 
                 if($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
                     $smsg =  "Detected `$Path is pre-existing valid directory path (specified with trailing '\')" ;     
@@ -243,14 +283,14 @@ function save-WebDownload {
                     $smsg =  "Detected `$Path is pre-existing valid directory path (specified without a trailing '\')" ; 
                     $PathIsFile = $false ; 
                     $PathExists = $true  ;
-                # issue, both non-exist dir wo trailing \ and non-exist file have same pop'd Name, DirName & Dir, and dir/dirname -ne Name, and Exi8sts always $false
-                # prim diff, the dir will have d in the mode, even if not-existing:Mode              : darhsl
-                # need to pretest mode -match 'd', for Dir, before testing as file. (attribs are -1 in both cases, only mode has a marker)
-                # NOPE! both file in existing dir, and non-exist dir have mode: darhsl
+                #                 <# ISSUE, with detecting if a specified path is a leaf file or directory, using system.io.fileinfo casting:
+#                 - both non-exist dir wo trailing \ and non-exist file have same pop'd Name, DirName & Dir, and dir/dirname -ne Name, and Exists always $false
+#                 -both file in existing dir, and non-exist dir have mode: darhsl == the file has a 'd' directory attrib!
+#                 #
                 # 2:31 PM 2/27/2023 newlogic: 1) if the path exists, then test status
-                # 2) if doesn't exist, then assume it's a dir. Try to create it 
-                #} elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.mode -match 'd'){
-                # Mode: d test covers both non-exist full file spec and non-exist dir have it, so test $DestinationFile & $Destation on this case
+                #Mode: d test covers both non-exist full file spec and non-exist dir have it
+                # so abandon use of generic -Path, and force user to spec either explicitly: test $DestinationFile & $Destation on this case
+                
                 } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $DestinationFile){
                     $smsg =  "Detected `$Path is non-existant valid full file path" ; 
                     $PathIsFile = $true ; 
@@ -274,9 +314,9 @@ function save-WebDownload {
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     throw $smsg ; 
                 };
+                #>
 
-
-                $smsg +=  "`n$($path.fullname)" ; 
+                $smsg = "Resolved `$Path:`n$($Path)" ;             
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                 #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
@@ -295,9 +335,6 @@ function save-WebDownload {
                 $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-warning $smsg } ;
-                #$smsg = $ErrTrapd.Exception.Message ;
-                #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                #else{ write-warning $smsg } ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-host $smsg } ;
@@ -310,25 +347,56 @@ function save-WebDownload {
 
         foreach($item in $Uri){
             TRY {
-                #[uri]$item = $item ; 
+                [boolean]$isDone = $false ; 
                 if($PathIsFile){
                     $smsg = "(-Path detected as Leaf object: Using as destination filename)" ; 
                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                     else{ write-verbose $smsg } ; } ; 
-                    Invoke-WebRequest -Uri $item -OutFile $Path ; 
+
+                    $pltIWR=[ordered]@{
+                        Uri=$item ;
+                        OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $ret = Invoke-WebRequest @pltIWR ; 
+
+                    $OutFilePath = $Path ; 
+                    $isDone = $true ; 
+
                 } elseif(-not $PathIsFile -AND -not $PathExists) { 
                     $smsg = "-Path detected as NON-EXISTANT Container object:" ; 
                     $smsg += "`n a pre-existing Container (or full path to file) must be specified for this function to work properly" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                     throw $smsg ; 
-                } else { 
+                    break ; 
+                } else {
+                    # not existing file, or missing file: Directory 
+                    $PathIsFile = $false ; 
                     $smsg = "-Path detected as existing Container object: Attempting to derive the target filename from download Headers..." ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                     else{ write-host $smsg } ;
                     #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
 
-                    $iwr = Invoke-WebRequest -Uri $item -Method Head ; 
+                    #$iwr = Invoke-WebRequest -Uri $item -Method Head ; 
+                    $pltIWR=[ordered]@{
+                        Uri = $item ;
+                        Method = 'Head' ;
+                        #OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $iwr = Invoke-WebRequest @pltIWR ; 
+
+
+
                     if ($iwr.Headers['Content-Disposition'] -match $rgxHeaders) {
                         $OutFilePath = Join-Path $Path $Matches['filename'] ; 
                         $smsg = "Derived filename/OutFilePath:`n" ; 
@@ -342,10 +410,12 @@ function save-WebDownload {
                         else{ write-WARNING $smsg } ; 
                         throw $smsg ; 
                     } ; 
+                    $isDone = $false ; # trigger trailing final dl below
                 } ; 
             }CATCH [System.Net.WebException]{
                 $ErrTrapd=$Error[0] ;
                 if($ErrTrapd.Exception -match '\(501\)'){
+                    # choco returns 501 on both the -Method Head fail, and on lack of support for Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
                     # on the 501 error - choco, which lacks header support - we can trap the redir for parsing:
                     $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
                     if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
@@ -357,17 +427,53 @@ function save-WebDownload {
                     else{ write-host $smsg } ;
 
                     TRY{
-                        if($Results = Invoke-WebRequest -Method Get -Uri $item -MaximumRedirection 0 -ErrorAction SilentlyContinue){
+                        $pltIWR=[ordered]@{
+                            Uri = $item ;
+                            Method = 'Get' ; 
+                            MaximumRedirection = 0 ; 
+                            #Method = 'Head' ;
+                            #OutFile = $Path ; 
+                            erroraction = 'SilentlyContinue' ; # maxi redir resolve *relies* on silentlycontinue; use StOP and it fails.
+                        } ;
+                        $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                        #if($Results = Invoke-WebRequest -Method Get -Uri $item -MaximumRedirection 0 -ErrorAction SilentlyContinue){
+                        if($Results = Invoke-WebRequest @pltIWR){
+                            # checking for a redirect return, to parse:
+                            <# Redirect error returned, sample:
+                            StatusCode        : 302
+                            StatusDescription : Found
+                            Content           : <html><head><title>Object moved</title></head><body>
+                                                <h2>Object moved to <a href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</a>.</h2>
+                                                </body></html>
+                            RawContent        : HTTP/1.1 302 Found
+                                                Transfer-Encoding: chunked
+                                                Connection: keep-alive
+                                                X-AspNetMvc-Version: 3.0
+                                                X-Frame-Options: deny
+                                                CF-Cache-Status: DYNAMIC
+                                                Strict-Transport-Security: max-age=12960000
+                                                X-Conten...
+                            Forms             : {}
+                            Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [X-AspNetMvc-Version, 3.0], [X-Frame-Options, deny]...}
+                            Images            : {}
+                            InputFields       : {}
+                            Links             : {@{innerHTML=here; innerText=here; outerHTML=<A href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</A>;
+                                                outerText=here; tagName=A; href=https://packages.chocolatey.org/chocolatey.1.3.0.nupkg}}
+                            ParsedHtml        : mshtml.HTMLDocumentClass
+                            RawContentLength  : 171
+                            #>
                             $lines = $results.Content.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) ; 
                             if($lines = $lines | ?{$_ -like '*href*'}){
                                 if([uri]$RedirUrl = [regex]::match($lines,$rgxHtmlAnchor).groups[1].captures[0].value){
-                                    #if($OutFilePath = Join-Path $Path -childpath [System.IO.Path]::GetFileName($RedirUrl)){
                                     if($OutFilePath = Join-Path $Path -childpath $RedirUrl.LocalPath.replace('/','')){
                                         $smsg = "Resolved redirect to a filename, for OutputPath:" ;
                                         $smsg += "`n$($OutFilePath)" ;  
                                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                                         else{ write-host $smsg } ;
-                                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                        $isDone = $false ; # trigger trailing final dl below
                                     } else { 
                                         $smsg += "Unable to Construct a workable `$OutputFilePath from returned data:" ; 
                                         $smsg += "`nPlease specify a full leaf file -Path specification and retry (even a dummy filename will work)" ; 
@@ -404,33 +510,11 @@ function save-WebDownload {
                         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                         else{ write-warning $smsg } ;
                     } ; 
-                    <# 
-                    $results
-                    StatusCode        : 302
-                    StatusDescription : Found
-                    Content           : <html><head><title>Object moved</title></head><body>
-                                        <h2>Object moved to <a href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</a>.</h2>
-                                        </body></html>
-                    RawContent        : HTTP/1.1 302 Found
-                                        Transfer-Encoding: chunked
-                                        Connection: keep-alive
-                                        X-AspNetMvc-Version: 3.0
-                                        X-Frame-Options: deny
-                                        CF-Cache-Status: DYNAMIC
-                                        Strict-Transport-Security: max-age=12960000
-                                        X-Conten...
-                    Forms             : {}
-                    Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [X-AspNetMvc-Version, 3.0], [X-Frame-Options, deny]...}
-                    Images            : {}
-                    InputFields       : {}
-                    Links             : {@{innerHTML=here; innerText=here; outerHTML=<A href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</A>;
-                                        outerText=here; tagName=A; href=https://packages.chocolatey.org/chocolatey.1.3.0.nupkg}}
-                    ParsedHtml        : mshtml.HTMLDocumentClass
-                    RawContentLength  : 171
-                    #>
+                    
                 } elseif( ($ErrTrapd.Exception -match '\(429\)') -OR ($ErrTrapd.Exception -match 'Too\sMany\sRequests')){
+                    # choco throttling error returned:
                     <# [https://docs.chocolatey.org/en-us/troubleshooting#im-getting-a-429-too-many-requests-issue-when-attempting-to-use-the-community-package-repository](https://docs.chocolatey.org/en-us/troubleshooting#im-getting-a-429-too-many-requests-issue-when-attempting-to-use-the-community-package-repository)
-                        his means your IP address has been flagged for too many requests. Please see Rate Limiting for details and actions.
+                        This means your IP address has been flagged for too many requests. Please see Rate Limiting for details and actions.
                         Reference Errors:
                             Exception calling "DownloadFile" with "2" argument(s): The remote server returned an error: (429) Too Many Requests
                             The remote server returned an error: (429) Too Many Requests. Too Many Requests
@@ -490,23 +574,55 @@ function save-WebDownload {
                 throw $ErrTrapd ; 
             } ; 
 
-            # you can also have iopath cut the trailing /name and use it as a name:
-            #$filename = [System.IO.Path]::GetFileName($url) # returns 'chocolatey' from expl url
-            #$OutFilePath = Join-Path $Path -ChildPath $filename ; 
-            # it's 'descriptive' of the dl, but in the choco case, completely loses the rev spec from the proper filename.
-            <# you can use Start-BitsTransfer, if server supports it choco doesn't:
-            Import-Module BitsTransfer
-            Start-BitsTransfer -source $url ; 
-            Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
-            At line:1 char:1
-            + Start-BitsTransfer -source $url
-            + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-                + CategoryInfo          : InvalidOperation: (:) [Start-BitsTransfer], Exception
-                + FullyQualifiedErrorId : StartBitsTransferCOMException,Microsoft.BackgroundIntelligentTransfer.Management.NewBitsTransferCommand
+            <# alts to trying to retrieve the filename:
+                1) you can also have iopath cut the trailing /name and use it as a name:
+                $filename = [System.IO.Path]::GetFileName($url) # returns 'chocolatey' from expl url
+                $OutFilePath = Join-Path $Path -ChildPath $filename ; 
+                # it's 'descriptive' of the dl, but in the choco case, completely loses the rev spec from the proper filename.
+                2) you can use Start-BitsTransfer, if server supports it: *choco doesn't*:
+                Import-Module BitsTransfer
+                Start-BitsTransfer -source $url ; 
+                Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                At line:1 char:1
+                + Start-BitsTransfer -source $url
+                + ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                    + CategoryInfo          : InvalidOperation: (:) [Start-BitsTransfer], Exception
+                    + FullyQualifiedErrorId : StartBitsTransferCOMException,Microsoft.BackgroundIntelligentTransfer.Management.NewBitsTransferCommand
             #>
 
             TRY {
-                Invoke-WebRequest -Uri $item -OutFile $OutFilePath ; 
+                if(-not $isDone){
+                    if($OutFilePath){
+                        $pltIWR=[ordered]@{
+                            Uri=$item ;
+                            OutFile = $OutFilePath ; 
+                            erroraction = 'STOP' ;
+                        } ;
+                        $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                        #Invoke-WebRequest -Uri $item -OutFile $OutFilePath ; 
+                        $ret = Invoke-WebRequest @pltIWR ; 
+                        $isDone = $true ; 
+                    } else { 
+                        $smsg = "Unpopulated `$OutFilePath!`n$($OutFilePath)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        throw $smsg ; 
+                        break ; 
+                    } ; 
+                } else { 
+                    $smsg = "(url already pre-downloaded on initial attempt)" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                # emit outfilepath to pipeline, as we've resolved the source, and may not know it
+                if($isDone  -AND (test-path $OutFilePath)){
+                    write-host "Validated download:" 
+                    $OutFilePath | write-output ; 
+                } ; 
+                
             } CATCH {
                 # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
                 $ErrTrapd=$Error[0] ;
