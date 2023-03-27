@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.0.0.0
+Version     : 2.2.1.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -777,7 +777,7 @@ function Get-NetIPConfigurationLegacy {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 20210114-1055AM
+    CreatedDate : 2.2.1114-1055AM
     FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
@@ -1439,7 +1439,7 @@ function Get-RestartInfo {
             } Else {
                 write-verbose "(pulling reboot events System 1074)" ; 
                 if(($sevts = Get-WinEvent -computername $computer -FilterHashtable @{logname = 'System'; id = 1074} -MaxEvents 1) -AND ((new-timespan -start $sevts.TimeCreated -End (get-date)).TotalDays -lt $MaxDays)){ 
-                    <# TimeCreated  : 8/22/2022 2:09:47 AM
+                    <# TimeCreated  : 8/22/2022.2.19:47 AM
                     ProviderName : USER32
                     ProviderId   :
                     Id           : 1074
@@ -1975,7 +1975,7 @@ function Resolve-DNSLegacy.ps1{
     Github      : https://github.com/tostka/verb-Network
     Tags        : Powershell,DNS,Network
     AddedCredit :  i255d
-    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-13.0.027/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
+    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
     REVISIONS
     * 3:02 PM 11/2/2021 refactor/fix cbh
     * 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
@@ -1983,7 +1983,7 @@ function Resolve-DNSLegacy.ps1{
     .DESCRIPTION
     Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
     I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
-    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-13.0.027/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
+    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
     Updated/tweaked by TSK 2021.
     .PARAMETER ComputerName
     Computername
@@ -2481,8 +2481,10 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
-    * 2:23 PM 3/7/2023 rem'd out prior path<file/dir code - it's not used with explicit params ; seems to work; fliped the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it fails; 
-    rounded out, added missing code to detect successful first dl attempt. 
+    * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
+    path<file/dir code - it's not used with explicit params ; seems to work; fliped 
+    the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
+    fails; ; rounded out, added missing code to detect successful first dl attempt. 
     * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
@@ -2540,7 +2542,7 @@ function save-WebDownload {
     save-webdownload -Uri https://fqdn/dir -Path c:\tmp\file.ext ;
     Demo standard Path-specified download
     .EXAMPLE
-    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.3.0.0.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.0.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
+    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.1.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
     $dlpkgs | save-webdownload -Destination C:\tmp\2023-02-23 -verbose  ;
     Demo pkgs array in variable, pipelined in, with destination folder (implies will attempt to obtain download file name from headers).
     .LINK
@@ -2604,11 +2606,7 @@ function save-WebDownload {
         TRY {
             $smsg = "Normalized out any relative paths to absolute:" ; 
             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-
-            # Src: x0n | https://stackoverflow.com/users/6920/x0n |  Jun 14, 2010 at 21:12 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
-            # Advantage: works with PSPaths (vs dot/native filesystem paths). A PSPath may not map 1-1 to a filesystem path, for example if you mount a psdrive with a multi-letter drive name.
-            #$Path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path) ;
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
             if($Destination ){
                 $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination) ;
             } ; 
@@ -2640,7 +2638,6 @@ function save-WebDownload {
                 # we should *require* that dirs exist, if doing dyn paths
                 $PathExists = $true
                 # so if exists, check it's type:
-                #if(test-path -PathType Leaf){
                 $tobj = get-item -path  $Destination -ea STOP; 
                 $PathIsFile =  -not($tobj.PSIsContainer) ; 
                 if($PathExists -AND $PathIsFile -eq $false){
@@ -2664,7 +2661,6 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-                    #New-Item -ItemType "directory" -Path "c:\ps-test\scripts"
                     $pltNI = @{
                         ItemType ="directory" ;
                         Path = $Destination.fullname ; 
@@ -2686,8 +2682,7 @@ function save-WebDownload {
                 } else {
                      $smsg = "Invalid response. Exiting" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    #exit 1
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     break ; 
                 }  ; 
 
@@ -2733,49 +2728,6 @@ function save-WebDownload {
             if($Path){
                 
                 # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
-                <#
-                # eval curr $path spec, 
-                if($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified with trailing '\')" ;     
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified without a trailing '\')" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                #                 <# ISSUE, with detecting if a specified path is a leaf file or directory, using system.io.fileinfo casting:
-#                 - both non-exist dir wo trailing \ and non-exist file have same pop'd Name, DirName & Dir, and dir/dirname -ne Name, and Exists always $false
-#                 -both file in existing dir, and non-exist dir have mode: darhsl == the file has a 'd' directory attrib!
-#                 #
-                # 2:31 PM 2/27/2023 newlogic: 1) if the path exists, then test status
-                #Mode: d test covers both non-exist full file spec and non-exist dir have it
-                # so abandon use of generic -Path, and force user to spec either explicitly: test $DestinationFile & $Destation on this case
-                
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $DestinationFile){
-                    $smsg =  "Detected `$Path is non-existant valid full file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg = "Detected `$Path is non-existant valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ; 
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.exists){
-                    $smsg = "Detected `$Path is pre-existing valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg =  "Detected `$Path is non-existant valid directory path" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $false  ;
-                } else {
-                    $smsg =  "UNRECOGNIZED COMBO OF [SYSTEM.IO.FILEINFO] ATTRIBUTES!" ; 
-                    $smsg +=  "`nUnable to differentiate if specified -Path is File, Container, or if it exists" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    throw $smsg ; 
-                };
-                #>
-
                 $smsg = "Resolved `$Path:`n$($Path)" ;             
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -2842,7 +2794,6 @@ function save-WebDownload {
                     else{ write-host $smsg } ;
                     #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
 
-                    #$iwr = Invoke-WebRequest -Uri $item -Method Head ; 
                     $pltIWR=[ordered]@{
                         Uri = $item ;
                         Method = 'Head' ;
@@ -2899,7 +2850,6 @@ function save-WebDownload {
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
 
-                        #if($Results = Invoke-WebRequest -Method Get -Uri $item -MaximumRedirection 0 -ErrorAction SilentlyContinue){
                         if($Results = Invoke-WebRequest @pltIWR){
                             # checking for a redirect return, to parse:
                             <# Redirect error returned, sample:
@@ -2952,9 +2902,33 @@ function save-WebDownload {
                                 break ; 
                             } ; 
 
-                        } else { 
+                        } else {
+                            #parse off and offer the leaf name of the uri 
+                            TRY{
+                                if($samplefilename = [System.IO.Path]::GetFileName($uri) ){
+                                    # returns 'chocolatey' from expl url
+                                    $smsg = "(removing illegal fs chars from resolved leaf name)" ; 
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $samplefilename = [RegEx]::Replace($samplefilename, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                                } else {
+                                    $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ; 
+
+                            }CATCH{
+                                $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ; 
                             $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
                             $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                            if($samplefilename){
+                                $smsg += "(possibly the url 'generic' filename:$($samplefilename).extension" ; 
+                            } ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                             else{ write-WARNING $smsg } ; 
                             throw $smsg ; 
@@ -3004,7 +2978,7 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING $smsg } ; 
                     throw $smsg ; 
-                    # fatal, server is going to continue throttling for quite a while: no point in using Continue
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
                     break ; 
                 } else { 
                     $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
@@ -3024,9 +2998,6 @@ function save-WebDownload {
                 $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-warning $smsg } ;
-                #$smsg = $ErrTrapd.Exception.Message ;
-                #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                #else{ write-warning $smsg } ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-host $smsg } ;
@@ -3692,7 +3663,7 @@ function summarize-PassStatus {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 3.0.0012-0849AM
+    CreatedDate : 20201012-0849AM
     FileName    : summarize-PassStatus
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
@@ -3781,7 +3752,7 @@ function summarize-PassStatusHtml {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 3.0.0012-0849AM
+    CreatedDate : 20201012-0849AM
     FileName    : summarize-PassStatusHtml
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
@@ -3845,67 +3816,6 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 }
 
 #*------^ summarize-PassStatusHtml.ps1 ^------
-
-
-#*------v test-Connection-T.ps1 v------
-function test-Connection-T {
-    <#
-    .SYNOPSIS
-    test-Connection-T - Endless test-Connection pings (simple equiv to ping -t)
-    .NOTES
-    Version     : 1.0.0
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2020-04-17
-    FileName    : test-Connection-T.ps1
-    License     : MIT License
-    Copyright   : (c) 2023 Todd Kadrie
-    Github      : https://github.com/verb-Network
-    Tags        : Powershell,Internet,Download,File
-    AddedCredit : poshftw
-    AddedWebsite: https://old.reddit.com/r/PowerShell/comments/moxy5v/downloading_a_file_with_powershell_without/
-    AddedTwitter: URL
-    AddedCredit : Patrick Gruenauer
-    AddedWebsite: https://sid-500.com/2019/10/22/powershell-endless-ping-with-test-connection/
-    AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
-    REVISIONS
-    * 1:07 PM 3/27/2023 built, added to verb-Network
-    .DESCRIPTION
-    test-Connection-T - Endless test-Connection pings (simple equiv to ping -t)
-    Uses the [int32]::MaxValue to push the -count so high it's just about endless, as a single command, without a DoLoop
-    From a simple -count param tweak recommended by Patrick Gruenauer, wrapped with a function
-    .INPUTS
-    None. Does not accepted piped input.
-    .OUTPUTS
-    None. Returns no objects or output
-    .EXAMPLE
-    test-Connection-T someserver
-    Demo endless 1/second ping. 
-    .EXAMPLE
-    test-Connection-T 1.1.1.1 -Delay 5;
-    Demo endless ping, every 5secs
-    .LINK
-    https://github.com/verb-Network
-    #>
-    ## [OutputType('bool')] # optional specified output type
-    [CmdletBinding()]
-    ###[Alias('Alias','Alias2')]
-    PARAM (
-        [Parameter(Mandatory=$true,Position=0,HelpMessage = "Specifies the computers to ping. Type the computer names or type IP addresses in IPv4 or IPv6 format. Wildcard characters are not permitted. This parameter is required.")]
-        [System.String[]]$ComputerName,
-        [Parameter(HelpMessage = "Specifies the interval between pings, in seconds (max 60).")]
-        [System.Int32]$Delay
-    ) ; 
-    PROCESS {
-        $Error.Clear() ; 
-        foreach($item in $Computername){
-            Test-Connection $item -Count ([int32]::MaxValue) -Delay:$($Delay) ; 
-        } ;   # loop-E
-    } ;  # if-PROC
-}
-
-#*------^ test-Connection-T.ps1 ^------
 
 
 #*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
@@ -4941,7 +4851,33 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 
+
+# SIG # Begin signature block
+# MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
+# gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUh7J7awqRaU9cVvgekkD2o85p
+# W0GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
+# Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
+# ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
+# a+NnFYNRPPa8Bnm071ohGe27jNWKPVUbDfd0OY2sqCBQCEFVb5pqcIECRRnlhN5H
+# +EEJmm2x9AU0uS7IHxHeUo8fkW4vm49adkat5gAoOZOwbuNntBOAJy9LCyNs4F1I
+# KKphP3TyDwe8XqsEVwB2m9FPAgMBAAGjdjB0MBMGA1UdJQQMMAoGCCsGAQUFBwMD
+# MF0GA1UdAQRWMFSAEL95r+Rh65kgqZl+tgchMuKhLjAsMSowKAYDVQQDEyFQb3dl
+# clNoZWxsIExvY2FsIENlcnRpZmljYXRlIFJvb3SCEGwiXbeZNci7Rxiz/r43gVsw
+# CQYFKw4DAh0FAAOBgQB6ECSnXHUs7/bCr6Z556K6IDJNWsccjcV89fHA/zKMX0w0
+# 6NefCtxas/QHUA9mS87HRHLzKjFqweA3BnQ5lr5mPDlho8U90Nvtpj58G9I5SPUg
+# CspNr5jEHOL5EdJFBIv3zI2jQ8TPbFGC0Cz72+4oYzSxWpftNX41MmEsZkMaADGC
+# AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
+# Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
+# AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ0m2jd
+# nlbStBUMaqQt66UXxBwCLDANBgkqhkiG9w0BAQEFAASBgEAQc02PftiIEncJCSvO
+# u5PGprWd9/dVW6X/h62AdnJ6uLh4W8mA5v7QvKoBtQESmq7SP5St2mdAT2i34Prw
+# DPhwR1Bw3gr5WMfSIhAt5LEAmSoKUD2dkW6W7Bg6LMs4g1+WGnn2reLqzo0wqxTg
+# BnTxeOuQnPTIcDn9rlelVzk6
+# SIG # End signature block
