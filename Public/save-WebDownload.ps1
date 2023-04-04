@@ -21,8 +21,10 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
-    * 2:23 PM 3/7/2023 rem'd out prior path<file/dir code - it's not used with explicit params ; seems to work; fliped the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it fails; 
-    rounded out, added missing code to detect successful first dl attempt. 
+    * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
+    path<file/dir code - it's not used with explicit params ; seems to work; fliped 
+    the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
+    fails; ; rounded out, added missing code to detect successful first dl attempt. 
     * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
@@ -144,11 +146,7 @@ function save-WebDownload {
         TRY {
             $smsg = "Normalized out any relative paths to absolute:" ; 
             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-
-            # Src: x0n | https://stackoverflow.com/users/6920/x0n |  Jun 14, 2010 at 21:12 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
-            # Advantage: works with PSPaths (vs dot/native filesystem paths). A PSPath may not map 1-1 to a filesystem path, for example if you mount a psdrive with a multi-letter drive name.
-            #$Path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path) ;
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
             if($Destination ){
                 $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination) ;
             } ; 
@@ -180,7 +178,6 @@ function save-WebDownload {
                 # we should *require* that dirs exist, if doing dyn paths
                 $PathExists = $true
                 # so if exists, check it's type:
-                #if(test-path -PathType Leaf){
                 $tobj = get-item -path  $Destination -ea STOP; 
                 $PathIsFile =  -not($tobj.PSIsContainer) ; 
                 if($PathExists -AND $PathIsFile -eq $false){
@@ -204,7 +201,6 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-                    #New-Item -ItemType "directory" -Path "c:\ps-test\scripts"
                     $pltNI = @{
                         ItemType ="directory" ;
                         Path = $Destination.fullname ; 
@@ -226,8 +222,7 @@ function save-WebDownload {
                 } else {
                      $smsg = "Invalid response. Exiting" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    #exit 1
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     break ; 
                 }  ; 
 
@@ -273,49 +268,6 @@ function save-WebDownload {
             if($Path){
                 
                 # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
-                <#
-                # eval curr $path spec, 
-                if($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified with trailing '\')" ;     
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified without a trailing '\')" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                #                 <# ISSUE, with detecting if a specified path is a leaf file or directory, using system.io.fileinfo casting:
-#                 - both non-exist dir wo trailing \ and non-exist file have same pop'd Name, DirName & Dir, and dir/dirname -ne Name, and Exists always $false
-#                 -both file in existing dir, and non-exist dir have mode: darhsl == the file has a 'd' directory attrib!
-#                 #
-                # 2:31 PM 2/27/2023 newlogic: 1) if the path exists, then test status
-                #Mode: d test covers both non-exist full file spec and non-exist dir have it
-                # so abandon use of generic -Path, and force user to spec either explicitly: test $DestinationFile & $Destation on this case
-                
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $DestinationFile){
-                    $smsg =  "Detected `$Path is non-existant valid full file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg = "Detected `$Path is non-existant valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ; 
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.exists){
-                    $smsg = "Detected `$Path is pre-existing valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg =  "Detected `$Path is non-existant valid directory path" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $false  ;
-                } else {
-                    $smsg =  "UNRECOGNIZED COMBO OF [SYSTEM.IO.FILEINFO] ATTRIBUTES!" ; 
-                    $smsg +=  "`nUnable to differentiate if specified -Path is File, Container, or if it exists" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    throw $smsg ; 
-                };
-                #>
-
                 $smsg = "Resolved `$Path:`n$($Path)" ;             
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -382,7 +334,6 @@ function save-WebDownload {
                     else{ write-host $smsg } ;
                     #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
 
-                    #$iwr = Invoke-WebRequest -Uri $item -Method Head ; 
                     $pltIWR=[ordered]@{
                         Uri = $item ;
                         Method = 'Head' ;
@@ -439,7 +390,6 @@ function save-WebDownload {
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
 
-                        #if($Results = Invoke-WebRequest -Method Get -Uri $item -MaximumRedirection 0 -ErrorAction SilentlyContinue){
                         if($Results = Invoke-WebRequest @pltIWR){
                             # checking for a redirect return, to parse:
                             <# Redirect error returned, sample:
@@ -492,9 +442,33 @@ function save-WebDownload {
                                 break ; 
                             } ; 
 
-                        } else { 
+                        } else {
+                            #parse off and offer the leaf name of the uri 
+                            TRY{
+                                if($samplefilename = [System.IO.Path]::GetFileName($uri) ){
+                                    # returns 'chocolatey' from expl url
+                                    $smsg = "(removing illegal fs chars from resolved leaf name)" ; 
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $samplefilename = [RegEx]::Replace($samplefilename, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                                } else {
+                                    $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ; 
+
+                            }CATCH{
+                                $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ; 
                             $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
                             $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                            if($samplefilename){
+                                $smsg += "(possibly the url 'generic' filename:$($samplefilename).extension" ; 
+                            } ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                             else{ write-WARNING $smsg } ; 
                             throw $smsg ; 
@@ -544,7 +518,7 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING $smsg } ; 
                     throw $smsg ; 
-                    # fatal, server is going to continue throttling for quite a while: no point in using Continue
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
                     break ; 
                 } else { 
                     $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
@@ -564,9 +538,6 @@ function save-WebDownload {
                 $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-warning $smsg } ;
-                #$smsg = $ErrTrapd.Exception.Message ;
-                #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                #else{ write-warning $smsg } ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-host $smsg } ;

@@ -12,7 +12,11 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
+<<<<<<< HEAD
 ModuleVersion = '3.0.0'
+=======
+ModuleVersion = '2.2.1'
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -69,7 +73,11 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
+<<<<<<< HEAD
 FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','Disconnect-PSR','Get-DnsDkimRecord','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','get-tsUsers','get-whoami','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','test-Connection-T','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','Test-Port','test-PrivateIP','Test-RDP')
+=======
+FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','Disconnect-PSR','Get-DnsDkimRecord','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','get-tsUsers','get-whoami','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','Test-Port','test-PrivateIP','Test-RDP')
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -154,5 +162,8 @@ PrivateData = @{
 
 
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab

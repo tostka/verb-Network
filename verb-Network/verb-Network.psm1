@@ -5,7 +5,11 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
+<<<<<<< HEAD
 Version     : 3.0.0.0
+=======
+Version     : 2.2.1.0
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -438,6 +442,7 @@ function Get-DnsDkimRecord {
         
 
         foreach($item in $Name) {
+<<<<<<< HEAD
 
             $sBnr="#*======v Name: $($item) v======" ; 
             $whBnr = @{BackgroundColor = 'Magenta' ; ForegroundColor = 'Black' } ;
@@ -531,6 +536,101 @@ function Get-DnsDkimRecord {
                             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         } ; 
 
+=======
+
+            $sBnr="#*======v Name: $($item) v======" ; 
+            $whBnr = @{BackgroundColor = 'Magenta' ; ForegroundColor = 'Black' } ;
+            write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
+
+            $foundSelector = $false ; 
+
+            foreach ($DSel in $DkimSelector) {
+
+                $smsg = "DkimSelector:$($DSel) specified for domain Name:$($item)" ; 
+                $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel)._domainkey.$($item)" ; 
+                write-verbose $smsg ; 
+                if($DKIM = Resolve-DnsName -Type TXT -Name "$($DSel)._domainkey.$($item)" @SplatParameters){
+
+                } else { 
+                    # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
+                    $smsg = "Fail on prior TXT qry" ; 
+                    $smsg += "`nRetrying TXT qry:-Name $($DSel).$($item)"
+                    $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($item)"  ;
+                    write-verbose $smsg ; 
+                    $DKIM = Resolve-DnsName -Type TXT -Name "$($DSel).$($item)" @SplatParameters ; 
+                } ;  
+
+                if(($DKIM |  measure).count -gt 1){
+                    write-verbose "Multiple Records returned on qry: Likely resolution chain CNAME->(CNAME->)TXT`nuse the TXT record in the chain" ;   
+
+                    # dump the chain
+                    # ---
+                    $rNo=0 ; 
+                    foreach($rec in $DKIM){
+                        $rNo++ ; 
+                        $RecFail = $false ; 
+                        $smsg = "`n`n==HOP: $($rNo): " ;
+                        switch ($rec.type){
+                            'CNAME' {
+                                $smsg += "$($rec.Type): $($rec.Name) ==> $($rec.NameHost):" ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($verbose -AND (get-command Convertto-Markdowntable -ea 0)){
+                                    $smsg += $rec | select $prpCNAME | Convertto-Markdowntable -Border ; 
+                                } else { 
+                                    $smsg += "`n$(($rec | ft -a $prpCNAME |out-string).trim())" ; 
+                                } ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                            } 
+                            'TXT' { 
+                                $smsg += "$($rec.Type):Value record::`n" ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($verbose -AND (get-command Convertto-Markdowntable -ea 0)){
+                                    $smsg += $rec | select $prpTXT[0..1] | Convertto-Markdowntable -Border ; 
+                                    $smsg += "`n" ;
+                                    $smsg += $rec | select $prpTXT[2] | Convertto-Markdowntable -Border ; 
+                                } else { 
+                                    $smsg += "`n$(($rec | ft -a  $prpTXT[0..1] |out-string).trim())" ; 
+                                    $smsg += "`n" ;
+                                    $smsg += "`n$(($rec | ft -a $prpTXT[2]|out-string).trim())" ; 
+                                } ; 
+                                if($verbose){
+                                    $smsg += "`n" ; 
+                                } ; 
+                                if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                                }elseif($rec.Strings -match 'p=\w+'){
+                                    # per above, this matches only the bare minimum!
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key.`n`n" ; 
+                                }else {
+                                    $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key!" ;
+                                    $smsg += "`n(strings should start with 'v=DKIM1', or at minimum include a p=xxx public key)`n`n" ; 
+                                    $RecFail = $true ; 
+                                } ; 
+                            } 
+                            'SOA' {
+                                $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
+                                $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
+                                #throw $smsg ;
+                                $RecFail = $true ; 
+                            }
+                            default {throw "Unrecognized record TYPE!" ; $RecFail = $true ; } 
+                        } ; 
+
+                        if($RecFail -eq $true){
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                        } else { 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ; 
+
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
                     };  # loop-E
                     #---
 
@@ -777,7 +877,7 @@ function Get-NetIPConfigurationLegacy {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 20210114-1055AM
+    CreatedDate : 2.2.1114-1055AM
     FileName    : 
     License     : MIT License
     Copyright   : (c) 2021 Todd Kadrie
@@ -1439,7 +1539,7 @@ function Get-RestartInfo {
             } Else {
                 write-verbose "(pulling reboot events System 1074)" ; 
                 if(($sevts = Get-WinEvent -computername $computer -FilterHashtable @{logname = 'System'; id = 1074} -MaxEvents 1) -AND ((new-timespan -start $sevts.TimeCreated -End (get-date)).TotalDays -lt $MaxDays)){ 
-                    <# TimeCreated  : 8/22/2022 2:09:47 AM
+                    <# TimeCreated  : 8/22/2022.2.19:47 AM
                     ProviderName : USER32
                     ProviderId   :
                     Id           : 1074
@@ -2481,6 +2581,507 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
+    * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
+    path<file/dir code - it's not used with explicit params ; seems to work; fliped 
+    the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
+    fails; ; rounded out, added missing code to detect successful first dl attempt. 
+    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
+    Reworked a lot of the echos, added wlt support for all echos. 
+    Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
+    * 3:50 PM 2/24/2023 add: relative-path resolution on inbound $Path; code 
+    [system.io.fileinfo] code to differntiate Leaf file from Container status of 
+    Path ;  Logic to validate functional combo of existing/leaf/container -Path. Expanded wlt support throughout.
+    * 11:46 AM 2/23/2023 retooled poshftw's original concept, expanding to fail back to obtain a redir for parsing. 
+    .DESCRIPTION
+    save-WebDownload - Download Uri file from Inet (via Invoke-WebRequest iwr), without need to know destination filename (parses filename out of headers of the download).
+
+    Uses two levels of logic to try to obtain remote download filename (where it's a redirect or v-dir as a target uri):
+    1) Leverages poshftw's Invoke-WebRequest -Method Head parse code, to pre-retrieve the Header and back out the target filename 
+        (which is then used as final Invoke-WebRequest -Outfile). 
+    2) And for sites that don't support -Header (chocolatey.org throws 501 not implemented), it falls back to to 
+        trying to obtain and parse a redirect with the full file target present and detectable.
+        (leveraging redirect-grabing specs pointed out by Jimmy McNatt in his post [PowerShell – Capturing a Redirected URL from a Web Request – JMCNATT.NET - jmcnatt.net/](https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/)
+    
+    Where the above fail though, you're just going to have to spec a generic -Outfile/DestinationFile, 
+    if you really can't pre-determine what the version etc returned remotely is going to be.
+
+    Note:-ThrottleDelay will pickup on and use any configured global $ThrottleMs value, for the PROCESS block loop pause.
+
+    Originally implemented a generic -path param, which could be either a leaf file or a directory spec. 
+    Issue: Can't tell the difference from the OS: c:\name could be either a non-extension dir name, or a non-ext file in the root. 
+    Same issue with c:\name.ext, dirs can technically have periods/extensions like files.
+    It's the property of the object - as set by the creating user that 
+    determine which is which. 
+    
+    [system.io.fileinfo] complicates it further by sticking a 'd' directory attribute in the mod on *both* a *non-existant* 
+    full file spec and a non-exist dir spec. 
+    
+    So I eventually *abandoned* use of generic -Path, and force user to spec either explicitly: 
+        -DestinationFile  (leaf path spec)
+        -Destation (dir spec)
+    And, to simplify the equation, now requirre that the parent dir _pre-exist_ when -DestinationFile is used.
+
+
+    .PARAMETER Uri
+    Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+    .PARAMETER Destination
+    Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']
+    .PARAMETER DestinationFile
+    Full path to destination file for download[-DestinationFile 'c:\path-to\']
+    .PARAMETER ThrottleDelay
+    Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    save-webdownload -Uri https://community.chocolatey.org/api/v2/package/chocolatey -Destination c:\tmp\ -verbose
+    Demo download of a redirected generic url, to the derived filename into c:\tmp dir.
+    .EXAMPLE
+    save-webdownload -Uri https://fqdn/dir -Path c:\tmp\file.ext ;
+    Demo standard Path-specified download
+    .EXAMPLE
+    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.1.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
+    $dlpkgs | save-webdownload -Destination C:\tmp\2023-02-23 -verbose  ;
+    Demo pkgs array in variable, pipelined in, with destination folder (implies will attempt to obtain download file name from headers).
+    .LINK
+    #>
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM (
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=0,
+            HelpMessage="Uri to be downloaded[-Uri https://community.chocolatey.org/api/v2/package/chocolatey]")] 
+            [uri[]]$Uri,
+        [Parameter(Mandatory=$false,Position=1,
+            HelpMessage = "Path to destination directory for dynamic filename download(defaults to pwd)[-Destination 'c:\path-to\']")]
+            [string]$Destination,
+        [Parameter(Mandatory=$false,Position=2,
+            HelpMessage = "Full path to destination file for download[-DestinationFile 'c:\path-to\']")]
+            [string]$DestinationFile,
+        [Parameter(Mandatory=$false,Position=2,
+            HelpMessage = "Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]")]
+            [int]$ThrottleDelay
+    ) ; 
+    BEGIN {
+        $rgxHeaders = 'filename=(?:\")*(?<filename>.+?)(?:\")*$' ; 
+        $rgxHtmlAnchor = '<a href="(.*)">' ; 
+
+        if(-not $ThrottleDelay -AND ((get-variable -name ThrottleMs -ea 0).value)){
+            $ThrottleDelay = $ThrottleMs ; 
+            $smsg = "(no -ThrottleDelay specified, but found & using `$global:ThrottleMs:$($ThrottleMs)ms" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        } ; 
+
+        $verbose = $($VerbosePreference -eq "Continue") ;
+
+
+        if($Destination  -AND $DestinationFile){
+            $smsg = "BOTH: -Destination & -DestinationFile specified!" ; 
+            $smsg += "`nPlease choose one or the other, NOT BOTH!" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+            BREAK ; 
+        } ; 
+
+        if(-not $Destination -AND -not $DestinationFile){
+            $Destination = (Get-Location).Path
+        } ; 
+
+        # also if -DestinationFile, -URI cannot be an array (df forces explicit filename per uri).
+        if($DestinationFile -AND ($uri.OriginalString -is [array])){
+            $smsg = "-DestinationFile specified:`n($($DestinationFile))" ; 
+            $smsg += "`nalong with an array of -uri:" ; 
+            $smsg += "`n$(($uri.OriginalString|out-string).trim())" ; 
+            $smsg += "-DestinationFile requires a *single* inbound -Uri to funciton properly" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+            BREAK ; 
+        } 
+
+        TRY {
+            $smsg = "Normalized out any relative paths to absolute:" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if($Destination ){
+                $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination) ;
+            } ; 
+            if($DestinationFile){
+                $DestinationFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($DestinationFile) ;
+            } ; 
+            <#
+            # alt: hack of resolve-path (which norm can't resolve non-exist paths), grabbing resolved path out of the error of a fail, as TargetObject prop.
+            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
+            $Path = Resolve-Path $path -ErrorAction SilentlyContinue -ErrorVariable _frperror ; 
+            if (-not($Destination)) {$Destination = $_frperror[0].TargetObject} ; 
+            #>
+            
+            $smsg = "Cast `$Destination/`$DestinationFile to [system.io.fileinfo]" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+            if($Destination){
+                [system.io.fileinfo]$Destination = $Destination ;
+            } ; 
+            if($DestinationFile){
+                [system.io.fileinfo]$DestinationFile = $DestinationFile ;
+            } ; 
+
+            [boolean]$PathIsFile = [boolean]$PathExists = $false ; 
+
+
+            if($Destination -and (test-path -path $Destination)){
+                # we should *require* that dirs exist, if doing dyn paths
+                $PathExists = $true
+                # so if exists, check it's type:
+                $tobj = get-item -path  $Destination -ea STOP; 
+                $PathIsFile =  -not($tobj.PSIsContainer) ; 
+                if($PathExists -AND $PathIsFile -eq $false){
+                    $Path = $Destination
+                } ; 
+            } elseif($Destination -AND -not (test-path -path $Destination)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
+
+                $smsg = "NON-EXISTANT -Destination specified!" ; 
+                $smsg += "`n$(($Destination.fullname|out-string).trim())" 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                # PLAN B: CREATE THE MISSING PROMPTED
+                $smsg = "`n`nDO YOU WANT TO *CREATE* THE MISSING SPECIFIED -DESTINATION!?" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Prompt } 
+                else{ write-host -foregroundcolor YELLOW "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+                if ($bRet.ToUpper() -eq "YYY") {
+                    $smsg = "(Moving on)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    $pltNI = @{
+                        ItemType ="directory" ;
+                        Path = $Destination.fullname ; 
+                        erroraction = 'STOP' ;
+                        whatif = $($whatif) ;
+                    } ;
+                    $smsg = "New-Item  w`n$(($pltNI|out-string).trim())" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+                    $Path = new-item @pltNI ; 
+                    if(test-path $Path){
+                        $PathExists = $true ;
+                        $PathIsFile = $false ; 
+                    } else { 
+                        $PathExists = $false ;
+                        $PathIsFile = $false ; 
+                    } ; 
+
+                } else {
+                     $smsg = "Invalid response. Exiting" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    break ; 
+                }  ; 
+
+            } elseif($DestinationFile -AND (test-path -path $DestinationFile)){
+                # existing file spec, overwrite default
+                $Path = $DestinationFile ; 
+                $PathExists = $true ;
+                $PathIsFile = $true ; 
+            } elseif($DestinationFile -AND -not (test-path -path $DestinationFile)){
+                $PathExists = $false ;
+                $PathIsFile = $false ; 
+                # non-existant file spec
+                # does interrum dir exist?    
+                $throwWarn = $false ; 
+                if(-not $Destination){
+                    $Destination = split-path $DestinationFile ; 
+                    $smsg = "blank `$Destination w populated `$DestinationFile:`nderived $Destination from `$DestinationFile" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                } ; 
+                $smsg = "-DestinationFile as specified`n$($DestinationFile)`n...is *non-existant* file path:"
+                if(test-path $Destination  ){
+                    $smsg += "`nConfirmed presence of specified parent dir:`n$($Destination)" ; 
+
+                    $path = $DestinationFile ; 
+                    $PathExists = $false ;
+                    $PathIsFile = $true ; 
+
+                } else {
+                    $smsg += "`n*COULD NOT* Confirm presence of specified parent dir:`n$($Destination.fullname)" ; 
+                    $smsg += "`nA PRE-EXISTING parent is required for -DestinationFile downloads!" ; 
+                    $throwWarn = $true ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    break ; 
+                } ; 
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+            }
+            
+            if($Path){
+                
+                # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
+                $smsg = "Resolved `$Path:`n$($Path)" ;             
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+
+            } else { 
+                $smsg = "`$Path is unpopulated!`n$($Path)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ; 
+                break ; 
+            }
+
+        } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                throw $ErrTrapd ; 
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        } ; 
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+
+        foreach($item in $Uri){
+            TRY {
+                [boolean]$isDone = $false ; 
+                if($PathIsFile){
+                    $smsg = "(-Path detected as Leaf object: Using as destination filename)" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose $smsg } ; } ; 
+
+                    $pltIWR=[ordered]@{
+                        Uri=$item ;
+                        OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $ret = Invoke-WebRequest @pltIWR ; 
+
+                    $OutFilePath = $Path ; 
+                    $isDone = $true ; 
+
+                } elseif(-not $PathIsFile -AND -not $PathExists) { 
+                    $smsg = "-Path detected as NON-EXISTANT Container object:" ; 
+                    $smsg += "`n a pre-existing Container (or full path to file) must be specified for this function to work properly" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                    break ; 
+                } else {
+                    # not existing file, or missing file: Directory 
+                    $PathIsFile = $false ; 
+                    $smsg = "-Path detected as existing Container object: Attempting to derive the target filename from download Headers..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+
+                    $pltIWR=[ordered]@{
+                        Uri = $item ;
+                        Method = 'Head' ;
+                        #OutFile = $Path ; 
+                        erroraction = 'STOP' ;
+                    } ;
+                    $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    
+                    $iwr = Invoke-WebRequest @pltIWR ; 
+
+
+
+                    if ($iwr.Headers['Content-Disposition'] -match $rgxHeaders) {
+                        $OutFilePath = Join-Path $Path $Matches['filename'] ; 
+                        $smsg = "Derived filename/OutFilePath:`n" ; 
+                        $smsg += "`n$($OutFilePath)" ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        else{ write-host $smsg } ;
+                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                    }  else {
+                        $smsg = ("Couldn't derive the filename from {0}" -f $item) ; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                        else{ write-WARNING $smsg } ; 
+                        throw $smsg ; 
+                    } ; 
+                    $isDone = $false ; # trigger trailing final dl below
+                } ; 
+            }CATCH [System.Net.WebException]{
+                $ErrTrapd=$Error[0] ;
+                if($ErrTrapd.Exception -match '\(501\)'){
+                    # choco returns 501 on both the -Method Head fail, and on lack of support for Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                    # on the 501 error - choco, which lacks header support - we can trap the redir for parsing:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                    $smsg = "=>Remote server returned a 501 (not implemented error)" ; 
+                    $smsg += "`n`n-->Re-Attempting:Obtain & parse redirection info for request..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+
+                    TRY{
+                        $pltIWR=[ordered]@{
+                            Uri = $item ;
+                            Method = 'Get' ; 
+                            MaximumRedirection = 0 ; 
+                            #Method = 'Head' ;
+                            #OutFile = $Path ; 
+                            erroraction = 'SilentlyContinue' ; # maxi redir resolve *relies* on silentlycontinue; use StOP and it fails.
+                        } ;
+                        $smsg = "Invoke-WebRequest w`n$(($pltIWR|out-string).trim())" ; 
+                        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                        if($Results = Invoke-WebRequest @pltIWR){
+                            # checking for a redirect return, to parse:
+                            <# Redirect error returned, sample:
+                            StatusCode        : 302
+                            StatusDescription : Found
+                            Content           : <html><head><title>Object moved</title></head><body>
+                                                <h2>Object moved to <a href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</a>.</h2>
+                                                </body></html>
+                            RawContent        : HTTP/1.1 302 Found
+                                                Transfer-Encoding: chunked
+                                                Connection: keep-alive
+                                                X-AspNetMvc-Version: 3.0
+                                                X-Frame-Options: deny
+                                                CF-Cache-Status: DYNAMIC
+                                                Strict-Transport-Security: max-age=12960000
+                                                X-Conten...
+                            Forms             : {}
+                            Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [X-AspNetMvc-Version, 3.0], [X-Frame-Options, deny]...}
+                            Images            : {}
+                            InputFields       : {}
+                            Links             : {@{innerHTML=here; innerText=here; outerHTML=<A href="https://packages.chocolatey.org/chocolatey.1.3.0.nupkg">here</A>;
+                                                outerText=here; tagName=A; href=https://packages.chocolatey.org/chocolatey.1.3.0.nupkg}}
+                            ParsedHtml        : mshtml.HTMLDocumentClass
+                            RawContentLength  : 171
+                            #>
+                            $lines = $results.Content.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) ; 
+                            if($lines = $lines | ?{$_ -like '*href*'}){
+                                if([uri]$RedirUrl = [regex]::match($lines,$rgxHtmlAnchor).groups[1].captures[0].value){
+                                    if($OutFilePath = Join-Path $Path -childpath $RedirUrl.LocalPath.replace('/','')){
+                                        $smsg = "Resolved redirect to a filename, for OutputPath:" ;
+                                        $smsg += "`n$($OutFilePath)" ;  
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                        else{ write-host $smsg } ;
+                                        $isDone = $false ; # trigger trailing final dl below
+                                    } else { 
+                                        $smsg += "Unable to Construct a workable `$OutputFilePath from returned data:" ; 
+                                        $smsg += "`nPlease specify a full leaf file -Path specification and retry (even a dummy filename will work)" ; 
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                        else{ write-WARNING $smsg } ; 
+                                        throw $smsg ; 
+                                        break ; 
+                                    } ; 
+                                } ; 
+                            } else { 
+                                $smsg += "Unable to locate a `$returned.Content line containing an '*href*', for further parsing. Aborting" ; 
+                                $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                                else{ write-WARNING $smsg } ; 
+                                throw $smsg ; 
+                                break ; 
+                            } ; 
+<<<<<<< HEAD
+                            
+                            $SPFObject ; 
+                        } 
+                        '^a:.*$' {
+                            Write-Verbose "[A]`tSPF entry: $SPFDirective"
+                            $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type A ; 
+                            # Check SPF record
+                            foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
+                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
+                                if ( $PSBoundParameters.ContainsKey('Referrer') ) {
+                                    $SPFObject.Referrer = $Referrer ; 
+                                    $SPFObject.Include = $true ; 
+                                }
+                                $SPFObject ; 
+                            }
+                        }
+                        '^mx:.*$' {
+                            Write-Verbose "[MX]`tSPF entry: $SPFDirective" ; 
+                            $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type MX ; 
+                            foreach ($MXRecords in ($DNSRecords.NameExchange) ) {
+                                # Check SPF record
+                                $DNSRecords = Resolve-DnsName -Server $Server -Name $MXRecords -Type A ; 
+                                foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
+                                    $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier) ; 
+                                    if ( $PSBoundParameters.ContainsKey('Referrer') ) {
+                                        $SPFObject.Referrer = $Referrer ; 
+                                        $SPFObject.Include = $true ; 
+                                    } ; 
+                                    $SPFObject ; 
+                                } ; 
+                            } ; 
+                        }
+                        Default {
+                            Write-Warning "[$_]`t Unknown directive" ; 
+                        }
+                    } ; 
+                } ; 
+
+                $DNSQuerySum = $ReturnValues | Select-Object -Unique SPFSourceDomain | Measure-Object | Select-Object -ExpandProperty Count ; 
+                if ( $DNSQuerySum -gt 6) {
+                    Write-Warning "Watch your includes!`nThe maximum number of DNS queries is 10 and you have already $DNSQuerySum.`nCheck https://tools.ietf.org/html/rfc7208#section-4.6.4" ; 
+                } ; 
+                if ( $DNSQuerySum -gt 10) {
+                    Write-Error "Too many DNS queries made ($DNSQuerySum).`nMust not exceed 10 DNS queries.`nCheck https://tools.ietf.org/html/rfc7208#section-4.6.4" ; 
+                } ; 
+
+                $ReturnValues ; 
+            } ; 
+        } ; 
+    } ; 
+
+    END {}
+}
+
+#*------^ Resolve-SPFRecord.ps1 ^------
+
+
+#*------v save-WebDownload.ps1 v------
+function save-WebDownload {
+    <#
+    .SYNOPSIS
+    save-WebDownload - Download Uri file from Inet (via Invoke-WebRequest iwr), without need to know destination filename (parses filename out of headers of the download).
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : save-WebDownload.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Internet,Download,File
+    AddedCredit : poshftw
+    AddedWebsite: https://old.reddit.com/r/PowerShell/comments/moxy5v/downloading_a_file_with_powershell_without/
+    AddedTwitter: URL
+    AddedCredit : Jimmy McNatt
+    AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
+    AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
+    REVISIONS
     * 2:23 PM 3/7/2023 rem'd out prior path<file/dir code - it's not used with explicit params ; seems to work; fliped the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it fails; 
     rounded out, added missing code to detect successful first dl attempt. 
     * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
@@ -2955,6 +3556,36 @@ function save-WebDownload {
                         } else { 
                             $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
                             $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+=======
+
+                        } else {
+                            #parse off and offer the leaf name of the uri 
+                            TRY{
+                                if($samplefilename = [System.IO.Path]::GetFileName($uri) ){
+                                    # returns 'chocolatey' from expl url
+                                    $smsg = "(removing illegal fs chars from resolved leaf name)" ; 
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $samplefilename = [RegEx]::Replace($samplefilename, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                                } else {
+                                    $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ; 
+
+                            }CATCH{
+                                $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ; 
+                            $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
+                            $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                            if($samplefilename){
+                                $smsg += "(possibly the url 'generic' filename:$($samplefilename).extension" ; 
+                            } ; 
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                             else{ write-WARNING $smsg } ; 
                             throw $smsg ; 
@@ -3004,7 +3635,11 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING $smsg } ; 
                     throw $smsg ; 
+<<<<<<< HEAD
                     # fatal, server is going to continue throttling for quite a while: no point in using Continue
+=======
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
                     break ; 
                 } else { 
                     $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
@@ -3024,9 +3659,12 @@ function save-WebDownload {
                 $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-warning $smsg } ;
+<<<<<<< HEAD
                 #$smsg = $ErrTrapd.Exception.Message ;
                 #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 #else{ write-warning $smsg } ;
+=======
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-host $smsg } ;
@@ -3847,16 +4485,25 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 #*------^ summarize-PassStatusHtml.ps1 ^------
 
 
+<<<<<<< HEAD
 #*------v test-Connection-T.ps1 v------
 function test-Connection-T {
     <#
     .SYNOPSIS
     test-Connection-T - Endless test-Connection pings (simple equiv to ping -t)
+=======
+#*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
+function Test-DnsDkimCnameToTxtKeyTDO {
+    <#
+    .SYNOPSIS
+    Test-DnsDkimCnameToTxtKeyTDO - Trace a local CNAME DKIM DNS record, to it's endpoint TXT DKIM key-holding record (and validate it's actually a DKIM key). 
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
     .NOTES
-    Version     : 1.0.0
+    Version     : 0.0.5
     Author      : Todd Kadrie
     Website     : http://www.toddomation.com
     Twitter     : @tostka / http://twitter.com/tostka
+<<<<<<< HEAD
     CreatedDate : 2020-04-17
     FileName    : test-Connection-T.ps1
     License     : MIT License
@@ -4037,6 +4684,127 @@ function Test-DnsDkimCnameToTxtKeyTDO {
 
     Demo looping array of names, with one with a failure to validate ('cuz the vendor stuffed an SPF where a DKIM TXT record belonged!)
     .EXAMPLE
+=======
+    CreatedDate : 2022-11-03
+    FileName    : Test-DnsDkimCnameToTxtKeyTDO
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell
+    REVISIONS
+    * 5:41 PM 12/30/2022 expanded rgx public-key test, added dkim key tag 
+        requirements doc, test is down to essential p=xxx public key only ;  updated 
+        CBH demos w fancy EXO DKIM per-domain looped validation; ported to func, 
+        working; init;  
+    .DESCRIPTION
+    Test-DnsDkimCnameToTxtKeyTDO - Trace a local CNAME DKIM DNS record, to it's endpoint TXT DKIM key-holding record (and validate it's actually a DKIM key). 
+
+       Along the way, I did a *a fair amount* of coding logic...
+
+        1. running looped CNAME resolve-dnsname's, 
+        2. detecting a returned SOA type (when the next record was a TXT), 
+        3. then switching resolution to a final TXT resolve-dnsname pass.
+    
+    ... to quickly deliver local domain CNAME to remote SAAS vendor DKIM key TXT validation
+     (when, 'It NO WORKY!' tickets came through against 3rd-party operated services). 
+
+    Had that version *working*, and *then* while testing, I noticed a 'feature' of resolve-dnsname:
+
+    Feed a cname fqdn through resolve-dnsname, WITHOUT A TYPE spec, and it AUTO RECURSES!
+        - If it's a CNAME -> CNAME -> TXT chain, you'll get back 3 records: CNAME, CNAME, SOA (fail indicator). 
+        - Postfilter out the SOA, and you've got the series of initial hops to the TXT.
+        - Then Run a final -type TXT on the last CNAME's NameHost, and you get the TXT back (with the DKIM key)
+   
+    > Note: have to strongly type output assignment as Array to get proper Op.addition support for the trailing TXT record.
+
+    $results = @(resolve-dnsname CNAME.domain.tld  -server 1.1.1.1 |? type -ne 'SOA') ; 
+    $results += @($results | select -last 1  | %{resolve-dnsname -type TXT -server 1.1.1.1 -name $_.namehost}) ; 
+
+    => 99% of my prior non-reporting & content validating code, could be reduced down to the above 2 LINES! [facepalm]
+
+    I've retained the rem'd out original code (in case they write the 'autorecurse' feature out, down the road), but boiled this down to that essential logic above.
+
+    Uses my verb-IO module convertTo-MarkdownTable() to box-format the output, diverts to format-table -a when it's not available. 
+
+    .PARAMETER DkimDNSName
+    Local AcceptedDomain CNAME DKIM DNS record, to be trace-resolved to key-holding TXT record. [-DkimDNSName 'host.domain.com']
+    .PARAMETER PublicDNSServerIP
+    Public DNS server (defaults to Cloudflare's 1.1.1.1, could use Google's 8.8.8.8)[-PublicDNSServerIP '8.8.8.8']
+    .PARAMETER outputObject
+    Switch that triggers output of results to pipeline [-outputObject] 
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> Test-DnsDkimCnameToTxtKeyTDO -DkimDNSName HOST.DOMAIN.COM -verbose ;
+    Demo resursive CNAME to TXT DKIM key resolve of DKIM CNAME DNS record name
+    .EXAMPLE
+    PS> Test-DnsDkimCnameToTxtKeyTDO -DkimDNSName 'selector1._domainkey.DOMAIN.TLD','HOST.DOMAIN.com' ; 
+        11:25:09:#*======v Test-DnsDkimCnameToTxtKeyTDO v======
+        11:25:09:
+        #*------v PROCESSING : selector1._domainkey.DOMAIN.TLD v------
+        11:25:09:
+
+        ==HOP: 1: CNAME: selector1._domainkey.DOMAIN.TLD ==> selector1-domain-tld._domainkey.TENANT.onmicrosoft.com:
+        | Type  | Name                            | NameHost                                               |
+        | ----- | ------------------------------- | ------------------------------------------------------ |
+        | CNAME | selector1._domainkey.DOMAIN.TLD | selector1-domain-tld._domainkey.TENANT.onmicrosoft.com |
+        
+        11:25:09:
+
+        ==HOP: 2: TXT:Value record::
+
+        | Type | Name                                                   |
+        | ---- | ------------------------------------------------------ |
+        | TXT  | selector1-domain-tld._domainkey.TENANT.onmicrosoft.com |
+
+        | Strings         |
+        | --------------- |
+        | v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3D[TRIMMED]NcHJRPWbPisCiRFPfUGtCNQIDAQAB; |
+        
+        ===:TXT: selector1-domain-tld._domainkey.TENANT.onmicrosoft.com.strings *IS VALIDATED* to contain a DKIM key:
+        
+        11:25:09:
+        #*------^ PROCESSING : selector1._domainkey.DOMAIN.TLD ^------
+        11:25:09:
+        #*------v PROCESSING : HOST.DOMAIN.com v------
+        11:25:09:
+
+        ==HOP: 1: CNAME: HOST.DOMAIN.com ==> HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services:
+        | Type  | Name            | NameHost                                    |
+        | ----- | --------------- | ------------------------------------------- |
+        | CNAME | HOST.DOMAIN.com | HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services |
+        
+        11:25:09:
+
+        ==HOP: 2: CNAME: HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services ==> unnnnnnnn.wlnnn.sendgrid.net:
+        | Type  | Name                                        | NameHost                     |
+        | ----- | ------------------------------------------- | ---------------------------- |
+        | CNAME | HOST.vnnnnnnnn.nnnnnnnnnn.e.VENDOR.services | unnnnnnnn.wlnnn.sendgrid.net |
+        
+        WARNING: 11:25:09:
+
+        ==HOP: 3: TXT:Value record::
+
+        | Type | Name                         |
+        | ---- | ---------------------------- |
+        | TXT  | unnnnnnnn.wlnnn.sendgrid.net |
+
+        | Strings         |
+        | --------------- |
+        | v=spf1 ip4:167.11.11.96 ip4:167.11.11.1 ip4:167.11.11.100 ip4:167.11.11.102 -all |
+        
+        ===:TXT: unnnnnnnn.wlnnn.sendgrid.net.strings *DOES NOT VALIDATE* to contain a DKIM key!
+        (strings should start with 'v=DKIM1')
+
+        11:25:09:
+        #*------^ PROCESSING : HOST.DOMAIN.com ^------
+        11:25:09:#*======^ Test-DnsDkimCnameToTxtKeyTDO ^======
+
+    Demo looping array of names, with one with a failure to validate ('cuz the vendor stuffed an SPF where a DKIM TXT record belonged!)
+    .EXAMPLE
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
     PS>  $domains = Get-xoDkimSigningConfig |Where-Object {$_.Enabled -like "True" -AND $_.name -notlike '*.onmicrosoft.com'} ;
     PS>  foreach($domain in $domains){
     PS>      $dNow = Get-date ; 
@@ -4941,7 +5709,11 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
+<<<<<<< HEAD
 Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+=======
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 
 
 
@@ -4949,8 +5721,13 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
+<<<<<<< HEAD
 # AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUT1oP7zTKWb1NHlqZraQvo0/
 # ZwKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+=======
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUh7J7awqRaU9cVvgekkD2o85p
+# W0GgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4965,9 +5742,17 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
+<<<<<<< HEAD
 # CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRTte7Q
 # s+PqdO/2WTVJC9Q0oc/U6DANBgkqhkiG9w0BAQEFAASBgKJpwX4KdepvviUcbuUQ
 # DGwGsrfGEfY1xuVulNLVUCyDmwfCjgYanKPg/VMYLp/FCzpw0JIWBLcbIuyEznl+
 # m9cLnlyJsZWIHpgLQ9cadxMH/5+yUlhfSoxcwKbTW9xkrexQ+NV2tFy2dQsAf3MP
 # 5zveAMD835aB/tgnEPTVYgBw
+=======
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ0m2jd
+# nlbStBUMaqQt66UXxBwCLDANBgkqhkiG9w0BAQEFAASBgEAQc02PftiIEncJCSvO
+# u5PGprWd9/dVW6X/h62AdnJ6uLh4W8mA5v7QvKoBtQESmq7SP5St2mdAT2i34Prw
+# DPhwR1Bw3gr5WMfSIhAt5LEAmSoKUD2dkW6W7Bg6LMs4g1+WGnn2reLqzo0wqxTg
+# BnTxeOuQnPTIcDn9rlelVzk6
+>>>>>>> 96392b7996c13ed37baab8f6d17db011dbde5bab
 # SIG # End signature block
