@@ -1,4 +1,6 @@
-﻿#*------v Send-EmailNotif.ps1 v------
+﻿# Send-EmailNotif.ps1
+
+#*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
     .SYNOPSIS
@@ -18,6 +20,7 @@ Function Send-EmailNotif {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 1:46 PM 5/23/2023 added test for dyn-ip workstations (skips submit, avoids lengthy port timeout wait on fail); added full pswlt support
     * 9:58 PM 11/7/2021 updated CBH with complete gmail example ; updated CBH with complete gmail example
     * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
     * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
@@ -292,30 +295,6 @@ Function Send-EmailNotif {
         [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
         [System.Management.Automation.PSCredential]$Credential
     )
-<# #-=-=-=MUTUALLY EXCLUSIVE PARAMS OPTIONS:-=-=-=-=-=
-# designate a default paramset, up in cmdletbinding line
-[CmdletBinding(DefaultParameterSetName='SETNAME')]
-  # * set blank, if none of the sets are to be forced (eg optional mut-excl params)
-  # * force exclusion by setting ParameterSetName to a diff value per exclusive param
-# example:single $Computername param with *multiple* ParameterSetName's, and varying Mandatory status per set
-    [Parameter(ParameterSetName='LocalOnly', Mandatory=$false)]
-    $LocalAction,
-    [Parameter(ParameterSetName='Credential', Mandatory=$true)]
-    [Parameter(ParameterSetName='NonCredential', Mandatory=$false)]
-    $ComputerName,
-    # $Credential as tied exclusive parameter
-    [Parameter(ParameterSetName='Credential', Mandatory=$false)]
-    $Credential ;    
-    # effect: 
-    -computername is mandetory when credential is in use
-    -when $localAction param (w localOnly set) is in use, neither $Computername or $Credential is permitted
-    write-verbose -verbose:$verbose "ParameterSetName:$($PSCmdlet.ParameterSetName)"
-    Can also steer processing around which ParameterSetName is in force:
-    if ($PSCmdlet.ParameterSetName -eq 'LocalOnly') {
-        return "some localonly stuff" ; 
-    } ;     
-#-=-=-=-=-=-=-=-=
-#>
     $verbose = ($VerbosePreference -eq "Continue") ; 
     if ($PSCmdlet.ParameterSetName -eq 'gmail') {
         $useSSL = $true; 
@@ -330,21 +309,41 @@ Function Send-EmailNotif {
     if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
         $SMTPServer = $global:SMTPServer ;
         $SMTPPort = $smtpserverport ; # [infra file]
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
+        $smsg = "Mailing:$($SMTPServer):$($SMTPPort)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
     }
     elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer})) {
         $SMTPServer = $env:computername ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Locally:$($SMTPServer)" ;
+        $smsg = "Mailing Locally:$($SMTPServer)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
     }
     elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) ) {
         # non Hub Ex server, draw from local site
         $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer) } ) ;
         $SMTPServer = ($htsrvs | get-random).name ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Random Hub:$($SMTPServer)" ;
-    }
-    else {
+        $smsg = "Mailing Random Hub:$($SMTPServer)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    }elseif( $rgxMyBoxW -AND ($env:COMPUTERNAME -match $rgxMyBoxW)){
+        $smsg = "`$env:COMPUTERNAME -matches `$rgxMyBoxW: vscan UNREACHABLE" ; 
+        $smsg += "`n(and dynamic IPs not configurable into restricted gateways)" ; 
+        $smsg += "`nSkipping mail submission, no reachable destination" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        Break ; 
+    } else {
         # non-Ex servers, non-mybox: Lync etc, assume vscan access
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Non-Exch server, assuming Vscan access" ;
+        $smsg = "Non-Exch server, assuming Vscan access" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        # but dyn ip workstations, not
+
         $SMTPServer = "vscan.toro.com" ;
     } ;
 
@@ -360,12 +359,12 @@ Function Send-EmailNotif {
     } ;
 
     if($Credential){
-        write-verbose "Adding specified credential" ; 
+        $smsg = "WVAdding specified credential" ; 
         $Email.add('Credential',$Credential) ; 
     } ; 
     
     if($useSSL){
-        write-verbose "Adding specified credential" ; 
+        $smsg = "WVAdding specified credential" ; 
         $Email.add('useSSL',$useSSL) ; 
     } ; 
     
@@ -386,15 +385,25 @@ Function Send-EmailNotif {
 
     if ($host.version.major -ge 3) {$Email.add("Port", $($SMTPPort));}
     elseif ($SmtpPort -ne 25) {
-        write-warning "$((get-date).ToString('HH:mm:ss')):Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+        $smsg = "WWLess than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
     } ;
 
     # trigger html if body has html tags in it
     if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
 
     # dumping to pipeline appears out of sync in console put it into a write- command to keep in sync
-    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):send-mailmessage w`n$(($email |out-string).trim())" ; 
-    if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
+    $smsg = "send-mailmessage w`n$(($email |out-string).trim())" ; 
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    if ($validatedAttachments) {
+        $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    } ;
     $error.clear()
     TRY {
         if ($validatedAttachments) {
@@ -406,7 +415,9 @@ Function Send-EmailNotif {
         } ;
     }
     Catch {
-        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
     } ; 
     $error.clear() ;
 }
