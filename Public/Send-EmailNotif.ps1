@@ -1,5 +1,4 @@
 ﻿# Send-EmailNotif.ps1
-
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
@@ -420,6 +419,5 @@ Function Send-EmailNotif {
         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
     } ; 
     $error.clear() ;
-}
-
+} ;
 #*------^ Send-EmailNotif.ps1 ^------
