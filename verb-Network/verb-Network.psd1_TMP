@@ -12,7 +12,7 @@
 RootModule = 'verb-Network.psm1'
 
 # Version number of this module.
-ModuleVersion = '3.1.0'
+ModuleVersion = '3.2.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -148,6 +148,8 @@ PrivateData = @{
 # JGI8EmFkIqqW2YKlOp3LblxAkAKrO8K9N+kF7xtAvm7n0Yq6k79lwPXJjuof9wK7
 # SbMf2N63mA0Y2OLfjzLWmrFk
 # SIG # End signature block
+
+
 
 
 
