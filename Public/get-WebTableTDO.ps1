@@ -1,4 +1,4 @@
-# get-WebTableTDO.ps1
+﻿# get-WebTableTDO.ps1
 #*----------v Function get-WebTableTDO() v----------
 
 function get-WebTableTDO {
@@ -20,6 +20,7 @@ function get-WebTableTDO {
 	AddedWebsite:	URL
 	AddedTwitter:	URL
 	REVISIONS
+    * 3:25 PM 11/27/2023 added expanded CBH examples
 	* 9:25 AM 11/8/2023 ported over from ImportExcel:get-HtmlTable, which is adapted version of Lee Holmes' Get-WebRequestTable.ps1 demo code. 
 	add: -Summary param, which dumps a short index#|Summary (leading textcontent[0..56] string)
 	add: param detailed out, helpmessage, CBH
@@ -30,7 +31,7 @@ function get-WebTableTDO {
 	get-WebTableTDO.ps1 - Extract Tables from Web pages (via PowerShellInvoke-WebRequest)
 
 	Original code: [Lee Holmes | Extracting Tables from PowerShell's Invoke-WebRequest](https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/)
-	By way of dFinke's ImportExcel:get-HtmlTable v7.8.6 [ImportExcel/Public/Get-HtmlTable.ps1 at master · dfinke/ImportExcel · GitHub](https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1)
+	By way of dFinke's ImportExcel:get-HtmlTable v7.8.6 [ImportExcel/Public/Get-HtmlTable.ps1 at master Â· dfinke/ImportExcel Â· GitHub](https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1)
 	
 	.PARAMETER Url
 	Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]
@@ -47,13 +48,63 @@ function get-WebTableTDO {
 	.EXAMPLE
 	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -UseDefaultCredentials:$false ;
 	OPTSAMPLEOUTPUT
-	OPTDESCRIPTION
+	Default output, non specified -TableIndex, which returns contents of first table:
 	.EXAMPLE
-	PS> .\get-WebTableTDO.ps1 -VERBOSE
-	OPTSAMPLEOUTPUT
-	OPTDESCRIPTION
-	.LINK
-	https://github.com/tostka/verb-XXX
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" ; 
+	
+        Season      Episodes
+        ------      --------
+        First aired Last aired
+        1           29
+        2           26
+        3           24
+    
+	Default output, without explicit -TableIndex, outputs the 0'th/first table found on the url.
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -summary
+	
+
+            Index#  :       textContent
+            ------  :       -----------
+            1       :       SeasonEpisodesOriginally airedFirst airedLast aired
+            2       :       TitleDirected byWritten byOriginal air date [23][25
+            3       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            4       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            5       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            6       :       Pilots 01"The Cage" 02a"Where No Man Has Gone Befor
+            7       :       Season 1 02b"Where No Man Has Gone Before" 03"The C
+            8       :       Season 2 30"Catspaw" 31"Metamorphosis" 32"Friday's
+            9       :       Season 3 56"Spectre of the Gun" 57"Elaan of Troyius
+            10      :       This section needs additional citations for verific
+            11      :       vteStar Trek: The Original Series episodesSeasons 1
+            12      :       vteStar Trek: The Original SeriesEpisodesSeason 1 2
+            13      :       vteStar TrekOutline Timeline Canon ListsTelevision
+            14      :       Live-actionThe Original Series episodesThe Next Gen
+            15      :       The Original SeriesThe Motion Picture The Wrath of
+            16      :       CharactersA–F G–M N–S T–ZCrossoversConceptsGames Ko
+
+	Retrieve tables list and echo simple heading summary of each table (useful to determine which -tableIndex # to use for specific table retrieval).
+	.EXAMPLE
+    PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -index 2 | format-table -a ;
+
+        No.          No.in         Title                             Directedby                    Writtenby
+        overall      season
+        ------------ ------------- -----                             ----------                    ---------
+        1            1             "The Man Trap"                    Marc Daniels                  George Clayton Johnson
+        2            2             "Charlie X"                       Lawrence Dobkin               Story by : Gene Roddenberry...
+        3            3             "Where No Man Has Gone Before"    James Goldstone               Samuel A. Peeples
+       ...TRIMMED...
+        27           27            "The Alternative Factor"          Gerd Oswald                   Don Ingalls
+        28           28            "The City on the Edge of Forever" Joseph Pevney                 Harlan Ellison
+        29           29            "Operation -- Annihilate!"        Herschel Daugherty            Steven W. Carabatsos
+
+    Retrieve the index 2 ("third") table on the specified page, and output format-table -auto, to align data into columns.
+    .EXAMPLE
+    PS> $data = get-WebTableTDO -Url $Url -TableIndex $Index -Header $Header -FirstDataRow $FirstDataRow -UseDefaultCredentials: $UseDefaultCredentials
+    PS> $data | Export-Excel $xlFile -Show -AutoSize ; 
+    Demo conversion, with export-excel exporting xlsx, and opening ase temp file in Excel
+    .LINK
+	https://github.com/tostka/verb-Network
 	.LINK
 	https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1
 	.LINK
@@ -64,16 +115,16 @@ function get-WebTableTDO {
     PARAM(
         [Parameter(Mandatory=$true,HelpMessage='Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]')]
 			[System.Uri]$Url,
-        [Parameter(Mandatory=$true,HelpMessage='Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]')]
+        [Parameter(HelpMessage='Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]')]
         [Alias('index')]
 			[int]$TableIndex=0,
-        [Parameter(Mandatory=$true,HelpMessage='Table header properties to be substituted for the resulting table')]
+        [Parameter(HelpMessage='Table header properties to be substituted for the resulting table')]
 			$Header,
-        [Parameter(Mandatory=$true,HelpMessage='Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]')]
+        [Parameter(HelpMessage='Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]')]
 			[int]$FirstDataRow=0,
-		[Parameter(Mandatory=$true,HelpMessage='Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]')]
+		[Parameter(HelpMessage='Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]')]
 			[Switch]$Summary,
-        [Parameter(Mandatory=$true,HelpMessage='Indicates that the cmdlet uses the credentials of the current user to send the web request.')]
+        [Parameter(HelpMessage='Indicates that the cmdlet uses the credentials of the current user to send the web request.')]
 			[Switch]$UseDefaultCredentials
     ) ; 
     if ($PSVersionTable.PSVersion.Major -gt 5 -and -not (Get-Command ConvertFrom-Html -ErrorAction SilentlyContinue)) {
