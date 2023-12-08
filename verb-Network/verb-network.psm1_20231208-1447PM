@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.3.3.0
+Version     : 3.3.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1781,7 +1781,7 @@ function get-tsUsers {
     * 7:42 AM 11/11/2016 corrected script name typo in help example
     * 9:55 AM 10/24/2016 updated 
     * 8:12 AM 10/24/2016 minor tweaking, reworked pshelp 1tb formation etc
-    * 9/23/2015 v1.2.1 jaap's posted version
+    * 9/23.3.05 v1.2.1 jaap's posted version
     .DESCRIPTION
     get-tsUsers.ps1 - simple easy-to-remember wrapper for quser remote termserve query tool. 
     Actually, I just decided to save time and rename Jaap's prefab to my preferred name get-tsUsers.ps1.
@@ -2913,7 +2913,7 @@ function save-WebDownload {
     path<file/dir code - it's not used with explicit params ; seems to work; fliped 
     the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
     fails; ; rounded out, added missing code to detect successful first dl attempt. 
-    * 2:56 PM 3.3.3023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
     Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
@@ -2970,7 +2970,7 @@ function save-WebDownload {
     save-webdownload -Uri https://fqdn/dir -Path c:\tmp\file.ext ;
     Demo standard Path-specified download
     .EXAMPLE
-    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.0.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
+    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.0.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.3.061116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
     $dlpkgs | save-webdownload -Destination C:\tmp\2023-02-23 -verbose  ;
     Demo pkgs array in variable, pipelined in, with destination folder (implies will attempt to obtain download file name from headers).
     .LINK
@@ -4040,7 +4040,7 @@ Function Send-EmailNotif {
     # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
     # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
     # 2:32 PM 5/14/2020 re-enabled & configured params - once it's in a mod, there's no picking up $script level varis (need explicits). Added -verbose support, added jumpbox alt mailing support
-    # 1:14 PM 2/13/2019 Send-EmailNotif(): added $SmtpBody += "`$PassStatus triggers:: $($PassStatus)"
+    # 1:14 PM 2/13.3.09 Send-EmailNotif(): added $SmtpBody += "`$PassStatus triggers:: $($PassStatus)"
     # 11:04 AM 11/29/2018 added -ea 0 on the get-services, override abberant $mybox lacking new laptop
     # 1:09 PM 11/5/2018 reworked $email splat & attachment handling & validation, now works for multiple attachments, switched catch write-error's to write-hosts (was immed exiting)
     # 10:15 AM 11/5/2018 added test for MSExchangeADTopology service, before assuming running on an ex server
@@ -5414,7 +5414,7 @@ function Test-Port {
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
     # 10:42 AM 4/15/2015 fomt cleanup, added help
     # vers: 8:42 AM 7/24/2014 added proper fail=$false
-    # vers: 10:25 AM 7/23/2014 disabled feedback, added a return
+    # vers: 10:25 AM 7/23.3.04 disabled feedback, added a return
     .DESCRIPTION
     Test-Port() - test the specified ip/fqdn port combo
     Excplicitly does not have pipeline support, to make it broadest backward-compatibile, as this func name has been in use goine way back in my code.
@@ -5553,7 +5553,7 @@ function Test-RDP {
     REVISIONS   :
     # 9:48 AM 9/25/2020 fixed to explicitly check for an RDP & clientname evari: wasn't properly firing on work box, $env:sessionname is blank, not 'Console' 
     # 3:45 PM 4/17/2020 added cbh
-    # 10:45 AM 7/23/2014
+    # 10:45 AM 7/23.3.04
     .DESCRIPTION
     Test-RDP() - determine if powershell is running within an RDP session
     RDP sets 2 environment variables on remote connect:
@@ -5608,7 +5608,7 @@ function convert-Int64toIP {
     .OUTPUT
     System.String
     .EXAMPLE
-    convert-Int64toIP -int 3.3.335521
+    convert-Int64toIP -int 3232235521
     Result
     ------
     192.168.0.1
@@ -5620,7 +5620,7 @@ function convert-Int64toIP {
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
-        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3.3.335521]")]
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3232235521]")]
         [int64]$int
     )
     BEGIN {
@@ -5668,7 +5668,7 @@ function Convert-IPtoInt64 {
     Convert-IPtoInt64 -IP 192.168.0.1
     Result
     ------
-    3.3.335521
+    3232235521
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -5704,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQKl2/TmxgdCJRpdjHmTB+UTW
-# 2KSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvwDWa8L1fRNAmwJpteMesTX0
+# jkGgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5720,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTjVgQe
-# Wlfq3DBnD51iBpEwchY5tTANBgkqhkiG9w0BAQEFAASBgHeTLi6oEC1Zdx90PILs
-# MM1grpiUBKZTgrk/V4FcuHRKl2XBLtyQWJF9rs15JPXKbQyXpMG0GS27S6vs6aPG
-# wUljZWCqOvqtLOYjgT5guhu9VBZPkoY1QtyXTQq3BONqfwvTbym8EJanA/QpcMk3
-# iuVqKdYF3elvgBh1w/3s7WLK
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBR/qfUI
+# JWdgFUA9Lu6Ap54CNxXOmTANBgkqhkiG9w0BAQEFAASBgDziT7ZAS/r8b/jED8ym
+# umuN2yCuzpsWB6IPMTH/T8TJIM+FNF4yxmMaeyXZUww+ZV4UQEqW2got0LN+mSnC
+# Ixc2JcloeFNzUgVpIc4PFTib1URKQ+G4Ltdx996/1jbU/quLnENz4wkAEmGyKHda
+# Y5A0r6RkCXG7XAftWVs/Oc7U
 # SIG # End signature block

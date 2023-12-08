@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.0.0.0
+Version     : 3.2.1.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -252,6 +252,216 @@ Function Disconnect-PSR {
 }
 
 #*------^ Disconnect-PSR.ps1 ^------
+
+
+#*------v get-CertificateChainOfTrust.ps1 v------
+Function get-CertificateChainOfTrust {
+    <#
+    .SYNOPSIS
+    get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+    .NOTES
+    Version     : 2.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2023-10-26
+    FileName    : get-CertificateChainOfTrust.ps1
+    License     : (non asserted)
+    Copyright   : (non asserted)
+    Github      : https://github.com/tostka/verb-io
+    Tags        : Powershell
+    AddedCredit : Amir Sayes 
+    AddedWebsite: https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
+    AddedTwitter: URL
+    REVISIONS
+    * 10:31 AM 10/26/2023 add -CertificateStoreRoot param, to permit runs against CurrentUser or default LocalMachine; 
+        ren CertificateName param -> CertificateID w alias for orig name ; 
+        ren get-CertificatePath -> get-CertificateChainOfTrust (better reflects what it does) ; 
+        removed default * Certificate spec, I don't want trust tests on all certs in the local\My, I want targeted reports ; 
+        expanded CertificateName to support Thumbprint, full Subject DN or subset Subject 'shortname' (first element of Subject DN w 'CN=' prefix removed). 
+        Use of Thumbprint spec is more usefual than Subject, during mid-rollover coexistance, want to pull only a specific cert of the set, rather than both new and retiring old.
+        updated CBH, condensed some code.
+    * 1/2/2019 AS posted version
+    .DESCRIPTION
+    get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+    Function to get and display all the properties of the certificates in a certificate path (chain) until the Root CA.
+    The Function would use Authority Key Identifier and the Subject Key Identifier to determine the certificate path
+    [Get and Enumerate Certificate Chains Remotely Using PowerShell - Amir Sayes](https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/)
+
+    Credit to Splunk Base for Certificate Authority Situational Awareness
+        https://splunkbase.splunk.com/app/3113/
+        https://github.com/nsacyber/Certificate-Authority-Situational-Awareness
+        Author: Amir Joseph Sayes
+            www.Ninaronline.com
+        Version: 1.0
+
+    .PARAMETER CertificateID
+    A certificate identifier: Thumbprint, Shortname (triest to match the 1st element of the SubjectName, cleaned of CN=), full Subject DN, or wildcard[-CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC
+    .PARAMETER ParentAKI
+    Not available for the user to use via the pipeline, this parameter is used internally to look for the certificates in the validation chain recursively
+    .PARAMETER Recurse
+    If this switch is ON, the function will recusivley call itself through the certificate chain until it gets to the Root CA.
+    .PARAMETER CertificateStoreRoot
+    Root below which to search certificates: LocalMachine (default) or CurrentUser[-CertificateRootStore CurrentUser]
+    .PARAMETER CertificateStore
+    Pass the certificateStore name to search for certificate only in certain Store. Default is "My" and you can pass "" to search in all stores.
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    System.Object array summarizing matched certs in the chain, is returned to the pipeline
+    .EXAMPLE 
+    PS> $chain = get-CertificateChainOfTrust -CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC -Recurse -verbose 
+    PS> $prpGCPSumm = 'FriendlyName','ssl_end_time','ssl_start_time','Thumbprint','ssl_subject','ssl_ext_Key_Usage','ssl_ext_Subject_Alternative_Name','CertShortName','IssuerShortName' ; 
+    PS> $n =  ($chain | measure | select -expand count) ; 
+    PS> write-host -fore yellow "Certificate Chain of Trust:" ; 
+    PS> $chain | %{
+    PS>     $n-- ;
+    PS>     write-host "`n`n==($($n)):$($_.CertShortName):`n$(($_| fl $prpGCPSumm |out-string).trim())" ; 
+    PS> } ;
+    Recurse and dump a trust chain on a cert specified by Thumbprint
+    .EXAMPLE
+    $results = get-CertificateChainOfTrust -CertificateID * -recurse -verbose ; 
+    Recurse *all* certificates (specifying explicit * wildcard for CertificateID) found in the default Cert:\LocalMachine\My store and store results into variable, with verbose output.
+    .EXAMPLE
+    PS> $Computername = "Computer1","Computer2","Computer3"
+    PS> $CertificateID = "Mywebsite.MyDomain.com"
+    PS> $res = @()
+    PS> $getVert_Def = "Function get-CertificateChainOfTrust { ${function:get-CertificateChainOfTrust}} "
+    PS> $Computername | foreeach-object {
+    PS>     $res += icm -ComputerName $_ -ArgumentList $getVert_Def -ScriptBlock {
+    PS>         Param($getVert_Def) ; 
+    PS>         .([scriptblock]::Create($getVert_Def))  ; 
+    PS>         get-CertificateChainOfTrust -CertificateID $using:CertificateID ; 
+    PS>     } ; 
+    PS> } ; 
+    PS> $res ; 
+    Runs the Function on remote computers using invoke-command (AS's original sole example)
+    Starts by creating an array of computer names which you would like to remotely run the function against.
+    Creates a parameter to pass the certificate you are looking for
+    Create a definition to the function so we can pass it to each remote invoke-command
+    Loop inside the array of computers and pass the function and run it against each one of them using invoke-command.
+    .FUNCTIONALITY
+    PowerShell Language
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
+    https://splunkbase.splunk.com/app/3113/
+    https://github.com/nsacyber/Certificate-Authority-Situational-Awareness
+    #>
+    [cmdletbinding()]
+    [Alias('get-CertificatePath')]
+    PARAM ( 
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='A certificate identifier: Thumbprint, Shortname (triest to match the 1st element of the SubjectName, cleaned of CN=), full Subject DN, or wildcard[-CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC')]
+            [ValidateNotNullOrEmpty()]
+            [Alias('CertificateName')]
+            [string]$CertificateID,
+        [parameter(ValueFromPipeline = $False,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='Not available for the user to use via the pipeline, this parameter is used internally to look for the certificates in the validation chain recursively')]
+            [string]$ParentAKI,
+        [parameter(HelpMessage = "Switch that causes function to recusivley call itself through the certificate chain until it gets to the Root CA.")]
+            [switch]$Recurse,
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='Root below which to search certificates: LocalMachine (default) or CurrentUser[-CertificateRootStore CurrentUser]')]
+            [ValidateSet("CurrentUser","LocalMachine")]
+            [string]$CertificateStoreRoot = "LocalMachine",
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='CertificateStore name to search for certificate only in certain Store. Default is "My" and you can pass "" to search in all stores.(TrustedPublisher|Remote Desktop|Root|TrustedDevices|CA|REQUEST|AuthRoot|TrustedPeople|addressbook|My|SmartCardRoot|Trust|Disallowed|SMS|"")')]
+            [ValidateSet("TrustedPublisher","Remote Desktop","Root","TrustedDevices","CA","REQUEST","AuthRoot","TrustedPeople","addressbook","My","SmartCardRoot","Trust","Disallowed","SMS","")]
+            [string]$CertificateStore = "My"
+    ) ; 
+    #Regex a certificate Thumbprint
+    $rgxCertThumbprint = '[0-9a-fA-F]{40}'
+    $rgxCertSubjDN = 'CN=.*,\sC=\w+$' ; 
+    $prpCert = 'PSParentPath','FriendlyName',
+        @{Name='EnhancedKeyUsageList';Expression={$_.EnhancedKeyUsageList}},
+        @{Name='ssl_issuer';Expression={$_.IssuerName.name}},
+        @{Name='ssl_end_time';Expression={$_.NotAfter}},
+        @{Name='ssl_start_time';Expression={$_.NotBefore}},
+        @{Name='ssl_serial';Expression={$_.SerialNumber}},
+        @{Name='ssl_publickey_algorithm';Expression={$_.PublicKey.EncodedKeyValue.Oid.FriendlyName}},
+        @{N='Public_Key_Size';E={$_.PublicKey.key.keysize}},
+        @{Name='Encoded_Key_Parameters';Expression={foreach($value in $_.PublicKey.EncodedParameters.RawData){$value.ToString('X2')}}},
+        @{N='Public_Key_Algorithm';E={$_.PublicKey.Oid.FriendlyName}},
+        @{Name='ssl_signature_algorithm';Expression={$_.SignatureAlgorithm.FriendlyName}},
+        'Thumbprint',
+        @{Name='ssl_version';Expression={$_.Version}},
+        @{Name='ssl_subject';Expression={$_.Subject}},
+        @{Name='ssl_publickey';Expression={foreach($value in $_.PublicKey.EncodedKeyValue.RawData){$value.ToString('X2')}}},
+        @{N='ssl_ext_Unique_Identifiers';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Unique Identifiers'}).Format(0)}},
+        @{N='ssl_ext_Authority_Key_Identifier';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Authority Key Identifier'}).Format(0)}},
+        @{N='ssl_ext_Subject_Key_Identifier';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Key Identifier'}).Format(0)}},
+        @{N='ssl_ext_Key_Usage';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Key Usage'}).Format(0)}},
+        @{N='ssl_ext_Certificate_Policies';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Certificate Policies'}).Format(0)}},
+        @{N='ssl_ext_Policy_Mappings';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Policy Mappings'}).Format(0)}},
+        @{N='ssl_ext_Subject_Alternative_Name';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Alternate Name'}).Format(0)}},
+        @{N='ssl_ext_Issuer_Alternate_Name';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Issuer Alternate Name'}).Format(0)}},
+        @{N='ssl_ext_Subject_Directory_Attributes';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Directory Attributes'}).Format(0)}},
+        @{N='ssl_ext_Basic_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Basic Constraints'}).Format(0)}},
+        @{N='ssl_ext_Name_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Name Constraints'}).Format(0)}},
+        @{N='ssl_ext_Policy_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Policy Constraints'}).Format(0)}},
+        @{N='ssl_ext_Extended_Key_Usage';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Extended Key Usage'}).Format(0)}},
+        @{N='ssl_ext_CRL_Distribution_Points';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'CRL Distribution Points'}).Format(0)}},
+        @{N='ssl_ext_Inhibit_Policy';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Inhibit Policy'}).Format(0)}},
+        @{N='ssl_ext_Freshest_CRL';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Freshest CRL'}).Format(0)}},
+        @{N='ssl_pri_ext_Authority_Information_Access';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Authority Information Access'}).Format(0)}},
+        @{N='ssl_pri_ext_Subject_Information_Access';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Information Access'}).Format(0)}},
+        @{N='CertShortName';E={($_.Subject.split(",")[0]).trimstart("CN=")}},
+        @{N='IssuerShortName';E={($_.IssuerName.name.split(",")[0]).trimstart("CN=")}} ; 
+
+    $result =@() 
+    $Called_Cert = @() 
+    $smsg = "Get-ChildItem -Path Cert:\$($CertificateStoreRoot)\$($CertificateStore) -Recurse"
+    write-verbose $smsg ; 
+    $Called_Cert = Get-ChildItem -Path Cert:\$CertificateStoreRoot\$CertificateStore -Recurse | Where {-not $_.PSIsContainer} | 
+        Select $prpCert | sort Thumbprint -Unique 
+
+        if (-not ($ParentAKI)) { 
+            switch -regex ($CertificateID){
+                $rgxCertThumbprint {
+                    write-verbose "-CertificateID ($($CertificateID)) matches a Cert Thumbprint" ; 
+                    $Called_Cert = $Called_Cert | where {$_.Thumbprint -eq "$CertificateID"} 
+                } 
+                $rgxCertSubjDN  {
+                    write-verbose "-CertificateID ($($CertificateID)) matches a Cert Subject DN" ; 
+                    $Called_Cert = $Called_Cert | where {$_.ssl_subject -eq "$CertificateID"} 
+                } 
+                default {
+                    write-verbose "Attempting to compare -CertificateID ($($CertificateID)) to CertShortName..." ;
+                    $Called_Cert = $Called_Cert | where {$_.CertShortName -like "$CertificateID"} 
+                }
+            } ; 
+        } elseif ($ParentAKI) {
+            $Called_Cert = $Called_Cert | where {$_.ssl_ext_Subject_Key_Identifier -eq $ParentAKI} | select -First 1 ; 
+        } ; 
+
+        If ($Recurse) {
+            #Loop and recursively retrieve the certificates in the chain until Root CA 
+            $Called_Cert | foreach-object { 
+                if ($_.ssl_ext_Authority_Key_Identifier -ne $null) {
+                    $CertParentAKI = ($_.ssl_ext_Authority_Key_Identifier.split("=")[1])
+                    #Adding the Cert name as a member in the original object 
+                    $_ | Add-Member -MemberType NoteProperty -Name 'CertParentAKI' -Value $CertParentAKI 
+                } else {
+                    $CertParentAKI = 0 
+                    $_ | Add-Member -MemberType NoteProperty -Name 'CertParentAKI' -Value $CertParentAKI 
+                } ; 
+                #Output the results 
+                $_ | write-output ; 
+                #If recurse switch was On and we have not reached the Root CA then call the function and pass the AKI of the issure of the current certificate
+                if ($_.CertParentAKI -ne $_.ssl_ext_Subject_Key_Identifier -and $_.CertParentAKI -ne 0) {
+                    get-CertificateChainOfTrust -ParentAKI $_.CertParentAKI -Recurse -CertificateStore ""  ; 
+                }  ; 
+
+            } ;  # loop-E
+        } else {
+            # if no recurse was chosen then just show the results without looping
+            $Called_Cert
+        } ; 
+}
+
+#*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
 #*------v Get-DnsDkimRecord.ps1 v------
@@ -1672,6 +1882,224 @@ function get-tsUsers {
 #*------^ get-tsusers.ps1 ^------
 
 
+#*------v get-WebTableTDO.ps1 v------
+function get-WebTableTDO {
+	<#
+	.SYNOPSIS
+	get-WebTableTDO.ps1 - Extract Tables from Web pages (via PowerShellInvoke-WebRequest)
+	.NOTES
+	Version     : 1.0.0
+	Author      : Todd Kadrie
+	Website     :	http://www.toddomation.com
+	Twitter     :	@tostka / http://twitter.com/tostka
+	CreatedDate : 2023-
+	FileName    : 
+	License     : MIT License
+	Copyright   : (c) 2023 Todd Kadrie
+	Github      : https://github.com/tostka/verb-XXX
+	Tags        : Powershell
+	AddedCredit : REFERENCE
+	AddedWebsite:	URL
+	AddedTwitter:	URL
+	REVISIONS
+    * 3:25 PM 11/27/2023 added expanded CBH examples
+	* 9:25 AM 11/8/2023 ported over from ImportExcel:get-HtmlTable, which is adapted version of Lee Holmes' Get-WebRequestTable.ps1 demo code. 
+	add: -Summary param, which dumps a short index#|Summary (leading textcontent[0..56] string)
+	add: param detailed out, helpmessage, CBH
+	add: strongly typed params
+	* 10/12/23 dfinke's adapted variant of LH's original code into ImportExcel:get-htmlTabl(): [PowerShell Gallery | ImportExcel 7.8.6](https://www.powershellgallery.com/packages/ImportExcel/7.8.6) (adds 
+	* 1/5/2015 LH's posted code from https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/
+	.DESCRIPTION
+	get-WebTableTDO.ps1 - Extract Tables from Web pages (via PowerShellInvoke-WebRequest)
+
+	Original code: [Lee Holmes | Extracting Tables from PowerShell's Invoke-WebRequest](https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/)
+	By way of dFinke's ImportExcel:get-HtmlTable v7.8.6 [ImportExcel/Public/Get-HtmlTable.ps1 at master Â· dfinke/ImportExcel Â· GitHub](https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1)
+	
+	.PARAMETER Url
+	Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]
+	.PARAMETER TableIndex
+	Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]
+	.PARAMETER Header
+	Table header properties to be substituted for the resulting table
+	.PARAMETER FirstDataRow
+	Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]
+	.PARAMETER Summary
+	Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]
+	.PARAMETER UseDefaultCredentials
+	Indicates that the cmdlet uses the credentials of the current user to send the web request.
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -UseDefaultCredentials:$false ;
+	OPTSAMPLEOUTPUT
+	Default output, non specified -TableIndex, which returns contents of first table:
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" ; 
+	
+        Season      Episodes
+        ------      --------
+        First aired Last aired
+        1           29
+        2           26
+        3           24
+    
+	Default output, without explicit -TableIndex, outputs the 0'th/first table found on the url.
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -summary
+	
+
+            Index#  :       textContent
+            ------  :       -----------
+            1       :       SeasonEpisodesOriginally airedFirst airedLast aired
+            2       :       TitleDirected byWritten byOriginal air date [23][25
+            3       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            4       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            5       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            6       :       Pilots 01"The Cage" 02a"Where No Man Has Gone Befor
+            7       :       Season 1 02b"Where No Man Has Gone Before" 03"The C
+            8       :       Season 2 30"Catspaw" 31"Metamorphosis" 32"Friday's
+            9       :       Season 3 56"Spectre of the Gun" 57"Elaan of Troyius
+            10      :       This section needs additional citations for verific
+            11      :       vteStar Trek: The Original Series episodesSeasons 1
+            12      :       vteStar Trek: The Original SeriesEpisodesSeason 1 2
+            13      :       vteStar TrekOutline Timeline Canon ListsTelevision
+            14      :       Live-actionThe Original Series episodesThe Next Gen
+            15      :       The Original SeriesThe Motion Picture The Wrath of
+            16      :       CharactersA–F G–M N–S T–ZCrossoversConceptsGames Ko
+
+	Retrieve tables list and echo simple heading summary of each table (useful to determine which -tableIndex # to use for specific table retrieval).
+	.EXAMPLE
+    PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -index 2 | format-table -a ;
+
+        No.          No.in         Title                             Directedby                    Writtenby
+        overall      season
+        ------------ ------------- -----                             ----------                    ---------
+        1            1             "The Man Trap"                    Marc Daniels                  George Clayton Johnson
+        2            2             "Charlie X"                       Lawrence Dobkin               Story by : Gene Roddenberry...
+        3            3             "Where No Man Has Gone Before"    James Goldstone               Samuel A. Peeples
+       ...TRIMMED...
+        27           27            "The Alternative Factor"          Gerd Oswald                   Don Ingalls
+        28           28            "The City on the Edge of Forever" Joseph Pevney                 Harlan Ellison
+        29           29            "Operation -- Annihilate!"        Herschel Daugherty            Steven W. Carabatsos
+
+    Retrieve the index 2 ("third") table on the specified page, and output format-table -auto, to align data into columns.
+    .EXAMPLE
+    PS> $data = get-WebTableTDO -Url $Url -TableIndex $Index -Header $Header -FirstDataRow $FirstDataRow -UseDefaultCredentials: $UseDefaultCredentials
+    PS> $data | Export-Excel $xlFile -Show -AutoSize ; 
+    Demo conversion, with export-excel exporting xlsx, and opening ase temp file in Excel
+    .LINK
+	https://github.com/tostka/verb-Network
+	.LINK
+	https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1
+	.LINK
+	https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/
+	#>
+	[CmdletBinding()]
+	[Alias('Get-WebRequestTable')]
+    PARAM(
+        [Parameter(Mandatory=$true,HelpMessage='Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]')]
+			[System.Uri]$Url,
+        [Parameter(HelpMessage='Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]')]
+        [Alias('index')]
+			[int]$TableIndex=0,
+        [Parameter(HelpMessage='Table header properties to be substituted for the resulting table')]
+			$Header,
+        [Parameter(HelpMessage='Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]')]
+			[int]$FirstDataRow=0,
+		[Parameter(HelpMessage='Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]')]
+			[Switch]$Summary,
+        [Parameter(HelpMessage='Indicates that the cmdlet uses the credentials of the current user to send the web request.')]
+			[Switch]$UseDefaultCredentials
+    ) ; 
+    if ($PSVersionTable.PSVersion.Major -gt 5 -and -not (Get-Command ConvertFrom-Html -ErrorAction SilentlyContinue)) {
+         # Invoke-WebRequest on .NET core doesn't have ParsedHtml so we need HtmlAgilityPack or similiar Justin Grote's PowerHTML wraps that nicely
+         throw "This version of PowerShell needs the PowerHTML module to process HTML Tables."
+    }
+
+    $r = Invoke-WebRequest $Url -UseDefaultCredentials: $UseDefaultCredentials
+    $propertyNames = $Header
+
+    if ($PSVersionTable.PSVersion.Major -le 5) {
+		if(-not $Summary){
+			$table = $r.ParsedHtml.getElementsByTagName("table")[$TableIndex]
+        } else { 
+			write-verbose "Returning target URL table summary"
+			if($tbls = $r.ParsedHtml.getElementsByTagName("table")){
+				"Index#`t:`ttextContent"  | write-output ; 
+				"------`t:`t-----------"  | write-output ; 
+				$idx = 0 ; $tbls | foreach-object{ 
+					$idx++ ; 
+					"$($idx)`t:`t$(($_.textcontent)[0..50] -join '')"  | write-output ; 
+				} ; 
+				break ; 
+			} else { 
+			
+			} ;
+        } ; 
+        $totalRows=@($table.rows).count
+
+        for ($idx = $FirstDataRow; $idx -lt $totalRows; $idx++) {
+
+            $row = $table.rows[$idx]
+            $cells = @($row.cells)
+
+            if(!$propertyNames) {
+                if($cells[0].tagName -eq 'th') {
+                    $propertyNames = @($cells | ForEach-Object {$_.innertext -replace ' ',''})
+                } else  {
+                    $propertyNames =  @(1..($cells.Count + 2) | Foreach-Object { "P$_" })
+                }
+                continue
+            }
+
+            $result = [ordered]@{}
+
+            for($counter = 0; $counter -lt $cells.Count; $counter++) {
+                $propertyName = $propertyNames[$counter]
+
+                if(!$propertyName) { $propertyName= '[missing]'}
+                $result.$propertyName= $cells[$counter].InnerText
+            }
+
+            [PSCustomObject]$result | write-output ; 
+        }
+    }
+    else {
+        $h    = ConvertFrom-Html -Content $r.Content
+        if ($TableIndex -is [valuetype]) { $TableIndex += 1}
+        $rows =    $h.SelectNodes("//table[$TableIndex]//tr")
+        if (-not $rows) {Write-Warning "Could not find rows for `"//table[$TableIndex]`" in $Url ."}
+        if ( -not  $propertyNames) {
+            if (   $tableHeaders  = $rows[$FirstDataRow].SelectNodes("th")) {
+                   $propertyNames = $tableHeaders.foreach({[System.Web.HttpUtility]::HtmlDecode( $_.innerText ) -replace '\W+','_' -replace '(\w)_+$','$1' })
+                   $FirstDataRow += 1
+            }
+            else {
+                   $c = 0
+                   $propertyNames = $rows[$FirstDataRow].SelectNodes("td") | Foreach-Object { "P$c" ; $c ++ }
+            }
+        }
+        Write-Verbose ("Property names: " + ($propertyNames -join ","))
+        foreach ($n in $FirstDataRow..($rows.Count-1)) {
+            $r      = $rows[$n].SelectNodes("td|th")
+            if ($r -and $r.innerText -ne "" -and $r.count -gt $rows[$n].SelectNodes("th").count  ) {
+                $c      = 0
+                $newObj = [ordered]@{}
+                foreach ($p in $propertyNames) {
+                    $n  = $null
+                    #Join descentandts for cases where the text in the cell is split (e.g with a <BR> ). We also want to remove HTML codes, trim and convert unicode minus sign to "-"
+                    $cellText = $r[$c].Descendants().where({$_.NodeType -eq "Text"}).foreach({[System.Web.HttpUtility]::HtmlDecode( $_.innerText ).Trim()}) -Join " " -replace "\u2212","-"
+                    if ([double]::TryParse($cellText, [ref]$n)) {$newObj[$p] = $n     }
+                    else                                        {$newObj[$p] = $cellText }
+                    $c ++
+                }
+                [pscustomObject]$newObj
+            }
+        }
+    }
+}
+
+#*------^ get-WebTableTDO.ps1 ^------
+
+
 #*------v get-whoami.ps1 v------
 function get-whoami {
         <#
@@ -1975,7 +2403,7 @@ function Resolve-DNSLegacy.ps1{
     Github      : https://github.com/tostka/verb-Network
     Tags        : Powershell,DNS,Network
     AddedCredit :  i255d
-    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-13.0.027/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
+    AddedWebsite:	https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids
     REVISIONS
     * 3:02 PM 11/2/2021 refactor/fix cbh
     * 9:23 AM 1/13/2021 TSK:updated CBH, reformated & minor tweaks
@@ -1983,7 +2411,7 @@ function Resolve-DNSLegacy.ps1{
     .DESCRIPTION
     Get FQDN and IP for a single server, or a list of servers, specify the Ip of the DNS server otherwise it defaults to the 1st DNS Server on the PPP* nic, and then to the first non-PPP* nic.
     I tweaked this version to leverage my Get-NetIPConfigurationLegacy ipconfig /all wrapper fuct, to return the DNS servers on the PPP* (VPN in my case) nic, or the non-PPP* nic, by preference.
-    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-13.0.027/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
+    Posted by i255d to Idera Forums (https://community.idera.com/database-tools/powershell/ask_the_experts/f/powershell_for_windows-12/22127/powershell-wrapper-for-nslookup-with-error-handling-basically-nslookup-on-steroids), tagged 'over 6 yrs ago' (in 2021 = ~2015) ; 
     Updated/tweaked by TSK 2021.
     .PARAMETER ComputerName
     Computername
@@ -2481,8 +2909,10 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
-    * 2:23 PM 3/7/2023 rem'd out prior path<file/dir code - it's not used with explicit params ; seems to work; fliped the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it fails; 
-    rounded out, added missing code to detect successful first dl attempt. 
+    * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
+    path<file/dir code - it's not used with explicit params ; seems to work; fliped 
+    the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
+    fails; ; rounded out, added missing code to detect successful first dl attempt. 
     * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
@@ -2540,7 +2970,7 @@ function save-WebDownload {
     save-webdownload -Uri https://fqdn/dir -Path c:\tmp\file.ext ;
     Demo standard Path-specified download
     .EXAMPLE
-    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.3.0.0.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.0.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
+    $dlpkgs = 'https://community.chocolatey.org/api/v2/package/PowerShell/5.1.14409.20180811','https://community.chocolatey.org/api/v2/package/powershell-core/7.3.2','https://community.chocolatey.org/api/v2/package/vscode/1.75.1','https://community.chocolatey.org/api/v2/package/path-copy-copy/20.0','https://community.chocolatey.org/api/v2/package/choco-cleaner/0.0.8.4','https://community.chocolatey.org/api/v2/package/networkmonitor/3.4.0.20140224','https://community.chocolatey.org/api/v2/package/wireshark/4.0.3','https://community.chocolatey.org/api/v2/package/fiddler/5.0.20211.51073','https://community.chocolatey.org/api/v2/package/pal/2.7.6.0','https://community.chocolatey.org/api/v2/package/logparser/2.2.0.1','https://community.chocolatey.org/api/v2/package/logparserstudio/2.2','https://community.chocolatey.org/api/v2/package/bind-toolsonly/9.16.28','https://community.chocolatey.org/api/v2/package/WinPcap/4.1.3.20161116','https://community.chocolatey.org/api/v2/package/microsoft-message-analyzer/1.4.0.20160625' ; 
     $dlpkgs | save-webdownload -Destination C:\tmp\2023-02-23 -verbose  ;
     Demo pkgs array in variable, pipelined in, with destination folder (implies will attempt to obtain download file name from headers).
     .LINK
@@ -2604,11 +3034,7 @@ function save-WebDownload {
         TRY {
             $smsg = "Normalized out any relative paths to absolute:" ; 
             if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-
-            # Src: x0n | https://stackoverflow.com/users/6920/x0n |  Jun 14, 2010 at 21:12 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
-            # Advantage: works with PSPaths (vs dot/native filesystem paths). A PSPath may not map 1-1 to a filesystem path, for example if you mount a psdrive with a multi-letter drive name.
-            #$Path = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($path) ;
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
             if($Destination ){
                 $Destination = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($Destination) ;
             } ; 
@@ -2640,7 +3066,6 @@ function save-WebDownload {
                 # we should *require* that dirs exist, if doing dyn paths
                 $PathExists = $true
                 # so if exists, check it's type:
-                #if(test-path -PathType Leaf){
                 $tobj = get-item -path  $Destination -ea STOP; 
                 $PathIsFile =  -not($tobj.PSIsContainer) ; 
                 if($PathExists -AND $PathIsFile -eq $false){
@@ -2664,7 +3089,6 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                     else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
 
-                    #New-Item -ItemType "directory" -Path "c:\ps-test\scripts"
                     $pltNI = @{
                         ItemType ="directory" ;
                         Path = $Destination.fullname ; 
@@ -2686,8 +3110,7 @@ function save-WebDownload {
                 } else {
                      $smsg = "Invalid response. Exiting" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    #exit 1
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     break ; 
                 }  ; 
 
@@ -2733,49 +3156,6 @@ function save-WebDownload {
             if($Path){
                 
                 # with $Destination & $DestinationFile ,we *know* what the target is, don't need this eval code anymore
-                <#
-                # eval curr $path spec, 
-                if($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified with trailing '\')" ;     
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.Attributes -contains 'Directory'){
-                    $smsg =  "Detected `$Path is pre-existing valid directory path (specified without a trailing '\')" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $true  ;
-                #                 <# ISSUE, with detecting if a specified path is a leaf file or directory, using system.io.fileinfo casting:
-#                 - both non-exist dir wo trailing \ and non-exist file have same pop'd Name, DirName & Dir, and dir/dirname -ne Name, and Exists always $false
-#                 -both file in existing dir, and non-exist dir have mode: darhsl == the file has a 'd' directory attrib!
-#                 #
-                # 2:31 PM 2/27/2023 newlogic: 1) if the path exists, then test status
-                #Mode: d test covers both non-exist full file spec and non-exist dir have it
-                # so abandon use of generic -Path, and force user to spec either explicitly: test $DestinationFile & $Destation on this case
-                
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $DestinationFile){
-                    $smsg =  "Detected `$Path is non-existant valid full file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ;
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg = "Detected `$Path is non-existant valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $false  ; 
-                } elseif($path.name -AND ($path.DirectoryName -ne $path.name) -AND $path.exists){
-                    $smsg = "Detected `$Path is pre-existing valid file path" ; 
-                    $PathIsFile = $true ; 
-                    $PathExists = $true  ;
-                } elseif($path.name -eq '' -AND ($path.DirectoryName -ne $path.name) -AND -not $path.exists){
-                    $smsg =  "Detected `$Path is non-existant valid directory path" ; 
-                    $PathIsFile = $false ; 
-                    $PathExists = $false  ;
-                } else {
-                    $smsg =  "UNRECOGNIZED COMBO OF [SYSTEM.IO.FILEINFO] ATTRIBUTES!" ; 
-                    $smsg +=  "`nUnable to differentiate if specified -Path is File, Container, or if it exists" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    throw $smsg ; 
-                };
-                #>
-
                 $smsg = "Resolved `$Path:`n$($Path)" ;             
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
                 else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -2842,7 +3222,6 @@ function save-WebDownload {
                     else{ write-host $smsg } ;
                     #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
 
-                    #$iwr = Invoke-WebRequest -Uri $item -Method Head ; 
                     $pltIWR=[ordered]@{
                         Uri = $item ;
                         Method = 'Head' ;
@@ -2899,7 +3278,6 @@ function save-WebDownload {
                         if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
                         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
 
-                        #if($Results = Invoke-WebRequest -Method Get -Uri $item -MaximumRedirection 0 -ErrorAction SilentlyContinue){
                         if($Results = Invoke-WebRequest @pltIWR){
                             # checking for a redirect return, to parse:
                             <# Redirect error returned, sample:
@@ -2952,9 +3330,33 @@ function save-WebDownload {
                                 break ; 
                             } ; 
 
-                        } else { 
+                        } else {
+                            #parse off and offer the leaf name of the uri 
+                            TRY{
+                                if($samplefilename = [System.IO.Path]::GetFileName($uri) ){
+                                    # returns 'chocolatey' from expl url
+                                    $smsg = "(removing illegal fs chars from resolved leaf name)" ; 
+                                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                                    $samplefilename = [RegEx]::Replace($samplefilename, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                                } else {
+                                    $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ; 
+
+                            }CATCH{
+                                $smsg = "(unable to parse a sample leaf name from the input -uri:`n$(($uri|out-string).trim())" ; 
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ; 
                             $smsg += "Unable to obtain useful Redirect info to parse. Aborting" ; 
                             $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                            if($samplefilename){
+                                $smsg += "(possibly the url 'generic' filename:$($samplefilename).extension" ; 
+                            } ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                             else{ write-WARNING $smsg } ; 
                             throw $smsg ; 
@@ -3004,7 +3406,7 @@ function save-WebDownload {
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING $smsg } ; 
                     throw $smsg ; 
-                    # fatal, server is going to continue throttling for quite a while: no point in using Continue
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
                     break ; 
                 } else { 
                     $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
@@ -3024,9 +3426,6 @@ function save-WebDownload {
                 $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
                 else{ write-warning $smsg } ;
-                #$smsg = $ErrTrapd.Exception.Message ;
-                #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                #else{ write-warning $smsg } ;
                 $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
                 else{ write-host $smsg } ;
@@ -3266,6 +3665,353 @@ function save-WebDownloadDotNet {
 #*------^ save-WebDownloadDotNet.ps1 ^------
 
 
+#*------v save-WebFaveIcon.ps1 v------
+function save-WebFaveIcon {
+    <#
+    .SYNOPSIS
+    save-WebFaveIcon - Download a website's default root favicon.ico file to a .jpg (assumed ext: actual downloaded filetype is *not* validated)
+    .NOTES
+    Version     : 1.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2020-04-17
+    FileName    : save-WebFaveIcon.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Internet,Download,File
+    AddedCredit : poshftw
+    AddedWebsite: https://old.reddit.com/r/PowerShell/comments/moxy5v/downloading_a_file_with_powershell_without/
+    AddedTwitter: URL
+    AddedCredit : Jimmy McNatt
+    AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
+    AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
+    REVISIONS
+    6:09 PM 5/12/2023 initial vers 
+    .DESCRIPTION
+    save-WebFaveIcon - Download a website's default root favicon.ico file to a .jpg (assumed ext: actual downloaded filetype is *not* validated)
+
+    Dependancies:
+    - requires Box Prox's [get-FileSignature()](https://mcpmag.com/articles/2018/07/25/file-signatures-using-powershell.aspx)
+    - requires gravejester (Øyvind Kallstad)'s [get-FileType()](https://gist.github.com/gravejester/803649515c2dd85ab37e)
+
+    .PARAMETER Name
+    Name string to be used for the downloaded favicon[-name 'SiteName']
+    .PARAMETER Url
+    Root web site from which to download the favicon[-Url https://community.chocolatey.org/]
+    .PARAMETER Path
+    Path to destination directory for favicon download (defaults to c:\temp\jpg)[-Path 'c:\path-to\']
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    None. Returns no objects or output
+    .EXAMPLE
+    PS> save-webfaveicon -name duckduckgo -url https://duckduckgo.com/ -Verbose
+    Demo download of a duckduckgo.com's favicon (which has a relative favicon path)
+    .EXAMPLE
+    PS> save-webfaveicon -name proofpoint -url https://www.proofpoint.com/ -Verbose
+    Demo download of a proofpoint.com's favicon (which has an absolute favicon path)
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM (
+        [Parameter(Mandatory=$false,Position=1,
+            HelpMessage="Name string to be used for the downloaded favicon[-name 'SiteName']")] 
+            [string]$name,
+        [Parameter(Mandatory=$true,Position=0,
+            HelpMessage="Root web site from which to download the favicon[-Url https://community.chocolatey.org/]")] 
+            [uri[]]$url,
+        [Parameter(Mandatory=$false,
+            HelpMessage = "Path to destination directory for favicon download [-Path 'c:\path-to\']")]
+            #[ValidateScript({Test-Path $_ -PathType 'Container'})]
+            #[ValidateScript({Test-Path $_})]
+            [string]$Path = "c:\temp\jpg"
+    ) ; 
+    BEGIN {
+        #$rgxHeaders = 'filename=(?:\")*(?<filename>.+?)(?:\")*$' ; 
+        #$rgxHtmlAnchor = '<a href="(.*)">' ; 
+        $rgxFaveIcon = '<link\srel=.*shortcut\sicon|favicon\.ico' # target tag: <link rel="shortcut icon" href="/favicon.ico">
+        #'shortcut\sicon|favicon\.ico' ; 
+        $rgxURL = '(?i)\b((?:[a-z][\w-]+:(?:/{1,3}|[a-z0-9%])|www\d{0,3}[.]|[a-z0-9.\-]+[.][a-z]{2,4}/)(?:[^\s()<>]+|\(([^\s()<>]+|(\([^\s()<>]+\)))*\))+(?:\(([^\s()<>]+|(\([^\s()<>]+\)))*\)|[^\s`!()\[\]{};:.,<>?«»“”‘’]))' ; 
+        $verbose = $($VerbosePreference -eq "Continue") ;
+
+        TRY {
+            if (Test-Path $Path) {}
+            else { New-Item $Path -ItemType Directory -verbose:$true}
+
+            # use cleaned [uri].host if $name is blank
+            if(-not $name){
+                if($url.host){
+                    $name=[RegEx]::Replace($url.host, "[{0}]" -f ([RegEx]::Escape(-join [System.IO.Path]::GetInvalidFileNameChars())), '') ;
+                    $smsg = "No -Name specified: Derived filename from -url Host value:`n$($name)" ; 
+                    write-host -ForegroundColor yellow $smsg ; 
+                } else { 
+                    $smsg = "No -Name specified: But unable to parse [uri].host from specified -url value:`n$($url.OriginalString)" ; 
+                    $smsg += "`nPlease rerun with an explicit -Name value" ; 
+                    write-warning $smsg ; 
+                    break ; 
+                } ; 
+            } ; 
+
+        } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                throw $ErrTrapd ; 
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+        } ; 
+
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+
+            $dfile =  $results = $null ; 
+            
+            write-verbose "Retrieving root site source..." ; 
+            TRY {
+                 $results = Invoke-WebRequest -Uri $url.absoluteuri -UseBasicParsing ; 
+            }CATCH [System.Net.WebException]{
+                $ErrTrapd=$Error[0] ;
+                if($ErrTrapd.Exception -match '\(501\)'){
+                    # choco returns 501 on both the -Method Head fail, and on lack of support for Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                    # on the 501 error - choco, which lacks header support - we can trap the redir for parsing:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                    $smsg = "=>Remote server returned a 501 (not implemented error)" ; 
+                    $smsg += "`n`n-->Re-Attempting:Obtain & parse redirection info for request..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+                } elseif( ($ErrTrapd.Exception -match '\(429\)') -OR ($ErrTrapd.Exception -match 'Too\sMany\sRequests')){
+                    # throttling error returned:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    $smsg = "SERVER THROTTLING!:`nException:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg += "`nToo many requests too quickly, wait for block to expire and" ; 
+                    $smsg += "`ntry increasing delay" ; 
+                    $smsg += "(for choco, the throttling only reset after an HOUR!)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
+                    break ; 
+                } else { 
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg = "`nUnrecognized error, aborting further processing" ; 
+                    $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    break ; 
+                } ; 
+            } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                throw $ErrTrapd ; 
+            } ; 
+
+
+            TRY {
+
+                
+                $Path = join-path -path $Path -childpath "$($name).jpg" ; 
+                if(test-path -path $Path){
+                    write-host "Pre-existing $($Path) file found, pre-clearing before run..." ; 
+                    remove-item -path $Path -erroraction STOP; 
+                } ; 
+                
+                write-verbose "parsing content for favicon link tag..." ; 
+                $lines = $results.Content.Split([Environment]::NewLine, [StringSplitOptions]::RemoveEmptyEntries) ;
+                # $rgxFaveIcon = '<link\srel=.*shortcut\sicon|favicon\.ico' # target tag: <link rel="shortcut icon" href="/favicon.ico">
+                if($lines | ?{$_ -match $rgxFaveIcon}){
+                    write-verbose "link line located" ; 
+                    <# proofpoint has 2 hits on the favicon filter
+                    <link rel="shortcut icon" href="/themes/custom/proofpoint/apps/drupal/favicon.ico" />
+                    <link rel="icon" href="/themes/custom/proofpoint/apps/drupal/favicon.ico" type="image/vnd.microsoft.icon" />
+                    same href, just different link rel label
+                    #>
+                    # so always take the first:
+                    $ficonUrl = $lines | ?{$_ -match $rgxFaveIcon } | select-object -first 1 ; 
+                    if ( ($ficonurl.tostring() -match '^http') -AND  ([boolean]([uri]$ficonurl.tostring())) ){
+                        write-verbose "Absolute parsable URL http present" ; 
+                        [uri]$ficonUrl = [regex]::match($ficonUrl,$rgxURL).captures.value.replace('"','') ; 
+                        # https://a.mtstatic.com/@public/production/site_6638/1614630907-favicon.ico/
+                    } else { 
+                        $smsg = "Parsing apparant relative uri & building AbsoluteURI" ; 
+                        $smsg += "`n$($ficonurl.tostring())" ; 
+                        write-verbose $smsg ; 
+                        $uriLeaf = [regex]::match($ficonUrl.split('=')[2],'"(.*)"').groups[1].value ; 
+                        if($urileaf -match '^/'){
+                            $urileaf =  $urileaf.Substring(1,$urileaf.length-1) ; 
+                        } ; 
+                        #$ub = new-object System.UriBuilder -argumentlist 'http', 'myhost.com', 80, 'mypath/query.aspx', '?param=value'
+                        #$ub = new-object System.UriBuilder -argumentlist $url.Scheme, $url.Host, $url.Port, (-join ($url.AbsolutePath,'/',$uriLeaf)), '?param=value'
+                        $arglist = @() ; 
+                        $arglist += $url.Scheme 
+                        $arglist += $url.Host ; 
+                        $arglist += $url.Port ; 
+                        #$arglist += (-join ($url.AbsolutePath,'/',$uriLeaf))
+                        $arglist += (-join ($url.AbsolutePath,'/',$uriLeaf)).replace('//','/') ; 
+                        $arglist += $url.Query ; 
+                        write-verbose "`$arglist`n$(($arglist|out-string).trim())" ; 
+                        $ub = new-object System.UriBuilder -argumentlist $arglist ; 
+
+                        [uri]$ficonUrl = $ub.uri.AbsoluteUri ; 
+                    } ; 
+                    if($ficonUrl.AbsoluteUri){
+                        write-verbose "Favicon link line parses to a valid URI:$($ficonUrl.AbsoluteUri)" ; 
+                    } else {
+                        $smsg = "Failed to match a URL from the matched line`n$(($lines | ?{$_ -match $rgxFaveIcon }|out-string).trim())" ; 
+                        write-warning $smsg ; 
+                    }; 
+                } else { 
+                    write-warning "Failed to locate a FaveIcon link tag:$($rgxFaveIcon)" ; 
+                    Break ; 
+                } ; 
+            } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                throw $ErrTrapd ; 
+            } ; 
+            write-verbose "downloading resolved favicon file url:`n$(($ficonUrl.AbsoluteUri|out-string).trim())" ; 
+            
+            TRY {
+                Invoke-WebRequest -UseBasicParsing -uri $ficonUrl.AbsoluteUri -outfile $Path ; 
+            }CATCH [System.Net.WebException]{
+                $ErrTrapd=$Error[0] ;
+                if($ErrTrapd.Exception -match '\(501\)'){
+                    # site returns 501 on both the -Method Head fail, and on lack of support for Start-BitsTransfer : HTTP status 501: The server does not support the functionality required to fulfill the request.
+                    # on the 501 error - choco, which lacks header support - we can trap the redir for parsing:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+                    $smsg = "=>Remote server returned a 501 (not implemented error)" ; 
+                    $smsg += "`n`n-->Re-Attempting:Obtain & parse redirection info for request..." ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host $smsg } ;
+                } elseif( ($ErrTrapd.Exception -match '\(429\)') -OR ($ErrTrapd.Exception -match 'Too\sMany\sRequests')){
+                    # throttling error returned:
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                    $smsg = "SERVER THROTTLING!:`nException:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg += "`nToo many requests too quickly, wait for block to expire and" ; 
+                    $smsg += "`ntry increasing delay" ; 
+                    $smsg += "(for choco, the throttling only reset after an HOUR!)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    # fatal, server is going to continue throttling for an HOUR: no point in using Continue
+                    break ; 
+                } else { 
+                    $smsg = "Exception:'$($ErrTrapd.Exception)' returned" ; 
+                    $smsg = "`nUnrecognized error, aborting further processing" ; 
+                    $smsg += "`nPlease specify a full leaf file -Path specification and retry" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING $smsg } ; 
+                    throw $smsg ; 
+                    break ; 
+                } ; 
+            } CATCH {
+                # or just do idiotproof: Write-Warning -Message $_.Exception.Message ;
+                $ErrTrapd=$Error[0] ;
+                $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning $smsg } ;
+                $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                else{ write-host $smsg } ;
+                Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                throw $ErrTrapd ; 
+            } ; 
+            
+            if($dfile = get-childitem -path $Path ){
+                write-host -foregroundcolor green "Confirmed presence of downloaded file`n$(($dfile| ft -a Length,fullName|out-string).trim())`n(launching by assoication)" ; 
+                #start $dfile.fullname ; 
+                [array]$doFileTest = @() ; 
+                'get-filesignature','get-filetype' | foreach-object{
+                     if(-not (get-command $_ -ea 0)){
+                        $doFileTest += $false ;
+                     } else {
+                        $doFileTest += $true ;
+                    }; 
+                } ; 
+                if($doFileTest -contains $false){
+                    $smsg = "Missing dependant: $($_) function" ; 
+                    $smsg += "`nSkipping file type checks!" ; 
+                    write-warning $smsg ; 
+                } else {
+                    # test filetype 
+                    $Imagetype = get-FileType -Path $dfile.fullname -verbose:$($VerbosePreference -eq "Continue") ;
+                    # Accommodate multi-extension filetypes by parsing output: split on /, and always take the first entry.
+                    # 'Archive (ZIP/JAR)' == returns ZIP, vs JAR
+                    $ImagetypeExtension = ([regex]::match($Imagetype.FileType,"\(.*\)").groups[0].captures[0].value.replace('(','').replace(')','').split('/'))[0]
+                    if($dfile.extension -eq ".$($ImagetypeExtension)"){
+                        write-verbose "Downloaded favicon file`n$($dfile.fullname)`nconfirms as a .jpg file" ; 
+                    } else { 
+                        $smsg = "Downloaded favicon file`n$($dfile.fullname)`ndetects from file header as a .$($ImagetypeExtension) file" ; 
+                        $smsg += "`nRENAMING to suitable extension..." ; 
+                        write-host -foregroundcolor yellow $smsg ; 
+                        $pltRI = @{
+                            Path = $dfile.fullname ;
+                            NewName = $dfile.name.replace($dfile.extension,".$($ImagetypeExtension.tolower())") ; 
+                            ErrorAction = 'STOP'
+                            verbose = $($VerbosePreference -eq "Continue") ;
+                        } ; 
+                        write-verbose "rename-item w`n$(($pltri|out-string).trim())" ; 
+                        TRY{
+                            rename-item @pltri ; 
+                        } CATCH {
+                            $ErrTrapd=$Error[0] ;
+                            $smsg = "$('*'*5)`nFailed processing $($ErrTrapd.Exception.ItemName). `nError Message: $($ErrTrapd.Exception.Message)`nError Details: `n$(($ErrTrapd|out-string).trim())`n$('-'*5)" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                            else{ write-warning $smsg } ;
+                            $smsg = "FULL ERROR TRAPPED (EXPLICIT CATCH BLOCK WOULD LOOK LIKE): } catch[$($ErrTrapd.Exception.GetType().FullName)]{" ;
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level ERROR } #Error|Warn|Debug
+                            else{ write-host $smsg } ;
+                            Break #Opts: STOP(debug)|EXIT(close)|CONTINUE(move on in loop cycle)|BREAK(exit loop iteration)|THROW $_/'CustomMsg'(end script with Err output)
+                            throw $ErrTrapd ; 
+                        } ; 
+                    
+                    } ; 
+                } ; 
+            } else {
+                $smsg = "Unable to confirm presense of downloaded file!:" 
+                $smsg += "`n$($Path)" ; 
+                write-warning $smsg ; 
+            }; ; 
+    } ;  # if-PROC
+}
+
+#*------^ save-WebFaveIcon.ps1 ^------
+
+
 #*------v Send-EmailNotif.ps1 v------
 Function Send-EmailNotif {
     <#
@@ -3286,6 +4032,7 @@ Function Send-EmailNotif {
     AddedWebsite:	URL
     AddedTwitter:	URL
     REVISIONS
+    * 1:46 PM 5/23/2023 added test for dyn-ip workstations (skips submit, avoids lengthy port timeout wait on fail); added full pswlt support
     * 9:58 PM 11/7/2021 updated CBH with complete gmail example ; updated CBH with complete gmail example
     * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
     * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
@@ -3560,30 +4307,6 @@ Function Send-EmailNotif {
         [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
         [System.Management.Automation.PSCredential]$Credential
     )
-<# #-=-=-=MUTUALLY EXCLUSIVE PARAMS OPTIONS:-=-=-=-=-=
-# designate a default paramset, up in cmdletbinding line
-[CmdletBinding(DefaultParameterSetName='SETNAME')]
-  # * set blank, if none of the sets are to be forced (eg optional mut-excl params)
-  # * force exclusion by setting ParameterSetName to a diff value per exclusive param
-# example:single $Computername param with *multiple* ParameterSetName's, and varying Mandatory status per set
-    [Parameter(ParameterSetName='LocalOnly', Mandatory=$false)]
-    $LocalAction,
-    [Parameter(ParameterSetName='Credential', Mandatory=$true)]
-    [Parameter(ParameterSetName='NonCredential', Mandatory=$false)]
-    $ComputerName,
-    # $Credential as tied exclusive parameter
-    [Parameter(ParameterSetName='Credential', Mandatory=$false)]
-    $Credential ;    
-    # effect: 
-    -computername is mandetory when credential is in use
-    -when $localAction param (w localOnly set) is in use, neither $Computername or $Credential is permitted
-    write-verbose -verbose:$verbose "ParameterSetName:$($PSCmdlet.ParameterSetName)"
-    Can also steer processing around which ParameterSetName is in force:
-    if ($PSCmdlet.ParameterSetName -eq 'LocalOnly') {
-        return "some localonly stuff" ; 
-    } ;     
-#-=-=-=-=-=-=-=-=
-#>
     $verbose = ($VerbosePreference -eq "Continue") ; 
     if ($PSCmdlet.ParameterSetName -eq 'gmail') {
         $useSSL = $true; 
@@ -3598,21 +4321,41 @@ Function Send-EmailNotif {
     if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
         $SMTPServer = $global:SMTPServer ;
         $SMTPPort = $smtpserverport ; # [infra file]
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing:$($SMTPServer):$($SMTPPort)" ;
+        $smsg = "Mailing:$($SMTPServer):$($SMTPPort)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
     }
     elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer})) {
         $SMTPServer = $env:computername ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Locally:$($SMTPServer)" ;
+        $smsg = "Mailing Locally:$($SMTPServer)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
     }
     elseif ((Get-Service -Name MSExchangeADTopology -ea 0 ) ) {
         # non Hub Ex server, draw from local site
         $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer) } ) ;
         $SMTPServer = ($htsrvs | get-random).name ;
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Mailing Random Hub:$($SMTPServer)" ;
-    }
-    else {
+        $smsg = "Mailing Random Hub:$($SMTPServer)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    }elseif( $rgxMyBoxW -AND ($env:COMPUTERNAME -match $rgxMyBoxW)){
+        $smsg = "`$env:COMPUTERNAME -matches `$rgxMyBoxW: vscan UNREACHABLE" ; 
+        $smsg += "`n(and dynamic IPs not configurable into restricted gateways)" ; 
+        $smsg += "`nSkipping mail submission, no reachable destination" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        Break ; 
+    } else {
         # non-Ex servers, non-mybox: Lync etc, assume vscan access
-        write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Non-Exch server, assuming Vscan access" ;
+        $smsg = "Non-Exch server, assuming Vscan access" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        # but dyn ip workstations, not
+
         $SMTPServer = "vscan.toro.com" ;
     } ;
 
@@ -3628,12 +4371,12 @@ Function Send-EmailNotif {
     } ;
 
     if($Credential){
-        write-verbose "Adding specified credential" ; 
+        $smsg = "WVAdding specified credential" ; 
         $Email.add('Credential',$Credential) ; 
     } ; 
     
     if($useSSL){
-        write-verbose "Adding specified credential" ; 
+        $smsg = "WVAdding specified credential" ; 
         $Email.add('useSSL',$useSSL) ; 
     } ; 
     
@@ -3654,15 +4397,25 @@ Function Send-EmailNotif {
 
     if ($host.version.major -ge 3) {$Email.add("Port", $($SMTPPort));}
     elseif ($SmtpPort -ne 25) {
-        write-warning "$((get-date).ToString('HH:mm:ss')):Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+        $smsg = "WWLess than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
     } ;
 
     # trigger html if body has html tags in it
     if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
 
     # dumping to pipeline appears out of sync in console put it into a write- command to keep in sync
-    write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):send-mailmessage w`n$(($email |out-string).trim())" ; 
-    if ($validatedAttachments) {write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):`$validatedAttachments:$(($validatedAttachments|out-string).trim())" } ;
+    $smsg = "send-mailmessage w`n$(($email |out-string).trim())" ; 
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    if ($validatedAttachments) {
+        $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    } ;
     $error.clear()
     TRY {
         if ($validatedAttachments) {
@@ -3674,7 +4427,9 @@ Function Send-EmailNotif {
         } ;
     }
     Catch {
-        Write-Warning "$(get-date -format 'HH:mm:ss'): Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
     } ; 
     $error.clear() ;
 }
@@ -3692,7 +4447,7 @@ function summarize-PassStatus {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 3.0.0012-0849AM
+    CreatedDate : 20201012-0849AM
     FileName    : summarize-PassStatus
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
@@ -3781,7 +4536,7 @@ function summarize-PassStatusHtml {
     Author      : Todd Kadrie
     Website     :	http://www.toddomation.com
     Twitter     :	@tostka / http://twitter.com/tostka
-    CreatedDate : 3.0.0012-0849AM
+    CreatedDate : 20201012-0849AM
     FileName    : summarize-PassStatusHtml
     License     : MIT License
     Copyright   : (c) 2020 Todd Kadrie
@@ -4941,7 +5696,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 
@@ -4949,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUT1oP7zTKWb1NHlqZraQvo0/
-# ZwKgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvzVtyRMHgW6ZMOFpJ6hbWY2S
+# ThCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -4965,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRTte7Q
-# s+PqdO/2WTVJC9Q0oc/U6DANBgkqhkiG9w0BAQEFAASBgKJpwX4KdepvviUcbuUQ
-# DGwGsrfGEfY1xuVulNLVUCyDmwfCjgYanKPg/VMYLp/FCzpw0JIWBLcbIuyEznl+
-# m9cLnlyJsZWIHpgLQ9cadxMH/5+yUlhfSoxcwKbTW9xkrexQ+NV2tFy2dQsAf3MP
-# 5zveAMD835aB/tgnEPTVYgBw
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSnwFo/
+# LUMkadWnTuLgLUCFFNpLJDANBgkqhkiG9w0BAQEFAASBgCiXOid2MZgKxUbkxQ+6
+# YCOaUIJbvn0ByZ/bHWNUiQ8IikDKw7TmzJOnDL8cLoCOhXNXOkJl6VOv6PyAuIfM
+# WkcdO7z2x5j97WNMc9wvGR/tvah66Uu7yVnNSbZ/dVUBF06dg3Ullrh9of0Q3SUP
+# qcUqRxUIPNpBRv21+It3YMAp
 # SIG # End signature block

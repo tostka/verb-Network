@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.3.3.0
+Version     : 3.3.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2913,7 +2913,7 @@ function save-WebDownload {
     path<file/dir code - it's not used with explicit params ; seems to work; fliped 
     the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
     fails; ; rounded out, added missing code to detect successful first dl attempt. 
-    * 2:56 PM 3.3.3023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
     Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
@@ -5608,7 +5608,7 @@ function convert-Int64toIP {
     .OUTPUT
     System.String
     .EXAMPLE
-    convert-Int64toIP -int 3.3.335521
+    convert-Int64toIP -int 3232235521
     Result
     ------
     192.168.0.1
@@ -5620,7 +5620,7 @@ function convert-Int64toIP {
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
-        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3.3.335521]")]
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3232235521]")]
         [int64]$int
     )
     BEGIN {
@@ -5668,7 +5668,7 @@ function Convert-IPtoInt64 {
     Convert-IPtoInt64 -IP 192.168.0.1
     Result
     ------
-    3.3.335521
+    3232235521
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -5704,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQKl2/TmxgdCJRpdjHmTB+UTW
-# 2KSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU9Kkr94dlx8kkmYrqYmgL0CKH
+# eP2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5720,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTjVgQe
-# Wlfq3DBnD51iBpEwchY5tTANBgkqhkiG9w0BAQEFAASBgHeTLi6oEC1Zdx90PILs
-# MM1grpiUBKZTgrk/V4FcuHRKl2XBLtyQWJF9rs15JPXKbQyXpMG0GS27S6vs6aPG
-# wUljZWCqOvqtLOYjgT5guhu9VBZPkoY1QtyXTQq3BONqfwvTbym8EJanA/QpcMk3
-# iuVqKdYF3elvgBh1w/3s7WLK
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQZ3+g5
+# wn2eARsQ1Z1AyDGVXx4sgTANBgkqhkiG9w0BAQEFAASBgJLZYs83VpaUWMkquSl8
+# 1RkJzkwhs5Qcj60JdnEdE451p1YtuU32+AIr3cUqj3/13vZrIk0q65OiTcO6sGDZ
+# huEeNRMmG/oPyDRrbd3Po8VBHcXAtWgBuGj2aflGFZtX50JQjrR9J3GYZfkO9QOq
+# O6qhDlW/8XVXAgxken/yllkY
 # SIG # End signature block
