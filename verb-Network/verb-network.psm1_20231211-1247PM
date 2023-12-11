@@ -1,11 +1,11 @@
-﻿# verb-Network.psm1
+﻿# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.2.0.0
+Version     : 3.3.3.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -252,6 +252,216 @@ Function Disconnect-PSR {
 }
 
 #*------^ Disconnect-PSR.ps1 ^------
+
+
+#*------v get-CertificateChainOfTrust.ps1 v------
+Function get-CertificateChainOfTrust {
+    <#
+    .SYNOPSIS
+    get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+    .NOTES
+    Version     : 2.0.0
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2023-10-26
+    FileName    : get-CertificateChainOfTrust.ps1
+    License     : (non asserted)
+    Copyright   : (non asserted)
+    Github      : https://github.com/tostka/verb-io
+    Tags        : Powershell
+    AddedCredit : Amir Sayes 
+    AddedWebsite: https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
+    AddedTwitter: URL
+    REVISIONS
+    * 10:31 AM 10/26/2023 add -CertificateStoreRoot param, to permit runs against CurrentUser or default LocalMachine; 
+        ren CertificateName param -> CertificateID w alias for orig name ; 
+        ren get-CertificatePath -> get-CertificateChainOfTrust (better reflects what it does) ; 
+        removed default * Certificate spec, I don't want trust tests on all certs in the local\My, I want targeted reports ; 
+        expanded CertificateName to support Thumbprint, full Subject DN or subset Subject 'shortname' (first element of Subject DN w 'CN=' prefix removed). 
+        Use of Thumbprint spec is more usefual than Subject, during mid-rollover coexistance, want to pull only a specific cert of the set, rather than both new and retiring old.
+        updated CBH, condensed some code.
+    * 1/2/2019 AS posted version
+    .DESCRIPTION
+    get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+    Function to get and display all the properties of the certificates in a certificate path (chain) until the Root CA.
+    The Function would use Authority Key Identifier and the Subject Key Identifier to determine the certificate path
+    [Get and Enumerate Certificate Chains Remotely Using PowerShell - Amir Sayes](https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/)
+
+    Credit to Splunk Base for Certificate Authority Situational Awareness
+        https://splunkbase.splunk.com/app/3113/
+        https://github.com/nsacyber/Certificate-Authority-Situational-Awareness
+        Author: Amir Joseph Sayes
+            www.Ninaronline.com
+        Version: 1.0
+
+    .PARAMETER CertificateID
+    A certificate identifier: Thumbprint, Shortname (triest to match the 1st element of the SubjectName, cleaned of CN=), full Subject DN, or wildcard[-CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC
+    .PARAMETER ParentAKI
+    Not available for the user to use via the pipeline, this parameter is used internally to look for the certificates in the validation chain recursively
+    .PARAMETER Recurse
+    If this switch is ON, the function will recusivley call itself through the certificate chain until it gets to the Root CA.
+    .PARAMETER CertificateStoreRoot
+    Root below which to search certificates: LocalMachine (default) or CurrentUser[-CertificateRootStore CurrentUser]
+    .PARAMETER CertificateStore
+    Pass the certificateStore name to search for certificate only in certain Store. Default is "My" and you can pass "" to search in all stores.
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    System.Object array summarizing matched certs in the chain, is returned to the pipeline
+    .EXAMPLE 
+    PS> $chain = get-CertificateChainOfTrust -CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC -Recurse -verbose 
+    PS> $prpGCPSumm = 'FriendlyName','ssl_end_time','ssl_start_time','Thumbprint','ssl_subject','ssl_ext_Key_Usage','ssl_ext_Subject_Alternative_Name','CertShortName','IssuerShortName' ; 
+    PS> $n =  ($chain | measure | select -expand count) ; 
+    PS> write-host -fore yellow "Certificate Chain of Trust:" ; 
+    PS> $chain | %{
+    PS>     $n-- ;
+    PS>     write-host "`n`n==($($n)):$($_.CertShortName):`n$(($_| fl $prpGCPSumm |out-string).trim())" ; 
+    PS> } ;
+    Recurse and dump a trust chain on a cert specified by Thumbprint
+    .EXAMPLE
+    $results = get-CertificateChainOfTrust -CertificateID * -recurse -verbose ; 
+    Recurse *all* certificates (specifying explicit * wildcard for CertificateID) found in the default Cert:\LocalMachine\My store and store results into variable, with verbose output.
+    .EXAMPLE
+    PS> $Computername = "Computer1","Computer2","Computer3"
+    PS> $CertificateID = "Mywebsite.MyDomain.com"
+    PS> $res = @()
+    PS> $getVert_Def = "Function get-CertificateChainOfTrust { ${function:get-CertificateChainOfTrust}} "
+    PS> $Computername | foreeach-object {
+    PS>     $res += icm -ComputerName $_ -ArgumentList $getVert_Def -ScriptBlock {
+    PS>         Param($getVert_Def) ; 
+    PS>         .([scriptblock]::Create($getVert_Def))  ; 
+    PS>         get-CertificateChainOfTrust -CertificateID $using:CertificateID ; 
+    PS>     } ; 
+    PS> } ; 
+    PS> $res ; 
+    Runs the Function on remote computers using invoke-command (AS's original sole example)
+    Starts by creating an array of computer names which you would like to remotely run the function against.
+    Creates a parameter to pass the certificate you are looking for
+    Create a definition to the function so we can pass it to each remote invoke-command
+    Loop inside the array of computers and pass the function and run it against each one of them using invoke-command.
+    .FUNCTIONALITY
+    PowerShell Language
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
+    https://splunkbase.splunk.com/app/3113/
+    https://github.com/nsacyber/Certificate-Authority-Situational-Awareness
+    #>
+    [cmdletbinding()]
+    [Alias('get-CertificatePath')]
+    PARAM ( 
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='A certificate identifier: Thumbprint, Shortname (triest to match the 1st element of the SubjectName, cleaned of CN=), full Subject DN, or wildcard[-CertificateID nEFnnnnnnnEnnnDnFFBnnnDDnCnBCBnnBDnnnnnC')]
+            [ValidateNotNullOrEmpty()]
+            [Alias('CertificateName')]
+            [string]$CertificateID,
+        [parameter(ValueFromPipeline = $False,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='Not available for the user to use via the pipeline, this parameter is used internally to look for the certificates in the validation chain recursively')]
+            [string]$ParentAKI,
+        [parameter(HelpMessage = "Switch that causes function to recusivley call itself through the certificate chain until it gets to the Root CA.")]
+            [switch]$Recurse,
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='Root below which to search certificates: LocalMachine (default) or CurrentUser[-CertificateRootStore CurrentUser]')]
+            [ValidateSet("CurrentUser","LocalMachine")]
+            [string]$CertificateStoreRoot = "LocalMachine",
+        [parameter(ValueFromPipeline = $True,ValueFromPipeLineByPropertyName = $True,
+            HelpMessage='CertificateStore name to search for certificate only in certain Store. Default is "My" and you can pass "" to search in all stores.(TrustedPublisher|Remote Desktop|Root|TrustedDevices|CA|REQUEST|AuthRoot|TrustedPeople|addressbook|My|SmartCardRoot|Trust|Disallowed|SMS|"")')]
+            [ValidateSet("TrustedPublisher","Remote Desktop","Root","TrustedDevices","CA","REQUEST","AuthRoot","TrustedPeople","addressbook","My","SmartCardRoot","Trust","Disallowed","SMS","")]
+            [string]$CertificateStore = "My"
+    ) ; 
+    #Regex a certificate Thumbprint
+    $rgxCertThumbprint = '[0-9a-fA-F]{40}'
+    $rgxCertSubjDN = 'CN=.*,\sC=\w+$' ; 
+    $prpCert = 'PSParentPath','FriendlyName',
+        @{Name='EnhancedKeyUsageList';Expression={$_.EnhancedKeyUsageList}},
+        @{Name='ssl_issuer';Expression={$_.IssuerName.name}},
+        @{Name='ssl_end_time';Expression={$_.NotAfter}},
+        @{Name='ssl_start_time';Expression={$_.NotBefore}},
+        @{Name='ssl_serial';Expression={$_.SerialNumber}},
+        @{Name='ssl_publickey_algorithm';Expression={$_.PublicKey.EncodedKeyValue.Oid.FriendlyName}},
+        @{N='Public_Key_Size';E={$_.PublicKey.key.keysize}},
+        @{Name='Encoded_Key_Parameters';Expression={foreach($value in $_.PublicKey.EncodedParameters.RawData){$value.ToString('X2')}}},
+        @{N='Public_Key_Algorithm';E={$_.PublicKey.Oid.FriendlyName}},
+        @{Name='ssl_signature_algorithm';Expression={$_.SignatureAlgorithm.FriendlyName}},
+        'Thumbprint',
+        @{Name='ssl_version';Expression={$_.Version}},
+        @{Name='ssl_subject';Expression={$_.Subject}},
+        @{Name='ssl_publickey';Expression={foreach($value in $_.PublicKey.EncodedKeyValue.RawData){$value.ToString('X2')}}},
+        @{N='ssl_ext_Unique_Identifiers';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Unique Identifiers'}).Format(0)}},
+        @{N='ssl_ext_Authority_Key_Identifier';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Authority Key Identifier'}).Format(0)}},
+        @{N='ssl_ext_Subject_Key_Identifier';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Key Identifier'}).Format(0)}},
+        @{N='ssl_ext_Key_Usage';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Key Usage'}).Format(0)}},
+        @{N='ssl_ext_Certificate_Policies';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Certificate Policies'}).Format(0)}},
+        @{N='ssl_ext_Policy_Mappings';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Policy Mappings'}).Format(0)}},
+        @{N='ssl_ext_Subject_Alternative_Name';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Alternate Name'}).Format(0)}},
+        @{N='ssl_ext_Issuer_Alternate_Name';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Issuer Alternate Name'}).Format(0)}},
+        @{N='ssl_ext_Subject_Directory_Attributes';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Directory Attributes'}).Format(0)}},
+        @{N='ssl_ext_Basic_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Basic Constraints'}).Format(0)}},
+        @{N='ssl_ext_Name_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Name Constraints'}).Format(0)}},
+        @{N='ssl_ext_Policy_Constraints';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Policy Constraints'}).Format(0)}},
+        @{N='ssl_ext_Extended_Key_Usage';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Extended Key Usage'}).Format(0)}},
+        @{N='ssl_ext_CRL_Distribution_Points';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'CRL Distribution Points'}).Format(0)}},
+        @{N='ssl_ext_Inhibit_Policy';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Inhibit Policy'}).Format(0)}},
+        @{N='ssl_ext_Freshest_CRL';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Freshest CRL'}).Format(0)}},
+        @{N='ssl_pri_ext_Authority_Information_Access';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Authority Information Access'}).Format(0)}},
+        @{N='ssl_pri_ext_Subject_Information_Access';E={($_.Extensions | Where-Object {$_.Oid.FriendlyName -eq 'Subject Information Access'}).Format(0)}},
+        @{N='CertShortName';E={($_.Subject.split(",")[0]).trimstart("CN=")}},
+        @{N='IssuerShortName';E={($_.IssuerName.name.split(",")[0]).trimstart("CN=")}} ; 
+
+    $result =@() 
+    $Called_Cert = @() 
+    $smsg = "Get-ChildItem -Path Cert:\$($CertificateStoreRoot)\$($CertificateStore) -Recurse"
+    write-verbose $smsg ; 
+    $Called_Cert = Get-ChildItem -Path Cert:\$CertificateStoreRoot\$CertificateStore -Recurse | Where {-not $_.PSIsContainer} | 
+        Select $prpCert | sort Thumbprint -Unique 
+
+        if (-not ($ParentAKI)) { 
+            switch -regex ($CertificateID){
+                $rgxCertThumbprint {
+                    write-verbose "-CertificateID ($($CertificateID)) matches a Cert Thumbprint" ; 
+                    $Called_Cert = $Called_Cert | where {$_.Thumbprint -eq "$CertificateID"} 
+                } 
+                $rgxCertSubjDN  {
+                    write-verbose "-CertificateID ($($CertificateID)) matches a Cert Subject DN" ; 
+                    $Called_Cert = $Called_Cert | where {$_.ssl_subject -eq "$CertificateID"} 
+                } 
+                default {
+                    write-verbose "Attempting to compare -CertificateID ($($CertificateID)) to CertShortName..." ;
+                    $Called_Cert = $Called_Cert | where {$_.CertShortName -like "$CertificateID"} 
+                }
+            } ; 
+        } elseif ($ParentAKI) {
+            $Called_Cert = $Called_Cert | where {$_.ssl_ext_Subject_Key_Identifier -eq $ParentAKI} | select -First 1 ; 
+        } ; 
+
+        If ($Recurse) {
+            #Loop and recursively retrieve the certificates in the chain until Root CA 
+            $Called_Cert | foreach-object { 
+                if ($_.ssl_ext_Authority_Key_Identifier -ne $null) {
+                    $CertParentAKI = ($_.ssl_ext_Authority_Key_Identifier.split("=")[1])
+                    #Adding the Cert name as a member in the original object 
+                    $_ | Add-Member -MemberType NoteProperty -Name 'CertParentAKI' -Value $CertParentAKI 
+                } else {
+                    $CertParentAKI = 0 
+                    $_ | Add-Member -MemberType NoteProperty -Name 'CertParentAKI' -Value $CertParentAKI 
+                } ; 
+                #Output the results 
+                $_ | write-output ; 
+                #If recurse switch was On and we have not reached the Root CA then call the function and pass the AKI of the issure of the current certificate
+                if ($_.CertParentAKI -ne $_.ssl_ext_Subject_Key_Identifier -and $_.CertParentAKI -ne 0) {
+                    get-CertificateChainOfTrust -ParentAKI $_.CertParentAKI -Recurse -CertificateStore ""  ; 
+                }  ; 
+
+            } ;  # loop-E
+        } else {
+            # if no recurse was chosen then just show the results without looping
+            $Called_Cert
+        } ; 
+}
+
+#*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
 #*------v Get-DnsDkimRecord.ps1 v------
@@ -1672,6 +1882,224 @@ function get-tsUsers {
 #*------^ get-tsusers.ps1 ^------
 
 
+#*------v get-WebTableTDO.ps1 v------
+function get-WebTableTDO {
+	<#
+	.SYNOPSIS
+	get-WebTableTDO.ps1 - Extract Tables from Web pages (via PowerShellInvoke-WebRequest)
+	.NOTES
+	Version     : 1.0.0
+	Author      : Todd Kadrie
+	Website     :	http://www.toddomation.com
+	Twitter     :	@tostka / http://twitter.com/tostka
+	CreatedDate : 2023-
+	FileName    : 
+	License     : MIT License
+	Copyright   : (c) 2023 Todd Kadrie
+	Github      : https://github.com/tostka/verb-XXX
+	Tags        : Powershell
+	AddedCredit : REFERENCE
+	AddedWebsite:	URL
+	AddedTwitter:	URL
+	REVISIONS
+    * 3:25 PM 11/27/2023 added expanded CBH examples
+	* 9:25 AM 11/8/2023 ported over from ImportExcel:get-HtmlTable, which is adapted version of Lee Holmes' Get-WebRequestTable.ps1 demo code. 
+	add: -Summary param, which dumps a short index#|Summary (leading textcontent[0..56] string)
+	add: param detailed out, helpmessage, CBH
+	add: strongly typed params
+	* 10/12/23 dfinke's adapted variant of LH's original code into ImportExcel:get-htmlTabl(): [PowerShell Gallery | ImportExcel 7.8.6](https://www.powershellgallery.com/packages/ImportExcel/7.8.6) (adds 
+	* 1/5/2015 LH's posted code from https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/
+	.DESCRIPTION
+	get-WebTableTDO.ps1 - Extract Tables from Web pages (via PowerShellInvoke-WebRequest)
+
+	Original code: [Lee Holmes | Extracting Tables from PowerShell's Invoke-WebRequest](https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/)
+	By way of dFinke's ImportExcel:get-HtmlTable v7.8.6 [ImportExcel/Public/Get-HtmlTable.ps1 at master Â· dfinke/ImportExcel Â· GitHub](https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1)
+	
+	.PARAMETER Url
+	Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]
+	.PARAMETER TableIndex
+	Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]
+	.PARAMETER Header
+	Table header properties to be substituted for the resulting table
+	.PARAMETER FirstDataRow
+	Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]
+	.PARAMETER Summary
+	Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]
+	.PARAMETER UseDefaultCredentials
+	Indicates that the cmdlet uses the credentials of the current user to send the web request.
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -UseDefaultCredentials:$false ;
+	OPTSAMPLEOUTPUT
+	Default output, non specified -TableIndex, which returns contents of first table:
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" ; 
+	
+        Season      Episodes
+        ------      --------
+        First aired Last aired
+        1           29
+        2           26
+        3           24
+    
+	Default output, without explicit -TableIndex, outputs the 0'th/first table found on the url.
+	.EXAMPLE
+	PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -summary
+	
+
+            Index#  :       textContent
+            ------  :       -----------
+            1       :       SeasonEpisodesOriginally airedFirst airedLast aired
+            2       :       TitleDirected byWritten byOriginal air date [23][25
+            3       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            4       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            5       :       No.overallNo. inseasonTitleDirected byWritten byOri
+            6       :       Pilots 01"The Cage" 02a"Where No Man Has Gone Befor
+            7       :       Season 1 02b"Where No Man Has Gone Before" 03"The C
+            8       :       Season 2 30"Catspaw" 31"Metamorphosis" 32"Friday's
+            9       :       Season 3 56"Spectre of the Gun" 57"Elaan of Troyius
+            10      :       This section needs additional citations for verific
+            11      :       vteStar Trek: The Original Series episodesSeasons 1
+            12      :       vteStar Trek: The Original SeriesEpisodesSeason 1 2
+            13      :       vteStar TrekOutline Timeline Canon ListsTelevision
+            14      :       Live-actionThe Original Series episodesThe Next Gen
+            15      :       The Original SeriesThe Motion Picture The Wrath of
+            16      :       CharactersA–F G–M N–S T–ZCrossoversConceptsGames Ko
+
+	Retrieve tables list and echo simple heading summary of each table (useful to determine which -tableIndex # to use for specific table retrieval).
+	.EXAMPLE
+    PS> get-WebTableTDO -URL "https://en.wikipedia.org/wiki/List_of_Star_Trek:_The_Original_Series_episodes" -index 2 | format-table -a ;
+
+        No.          No.in         Title                             Directedby                    Writtenby
+        overall      season
+        ------------ ------------- -----                             ----------                    ---------
+        1            1             "The Man Trap"                    Marc Daniels                  George Clayton Johnson
+        2            2             "Charlie X"                       Lawrence Dobkin               Story by : Gene Roddenberry...
+        3            3             "Where No Man Has Gone Before"    James Goldstone               Samuel A. Peeples
+       ...TRIMMED...
+        27           27            "The Alternative Factor"          Gerd Oswald                   Don Ingalls
+        28           28            "The City on the Edge of Forever" Joseph Pevney                 Harlan Ellison
+        29           29            "Operation -- Annihilate!"        Herschel Daugherty            Steven W. Carabatsos
+
+    Retrieve the index 2 ("third") table on the specified page, and output format-table -auto, to align data into columns.
+    .EXAMPLE
+    PS> $data = get-WebTableTDO -Url $Url -TableIndex $Index -Header $Header -FirstDataRow $FirstDataRow -UseDefaultCredentials: $UseDefaultCredentials
+    PS> $data | Export-Excel $xlFile -Show -AutoSize ; 
+    Demo conversion, with export-excel exporting xlsx, and opening ase temp file in Excel
+    .LINK
+	https://github.com/tostka/verb-Network
+	.LINK
+	https://github.com/dfinke/ImportExcel/blob/master/Public/Get-HtmlTable.ps1
+	.LINK
+	https://www.leeholmes.com/extracting-tables-from-powershells-invoke-webrequest/
+	#>
+	[CmdletBinding()]
+	[Alias('Get-WebRequestTable')]
+    PARAM(
+        [Parameter(Mandatory=$true,HelpMessage='Specifies the Uniform Resource Identifier (URI) of the Internet resource to which the web request is sent. Enter a URI. This parameter supports HTTP, HTTPS, FTP, and FILE values.[-Url https://somewebserver/page]')]
+			[System.Uri]$Url,
+        [Parameter(HelpMessage='Index number of the table from target URL, to be returned (defaults 0)[-TableIndex 2]')]
+        [Alias('index')]
+			[int]$TableIndex=0,
+        [Parameter(HelpMessage='Table header properties to be substituted for the resulting table')]
+			$Header,
+        [Parameter(HelpMessage='Index Row of table from which to begin returning data (defaults 0)[-FirstDataRow 2]')]
+			[int]$FirstDataRow=0,
+		[Parameter(HelpMessage='Indicates that the cmdlet should return a summary of all tables currently on the subject URL page.[-summary]')]
+			[Switch]$Summary,
+        [Parameter(HelpMessage='Indicates that the cmdlet uses the credentials of the current user to send the web request.')]
+			[Switch]$UseDefaultCredentials
+    ) ; 
+    if ($PSVersionTable.PSVersion.Major -gt 5 -and -not (Get-Command ConvertFrom-Html -ErrorAction SilentlyContinue)) {
+         # Invoke-WebRequest on .NET core doesn't have ParsedHtml so we need HtmlAgilityPack or similiar Justin Grote's PowerHTML wraps that nicely
+         throw "This version of PowerShell needs the PowerHTML module to process HTML Tables."
+    }
+
+    $r = Invoke-WebRequest $Url -UseDefaultCredentials: $UseDefaultCredentials
+    $propertyNames = $Header
+
+    if ($PSVersionTable.PSVersion.Major -le 5) {
+		if(-not $Summary){
+			$table = $r.ParsedHtml.getElementsByTagName("table")[$TableIndex]
+        } else { 
+			write-verbose "Returning target URL table summary"
+			if($tbls = $r.ParsedHtml.getElementsByTagName("table")){
+				"Index#`t:`ttextContent"  | write-output ; 
+				"------`t:`t-----------"  | write-output ; 
+				$idx = 0 ; $tbls | foreach-object{ 
+					$idx++ ; 
+					"$($idx)`t:`t$(($_.textcontent)[0..50] -join '')"  | write-output ; 
+				} ; 
+				break ; 
+			} else { 
+			
+			} ;
+        } ; 
+        $totalRows=@($table.rows).count
+
+        for ($idx = $FirstDataRow; $idx -lt $totalRows; $idx++) {
+
+            $row = $table.rows[$idx]
+            $cells = @($row.cells)
+
+            if(!$propertyNames) {
+                if($cells[0].tagName -eq 'th') {
+                    $propertyNames = @($cells | ForEach-Object {$_.innertext -replace ' ',''})
+                } else  {
+                    $propertyNames =  @(1..($cells.Count + 2) | Foreach-Object { "P$_" })
+                }
+                continue
+            }
+
+            $result = [ordered]@{}
+
+            for($counter = 0; $counter -lt $cells.Count; $counter++) {
+                $propertyName = $propertyNames[$counter]
+
+                if(!$propertyName) { $propertyName= '[missing]'}
+                $result.$propertyName= $cells[$counter].InnerText
+            }
+
+            [PSCustomObject]$result | write-output ; 
+        }
+    }
+    else {
+        $h    = ConvertFrom-Html -Content $r.Content
+        if ($TableIndex -is [valuetype]) { $TableIndex += 1}
+        $rows =    $h.SelectNodes("//table[$TableIndex]//tr")
+        if (-not $rows) {Write-Warning "Could not find rows for `"//table[$TableIndex]`" in $Url ."}
+        if ( -not  $propertyNames) {
+            if (   $tableHeaders  = $rows[$FirstDataRow].SelectNodes("th")) {
+                   $propertyNames = $tableHeaders.foreach({[System.Web.HttpUtility]::HtmlDecode( $_.innerText ) -replace '\W+','_' -replace '(\w)_+$','$1' })
+                   $FirstDataRow += 1
+            }
+            else {
+                   $c = 0
+                   $propertyNames = $rows[$FirstDataRow].SelectNodes("td") | Foreach-Object { "P$c" ; $c ++ }
+            }
+        }
+        Write-Verbose ("Property names: " + ($propertyNames -join ","))
+        foreach ($n in $FirstDataRow..($rows.Count-1)) {
+            $r      = $rows[$n].SelectNodes("td|th")
+            if ($r -and $r.innerText -ne "" -and $r.count -gt $rows[$n].SelectNodes("th").count  ) {
+                $c      = 0
+                $newObj = [ordered]@{}
+                foreach ($p in $propertyNames) {
+                    $n  = $null
+                    #Join descentandts for cases where the text in the cell is split (e.g with a <BR> ). We also want to remove HTML codes, trim and convert unicode minus sign to "-"
+                    $cellText = $r[$c].Descendants().where({$_.NodeType -eq "Text"}).foreach({[System.Web.HttpUtility]::HtmlDecode( $_.innerText ).Trim()}) -Join " " -replace "\u2212","-"
+                    if ([double]::TryParse($cellText, [ref]$n)) {$newObj[$p] = $n     }
+                    else                                        {$newObj[$p] = $cellText }
+                    $c ++
+                }
+                [pscustomObject]$newObj
+            }
+        }
+    }
+}
+
+#*------^ get-WebTableTDO.ps1 ^------
+
+
 #*------v get-whoami.ps1 v------
 function get-whoami {
         <#
@@ -2485,7 +2913,7 @@ function save-WebDownload {
     path<file/dir code - it's not used with explicit params ; seems to work; fliped 
     the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
     fails; ; rounded out, added missing code to detect successful first dl attempt. 
-    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    * 2:56 PM 3.3.3023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
     Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
@@ -5180,7 +5608,7 @@ function convert-Int64toIP {
     .OUTPUT
     System.String
     .EXAMPLE
-    convert-Int64toIP -int 3232235521
+    convert-Int64toIP -int 3.3.335521
     Result
     ------
     192.168.0.1
@@ -5192,7 +5620,7 @@ function convert-Int64toIP {
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
-        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3232235521]")]
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3.3.335521]")]
         [int64]$int
     )
     BEGIN {
@@ -5240,7 +5668,7 @@ function Convert-IPtoInt64 {
     Convert-IPtoInt64 -IP 192.168.0.1
     Result
     ------
-    3232235521
+    3.3.335521
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -5268,7 +5696,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,summarize-PassStatus,summarize-PassStatusHtml,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-Port,test-PrivateIP,Test-RDP -Alias *
 
 
 
@@ -5276,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUIQwLtPu+MitcO09P/sWV/cWY
-# P2igggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQKl2/TmxgdCJRpdjHmTB+UTW
+# 2KSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5292,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,Ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTrSiAd
-# 7VKNJPCiTL04186zPtXLATANBgkqhkiG9w0BAQEFAASBgCoHebzis5iMCw4uoO5h
-# 3DIUbK0eO3lXPJMKG8RIMHJcmNRPQKhsH2C15rxgZqQZKB6kBeodTrU/AXluUp5n
-# 2XOSGbTkvpFqQz/DlaIgruOoo92tbmOxSsaNzJgVpfyDo8+99Z1oHI9+sfnzlryH
-# Oj/qYpXjyXomn2sIdPzoquK7
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTjVgQe
+# Wlfq3DBnD51iBpEwchY5tTANBgkqhkiG9w0BAQEFAASBgHeTLi6oEC1Zdx90PILs
+# MM1grpiUBKZTgrk/V4FcuHRKl2XBLtyQWJF9rs15JPXKbQyXpMG0GS27S6vs6aPG
+# wUljZWCqOvqtLOYjgT5guhu9VBZPkoY1QtyXTQq3BONqfwvTbym8EJanA/QpcMk3
+# iuVqKdYF3elvgBh1w/3s7WLK
 # SIG # End signature block

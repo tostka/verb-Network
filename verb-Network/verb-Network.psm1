@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.3.3.0
+Version     : 3.3.4.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2913,7 +2913,7 @@ function save-WebDownload {
     path<file/dir code - it's not used with explicit params ; seems to work; fliped 
     the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
     fails; ; rounded out, added missing code to detect successful first dl attempt. 
-    * 2:56 PM 3.3.3023 finally generated throttling '(429) Too Many Requests.' from choco. 
+    * 2:56 PM 3/3/2023 finally generated throttling '(429) Too Many Requests.' from choco. 
     Reworked -path logic; replaced param with 2 params: -Destination (dir to target dl's into, w dynamic download file resolution) -DestinationFile (full path to download file -outputpath)
     Reworked a lot of the echos, added wlt support for all echos. 
     Only seems to occur pulling pkgs; when running installs, they run for minutes between dl's which seems to avoid issue.
@@ -3043,7 +3043,7 @@ function save-WebDownload {
             } ; 
             <#
             # alt: hack of resolve-path (which norm can't resolve non-exist paths), grabbing resolved path out of the error of a fail, as TargetObject prop.
-            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
+            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3.3.437/powershell-resolve-path-that-might-not-exist)
             $Path = Resolve-Path $path -ErrorAction SilentlyContinue -ErrorVariable _frperror ; 
             if (-not($Destination)) {$Destination = $_frperror[0].TargetObject} ; 
             #>
@@ -5608,7 +5608,7 @@ function convert-Int64toIP {
     .OUTPUT
     System.String
     .EXAMPLE
-    convert-Int64toIP -int 3.3.335521
+    convert-Int64toIP -int 3232235521
     Result
     ------
     192.168.0.1
@@ -5620,7 +5620,7 @@ function convert-Int64toIP {
     ###Requires -Modules DnsClient
     [CmdletBinding()]
     PARAM (
-        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3.3.335521]")]
+        [parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="64-bit integer IP address  representation, to be converted back to IP[-int 3232235521]")]
         [int64]$int
     )
     BEGIN {
@@ -5668,7 +5668,7 @@ function Convert-IPtoInt64 {
     Convert-IPtoInt64 -IP 192.168.0.1
     Result
     ------
-    3.3.335521
+    3232235521
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -5704,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQKl2/TmxgdCJRpdjHmTB+UTW
-# 2KSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUw/K6ecfVP2uRvScIaJK+0+Ti
+# zeugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5720,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTjVgQe
-# Wlfq3DBnD51iBpEwchY5tTANBgkqhkiG9w0BAQEFAASBgHeTLi6oEC1Zdx90PILs
-# MM1grpiUBKZTgrk/V4FcuHRKl2XBLtyQWJF9rs15JPXKbQyXpMG0GS27S6vs6aPG
-# wUljZWCqOvqtLOYjgT5guhu9VBZPkoY1QtyXTQq3BONqfwvTbym8EJanA/QpcMk3
-# iuVqKdYF3elvgBh1w/3s7WLK
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSMqlT5
+# arTaEHOT7Rtvi4dXliG7KzANBgkqhkiG9w0BAQEFAASBgEsTRvBvGUPuT9D4HgVw
+# 0jpYTlzzrZPPLxAO+8ESUr2x7c+rTC48Cs3zEFH+eSFfS+5y9aJ4/e60JN6dwQdY
+# bEV3I08siD+8jkya8YfAFtMOUlgJNH/VK/V+Z+YsRttD2KD/NhD3E6O9n6U/PYsQ
+# 3+m2z/lBjhX068bpUz+7eF2A
 # SIG # End signature block
