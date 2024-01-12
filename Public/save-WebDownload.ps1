@@ -21,6 +21,7 @@ function save-WebDownload {
     AddedWebsite: https://jmcnatt.net/quick-tips/powershell-capturing-a-redirected-url-from-a-web-request/
     AddedTwitter: @jmcnatt / https://twitter.com/jmcnatt
     REVISIONS
+    * 3:02 PM 1/12/2024 fix non-unique param Position (3): 
     * 3:58 PM 3/7/2023 revalidated choco works with discovery;  rem'd out prior 
     path<file/dir code - it's not used with explicit params ; seems to work; fliped 
     the iwr's to use splats; the redir resolve also relies on -ea 0, not STOP or it 
@@ -100,7 +101,7 @@ function save-WebDownload {
         [Parameter(Mandatory=$false,Position=2,
             HelpMessage = "Full path to destination file for download[-DestinationFile 'c:\path-to\']")]
             [string]$DestinationFile,
-        [Parameter(Mandatory=$false,Position=2,
+        [Parameter(Mandatory=$false,Position=3,
             HelpMessage = "Delay in milliseconds to be applied between a series of downloads(1000 = 1sec)[-ThrottleDelay 1000]")]
             [int]$ThrottleDelay
     ) ; 
