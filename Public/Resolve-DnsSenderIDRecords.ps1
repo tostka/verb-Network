@@ -18,6 +18,8 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
+    * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
+    * 9:57 AM 5/2/2024 updated to accomodate Sec's decision to start parking dmarcs on domains as cnames pointed at a common dmarc txt (recogs cname, resolves to txt, and returns both in output)
     * 9:24 AM 3/20/2024 rework output - dumping mix of record types into the pipeline - with mult dkim selectors is a confusing mismatch return: flip to a constructed object with SPF, DKIM & DMARC as sub-objects that can be examined in isolation.
     * 3:01 PM 3/19/2024 adapt to full range of SenderID resolution from get-DNSDkimRecord.ps1
     * 11/02/2022 T13nn3s posted rev v1.5.2 (DKIM expansion example)
@@ -27,13 +29,16 @@ function Resolve-DnsSenderIDRecords {
     Reasonable listing of common selectors here
     [Email Provider Commonly Used DKIM Selectors : Sendmarc - help.sendmarc.com/](https://help.sendmarc.com/support/solutions/articles/44001891845-email-provider-commonly-used-dkim-selectors)
 
-
     .PARAMETER Name
     Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]
     .PARAMETER DkimSelector
     Specify a custom DKIM selector.[-DkimSelector myselector
     .PARAMETER Server
     DNS Server to use.[-Server 8.8.8.8]
+    .PARAMETER SpfModelDomain
+    DomainName from which to obtain model SPF string for comparison[-SpfModelDomain somdeomain.tld]
+    .PARAMETER TestSPFEgress
+    Switch to perform element by element SPF compairsons against specified SpfModelDomain's SPF record ip4|ip6 and all designator[-SpfModelDomain somdeomain.tld]
     .INPUTS
     Accepts piped input.
     .OUTPUTS
@@ -165,8 +170,60 @@ function Resolve-DnsSenderIDRecords {
         p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCstQzRq+OSOJM8isy+RYnrVMmZrfXLuxxxxxxxxxxxxxxa8MQFYGOQgJbj06nyNtC3Qb2vHWcvX6oU/hBJ5fLeaH3lIcgbG91p3cE/4gxh9rncprv/ICkfj0SqIalwoie2uEcWfPmkCMaAwNKIB77SGDEPnetgqtSVC5XMFFTtJwIDAQAB
 
     Example processing the returned TXT DKIM record and outputing the public key tag.
-    DESCRIPTION    
-.LINK
+    .EXAMPLE
+    PS> $results = Resolve-DnsSenderIDRecords -name somedomain.tld -TestSPFEgress -verbose ;
+    PS> foreach($result in $results){
+    PS>     $sBnrS="`n#*------v DOMAIN: $($result.mx.name) v------" ; 
+    PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+    PS>     $hsReport = @"
+  
+    ==DomainName: 
+$(($result.mx.name|out-string).trim()) 
+    
+    ==MX Record: 
+$(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
+    
+    ==SPF Record: 
+$(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
+    
+    ==DKIM Record: 
+$(
+      
+      $smsg = "`n`n" ; 
+      foreach($rec in $result.dkim){
+      
+          $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ; 
+          $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ; 
+          
+      } ; 
+      $smsg |out-string
+) 
+    
+    ==DMARC Record: 
+$(
+    ($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+ )   
+        --PolicyTag:
+$(   ($result.dmarc.policytag|out-string).trim()
+)
+      
+        --SubDomainPolicyTag:
+$(
+  ($result.dmarc.SubDomainPolicyTag|out-string).trim()
+)
+     
+        --PolicyInheritance:
+$(   
+  ($result.dmarc.PolicyInheritance|out-string).trim()
+) 
+     
+"@ ; 
+    PS>     write-host $hsReport ; 
+    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+    PS> } ; 
+    Demos a pass with trailing looped reporting
+    .LINK
     https://github.com/T13nn3s/Invoke-SpfDkimDmarc/blob/main/public/Get-DMARCRecord.ps1
     https://www.powershellgallery.com/packages/DomainHealthChecker/1.5.2/Content/public%5CResolve-DnsSenderIDRecords.ps1
     https://binsec.nl/powershell-script-for-spf-dmarc-and-dkim-validation/
@@ -184,10 +241,14 @@ function Resolve-DnsSenderIDRecords {
         [Parameter(Mandatory = $False,
             HelpMessage = "An array of custom DKIM selector strings.[-DkimSelector myselector")]
         [Alias('Selector')]
-        [string[]]$DkimSelector,
+            [string[]]$DkimSelector,
         [Parameter(Mandatory = $false,
             HelpMessage = "DNS Server to use.[-Server 8.8.8.8]")]
-        [string]$Server='1.1.1.1'
+            [string]$Server='1.1.1.1',
+        [Parameter(Mandatory=$false,HelpMessage="DomainName from which to obtain model SPF string for comparison[-SpfModelDomain somdeomain.tld]")]
+            [string]$SpfModelDomain = 'myturf.com',
+        [Parameter(HelpMessage="Switch to perform element by element SPF compairsons against specified SpfModelDomain's SPF record ip4|ip6 and all designator[-SpfModelDomain somdeomain.tld]")]
+            [switch]$TestSPFEgress
     ) ; 
     BEGIN {
         $verbose = ($VerbosePreference -eq "Continue") ; 
@@ -245,14 +306,30 @@ function Resolve-DnsSenderIDRecords {
             write-verbose "(non-pipeline - param - input)" ; 
         } ; 
 
+        if($TestSPFEgress){
+            write-verbose "resolve `$modelspf from `$SpfModelDomain ($($SpfModelDomain))" ; 
+            TRY{
+                $modelspf  =  resolve-dnsname -server $Server -type txt -name $SpfModelDomain ;
+            }CATCH{} ;
+            if($modelspf = $modelspf | ? Strings -Match "spf1"){
+                write-verbose "split model spf into elements, on spaces" ; 
+                $modelSPFElements = $modelspf.strings -split ' ' ; 
+            }else{
+                write-warning "-TestSPFEgress specified: Unable to resolve functional SPF record for specified -SpfModelDomain $($SpfModelDomain)`n(ABORT)" ; 
+                break ; 
+            } ; 
+        } ; 
+
         $SPFObject = New-Object System.Collections.Generic.List[System.Object] ; 
         $DKimObject = New-Object System.Collections.Generic.List[System.Object] ; 
         $DMARCObject = New-Object System.Collections.Generic.List[System.Object] ; 
+        $MXObject = New-Object System.Collections.Generic.List[System.Object] ; 
         
         $objReturn = [ordered]@{
             SPF = $null ; 
             DKIM = $null ; 
             DMARC = $null ; 
+            MX = $null ; 
         } ; 
 
         if(-not $DkimSelector){
@@ -270,32 +347,106 @@ function Resolve-DnsSenderIDRecords {
             #write-host -Object $smsg @whElement ;
         }; 
         write-host -Object $smsg @whElement ; 
+
+        $greenCheck = @{
+          #Object = [Char]8730 ;
+          Object = "$([Char]8730) PASS" ;  ;
+          ForegroundColor = 'Green' ;
+          NoNewLine = $true ;
+        } ;
+        $PASS = @{
+            Object = "$([Char]8730) PASS" ;
+            ForegroundColor = 'Green' ;
+            NoNewLine = $true ;
+        } ;
+        $FAIL = @{
+            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS
+            #Object = [Char]2573 ;
+            object = ' X FAIL'
+            ForegroundColor = 'RED' ;
+            NoNewLine = $true ;
+        } ;
+        #$mnuBurger = ą  U+2261
+        # $mnu3dotsHoriz = ą┅ U+2505
+        # $mnu3dotsVert = ą┅┇ U+2507
+        <#$smsg = "Test:Thing" ; 
+        $Passed = $true ; 
+        Write-Host "$($smsg)... " -NoNewline ; 
+        if($Passed){Write-Host @greenCheck} else {write-host @FAIL} ; 
+        Write-Host " (Done)" ;
+        # echoing through set to find what displays: 1..128 | %{"$_ $([char]$_)"}
+        # extended asci 128..255:  128..255 | %{"$_ $([char]$_)"}
+        #>
+
     } ; 
+
     PROCESS { 
         $Error.Clear() ; 
 
-        foreach($item in $Name) {
+        foreach($DomainName in $Name) {
 
-            $sBnr="#*======v Name: $($item) v======" ; 
+            $steps = 0 ; 
+
+            $sBnr="#*======v Name: $($DomainName) v======" ; 
             $whBnr = @{BackgroundColor = 'Magenta' ; ForegroundColor = 'Black' } ;
             write-host @whBnr -obj "$((get-date).ToString('HH:mm:ss')):$($sBnr)" ;
 
+            $steps++ ; 
+
             $pltRvDN=[ordered]@{
                 Type = $null ;
-                Name = $item  ;
+                Name = $DomainName  ;
                 server = $server
                 erroraction = 'SilentlyContinue' ;
             } ;
             
+            $pltRvDN.Type= 'MX' ;
+            $smsg = "`n$($steps). Resolve-DNSName MX type w`n$(($pltRvDN|out-string).trim())" ;
+            write-host -foregroundcolor yellow $smsg  ;
+
+            TRY{
+                $MX  = Resolve-DNSName @pltRvDN ;
+            }CATCH{} ;
+            $MXReturnValues = New-Object psobject ;
+            $MXReturnValues | Add-Member NoteProperty "Name" $DomainName ;
+
+            #-=-=-=-=-=-=-=-=
+            $prpMX = 'Name','Typ','TTL','Section','NameExchange','Preference' ; 
+            if($MX){
+                $rType = $MX.Type ;
+                write-host @PASS ; 
+                $smsg = "`n=>Matched to MX:`n$(($MX|ft -a $prpMX | out-string).trim())" ;
+                #$smsg += "`nStrings:`n$(($MX|select -expand Strings | out-string).trim())`n"
+                write-host -foregroundcolor green $smsg ;
+                $MXReturnValues | Add-Member NoteProperty "MXRecord" $MX ;
+            } else {
+                write-host @FAIL ; 
+                $smsg = "`n=>NO MX RECORD FOUND FOR DOMAIN:$($DomainName )`n" ;
+                write-warning $smsg ;
+                write-verbose "asserting MXRecord:`$null" ;
+                $MXReturnValues | Add-Member NoteProperty "MXRecord" $null ;
+                <#if($noSelectorSpecified){
+                    $SpfAdvisory = $SpfAdvisory.replace('domain.',"domain, against a common Selectors list:`n($($DKSelArray -join '|')).") ;
+                };
+                #>
+                $rType = $MX.Type ;
+            } ;
+            $MXReturnValues | Add-Member NoteProperty "ReturnedType" $rType ;
+            #$MXReturnValues | Add-Member NoteProperty "DKIMAdvisory" $MXAdvisory ;
+            $MXObject.Add($MXReturnValues) ;
+            #$MXReturnValues | write-output ;
+
+            $steps++ ;
+
             $pltRvDN.Type= 'TXT' ;
-            $smsg = "`n1. Resolve-DNSName SPF TXT type Matching 'spf1' w`n$(($pltRvDN|out-string).trim())" ;
+            $smsg = "`n$($steps). Resolve-DNSName $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
             write-host -foregroundcolor yellow $smsg  ;
 
             TRY{
                 $SPF  = Resolve-DNSName @pltRvDN ;
             }CATCH{} ;
             $SpfReturnValues = New-Object psobject ;
-            $SpfReturnValues | Add-Member NoteProperty "Name" $item ;
+            $SpfReturnValues | Add-Member NoteProperty "Name" $DomainName ;
              
 
             if($SPF = $SPF | ? Strings -Match "spf1"){
@@ -304,9 +455,36 @@ function Resolve-DnsSenderIDRecords {
                 $smsg += "`nStrings:`n$(($SPF|select -expand Strings | out-string).trim())`n"
                 write-host -foregroundcolor green $smsg ; 
                 $SpfReturnValues | Add-Member NoteProperty "SPFRecord" $spf ;
-            
+                
+                if($TestSPFEgress){
+                    #$SpfModelDomain = 'myturf.com' ; 
+                    #$DomainName = 'bossplow.com' ; 
+                    write-host "==Separately validating key elements in $($SpfModelDomain) model spf are present (avoids ordering issues in full string tests):" ; 
+                
+                    $thisSPFElements = $spf.strings -split ' ' ; 
+                    $FailCount = 0 ; 
+                    $cacheFails = @() ; 
+                    foreach($item in $modelSPFElements){
+                        $smsg = "Test:$($item)..." ; 
+                        write-host -foregroundcolor yellow $smsg  -NoNewline ; 
+                        if($thisSPFElements | ?{$_ -match ([regex]::escape($item))} ){
+                            #write-host -foregroundcolor green "SPF $($item) present" ; 
+                            #Write-Host "$($smsg)... " -NoNewline ; 
+                            #Write-Host " (Done)" ;
+                            #if($Passed){Write-Host @greenCheck} else {write-host @FAIL} ; 
+                            Write-Host @PASS ; 
+                        }else{
+                            #write-warning "$item missing"
+                            Write-Host @fail ; 
+                            $FailCount++ ; 
+                            $cacheFails += @($item) ; 
+                        }  ; 
+                        write-host "" ; # assert a line wrap to finish the -nonewlines above
+                    } ; 
+                    write-verbose "Item tests completed" ;     
+                } ; 
             } else {
-                $smsg = "`n=>NO SPF RECORD FOUND FOR DOMAIN:$($item )`n" ;
+                $smsg = "`n=>NO SPF RECORD FOUND FOR DOMAIN:$($DomainName )`n" ;
                 write-warning $smsg ;
 
                 write-verbose "asserting SPFRecord:`$null" ;
@@ -321,33 +499,40 @@ function Resolve-DnsSenderIDRecords {
             $SpfReturnValues | Add-Member NoteProperty "ReturnedType" $rType ;
             #$SpfReturnValues | Add-Member NoteProperty "DKIMAdvisory" $SpfAdvisory ;
             $SpfObject.Add($SpfReturnValues) ;
+            if($FailCount -gt 0){
+                $SpfObject.Add($FailCount) ; 
+            }  
+            if($cacheFails.count -gt 0){
+                $SpfObject.Add($cacheFails) ; 
+            }  
             #$SpfReturnValues | write-output ;
             
-            write-host -fore yellow "`n2. Attempt to resolve DKIMs (by checking common DKIM Selector host names)..." ;
+            $steps++ ;
+            write-host -fore yellow "`n$($steps). Attempt to resolve DKIMs (by checking common DKIM Selector host names)..." ;
             $pltRvDN.Type= 'CNAME' ;
             $foundSelector = $false ; 
 
             foreach ($DSel in $DkimSelector) {
-                $pltRvDN.Name = "$($DSel)._domainkey.$($item )" ;
-                $smsg = "Resolve-DNSName SPF TXT type Matching 'spf1' w`n$(($pltRvDN|out-string).trim())" ;
-                write-verbose $smsg ; 
+                $pltRvDN.Name = "$($DSel)._domainkey.$($DomainName )" ;
+                $smsg = "Resolve-DNSName DKIM $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
+                write-host -foregroundcolor yellow $smsg ; 
                 $DKIM  = $null ;
                 TRY{
                     $DKIM  = Resolve-DNSName @pltRvDN ;
                 }CATCH{write-host -nonewline '.'} ;
                 if($DKIM){
-
+                    write-host @PASS ; 
                 } else { 
                     # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
                     $smsg = "Fail on prior TXT qry" ; 
-                    $smsg += "`nRetrying TXT qry:-Name $($DSel).$($item)"
-                    $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($item)"  ;
+                    $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
+                    $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($DomainName)"  ;
                     write-verbose $smsg ; 
-                    $DKIM = Resolve-DnsName -Type TXT -Name "$($DSel).$($item)" @SplatParameters ; 
+                    $DKIM = Resolve-DnsName -Type TXT -Name "$($DSel).$($DomainName)" @SplatParameters ; 
                 } ;  
                 
                 if(($DKIM |  measure).count -gt 1){
-                    write-verbose "Multiple Records returned on qry: Likely resolution chain CNAME->(CNAME->)TXT`nuse the TXT record in the chain" ;   
+                    write-host -foregroundcolor yellow "Multiple Records returned on qry: Likely resolution chain CNAME->(CNAME->)TXT`nuse the TXT record in the chain" ;   
 
                     # dump the chain
                     # ---
@@ -389,20 +574,25 @@ function Resolve-DnsSenderIDRecords {
                                     $smsg += "`n" ; 
                                 } ; 
                                 if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
+                                    write-host @PASS ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS FULLY VALIDATED* to contain a DKIM key.`n`n" ; 
                                 }elseif($rec.Strings -match 'v=DKIM1;\s.*;\sp='){
                                     # per above, this matches only the bare minimum!
+                                    write-host @PASS ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to start with v=DKIM1 and contains a key (lacks k=rsa; tag, partial standard compliant).`n`n" ; 
                                 }elseif($rec.Strings -match 'p=\w+'){
+                                    write-host @PASS ; 
                                     # per above, this matches only the bare minimum!
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key only (min standard compliant).`n`n" ; 
                                 }else {
+                                    write-host @FAIL ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key!" ;
                                     $smsg += "`n(strings should start with 'v=DKIM1', or at minimum include a p=xxx public key)`n`n" ; 
                                     $RecFail = $true ; 
                                 } ; 
                             } 
                             'SOA' {
+                                write-host @FAIL ; 
                                 $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
                                 $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
                                 #throw $smsg ;
@@ -412,9 +602,11 @@ function Resolve-DnsSenderIDRecords {
                         } ; 
 
                         if($RecFail -eq $true){
+                            write-host @FAIL ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
                             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                         } else { 
+                            write-host @PASS ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         } ; 
@@ -428,8 +620,10 @@ function Resolve-DnsSenderIDRecords {
                         $rtype = $DKIM.type ; 
                         $DKIM  = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
                         if ($DKIM -eq $null) {
+                            write-host @FAIL ; 
                             $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
                         } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
+                            write-host @PASS ; 
                             $DkimAdvisory = "DKIM-record found." ;
                             if($noSelectorSpecified -AND ($DSel -match "^selector1|everlytickey1|s1$") ){
                                 $smsg = "$($DkimSelector) is one of a pair of records, contining, to run the second partner record" ; 
@@ -451,19 +645,30 @@ function Resolve-DnsSenderIDRecords {
                                     write-verbose "always run all explicit -DkimSelector values" ; 
                                 } else { 
                                     #break ; 
+                                    write-host @PASS ; 
                                     $foundSelector = $true ; ; 
                                 } ; 
                         } else {;
-                                $DkimAdvisory = "We couldn't find a DKIM record associated with your domain." ;
-                                $DkimAdvisory += "`n$($rType) record returned, unrecognized:" ; 
-                                $DkimAdvisory += "`n$(($DKIM | format-list |out-string).trim())" ;
+                            write-host @FAIL ; 
+                            $DkimAdvisory = "We couldn't find a DKIM record associated with your domain." ;
+                            $DkimAdvisory += "`n$($rType) record returned, unrecognized:" ; 
+                            $DkimAdvisory += "`n$(($DKIM | format-list |out-string).trim())" ;
                         } ; 
                     } ;
+
+                    $DkimReturnValues = New-Object psobject ;
+                    $DkimReturnValues | Add-Member NoteProperty "Name" $DomainName ;
+                    $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIM ;
+                    $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
+                    $DkimReturnValues | Add-Member NoteProperty "ReturnedType" $DKIM.Type ;
+                    $DkimReturnValues | Add-Member NoteProperty "DKIMAdvisory" "Located CNAME pointer" ;
+                    $DkimObject.Add($DkimReturnValues) ;
+
                 } elseif ($DKIM.Type -eq "CNAME") {
                     # record cnames ahead of txt resolution
 
                     $DkimReturnValues = New-Object psobject ;
-                    $DkimReturnValues | Add-Member NoteProperty "Name" $item ;
+                    $DkimReturnValues | Add-Member NoteProperty "Name" $DomainName ;
                     $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIM ;
                     $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
                     $DkimReturnValues | Add-Member NoteProperty "ReturnedType" $DKIM.Type ;
@@ -484,7 +689,7 @@ function Resolve-DnsSenderIDRecords {
                         if(-not $DKIM){
                             <# 
                             $DkimReturnValues = New-Object psobject ;
-                            $DkimReturnValues | Add-Member NoteProperty "Name" $item ;
+                            $DkimReturnValues | Add-Member NoteProperty "Name" $DomainName ;
                             $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIMCname ;
                             $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
                             $DkimReturnValues | Add-Member NoteProperty "ReturnedType" $DKIM.Type;
@@ -496,7 +701,7 @@ function Resolve-DnsSenderIDRecords {
 
                         } elseif($DKIM.Type -eq "CNAME"){
                             $DkimReturnValues = New-Object psobject ;
-                            $DkimReturnValues | Add-Member NoteProperty "Name" $item ;
+                            $DkimReturnValues | Add-Member NoteProperty "Name" $DomainName ;
                             $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIM ;
                             $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
                             $DkimReturnValues | Add-Member NoteProperty "ReturnedType" $DKIM.Type ;
@@ -508,7 +713,9 @@ function Resolve-DnsSenderIDRecords {
                     #$DkimAdvisory = _test-DkimString -DKIM $DKIM -selector $DSel
                     $DKIM = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
                     if ($DKIM -eq $null) {
-                        $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
+                        $DkimAdvisory = "No leaf DKIM-record TXT found for selector $($DSel)._domainkey NameHost: " ;
+                        $DkimAdvisory += "-> $($DKIMCname)" ; 
+                        
                     } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
                         $DkimAdvisory = "DKIM-record found." ;
                     # TK: test variant p= public key as fall back
@@ -533,13 +740,13 @@ function Resolve-DnsSenderIDRecords {
                 } ;
 
                 $DkimReturnValues = New-Object psobject ;
-                $DkimReturnValues | Add-Member NoteProperty "Name" $item ;
+                $DkimReturnValues | Add-Member NoteProperty "Name" $DomainName ;
                 $DkimReturnValues | Add-Member NoteProperty "DkimRecord" $DKIM ;
                 if($rType -eq 'SOA'){
                     write-verbose "asserting DkimSelector:`$null" ;
                     $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $null ;
                     if($noSelectorSpecified){
-                        $DkimAdvisory = $DkimAdvisory.replace('domain.',"domain, against a common Selectors list:`n($($DKSelArray -join '|')).") ; 
+                        $DkimAdvisory = $DkimAdvisory.replace('domain.',"domain, against a common Selectors list:`n($($DkimSelector -join '|')).") ; 
                     }; 
                 } else { 
                     $DkimReturnValues | Add-Member NoteProperty "DkimSelector" $DSel ;
@@ -551,22 +758,49 @@ function Resolve-DnsSenderIDRecords {
                     $DkimObject.Add($DkimReturnValues) ;
                     #$DkimReturnValues | write-output ;
                 } else { 
-
+                    # no return hit here                    
                 } ; 
                 if($foundSelector){
                     Break ; 
                 } ; 
             } # loop-E DkimSelectors
 
+            if($DkimReturnValues.DKIMAdvisory -eq 'No DKIM-record found for selector email._domainkey.'){
+                $smsg = "`n(No matching DKIM Selector found in series checked:" ; 
+                if($DkimSelector){
+                    $smsg += "`n$(($DkimSelector -join ', '|out-string).trim()))" ; 
+                } else { 
+                    $smsg += "`n$(($dkselarray -join ', '|out-string).trim()))" ; 
+                } ; 
+                write-host -foregroundcolor gray $smsg ; 
+            } ; 
+
+            $steps++ ;
             write-host "`n" ;
             $pltRvDN.Type= 'TXT' ;
-            $pltRvDN.Name = "_dmarc.$($item )" ;
-            $smsg = "`n3. Resolve-DNSName DMARC TXT type Matching '^v=DMARC1' w`n$(($pltRvDN|out-string).trim())" ;
+            $pltRvDN.Name = "_dmarc.$($DomainName )" ;
+            $smsg ="`n$($steps). Resolve-DNSName DMARC TXT type Matching '^v=DMARC1' w`n$(($pltRvDN|out-string).trim())" ;
             write-host -foregroundcolor GRAY $smsg  ;
             $pltRvDN.erroraction = 'SilentlyContinue' ;
+            # 9:39 AM 5/2/2024 seeing sec park doms under cname pointed at _dmarc.parked.thetoroco.com, try through it
             $hit = Resolve-DNSName @pltRvDN ;
+            if($hit -is [system.array]){
+                if($hit[0].type -eq 'CNAME'){
+                    $dmarcCname = $hit[0] ; 
+                    #$smsg = "Existing DMARC -type CNAME pointer found:" ; 
+                    #$smsg += "`n$(($dmarcCname|out-string).trim())" ; 
+                    #write-warning $smsg ; 
+                    $hit = $hit | select -last 1 
+                } ; 
+            }
             if($DMARC = $hit | ?{$_.Strings -Match '^v=DMARC1'}){
-                $smsg = "`n=>Matched to DMARC domain record:`n$(($DMARC|ft -a $prpSPFDMARC | out-string).trim())" ;
+                if($dmarcCname){
+                    $smsg = "`n=>Matched to DMARC CNAME pointer:"
+                    $smsg += "`n$(($dmarcCname|out-string).trim())" ; 
+                    $smsg += "`n=>Which resolves to DMARC domain record:`n$(($DMARC|ft -a $prpSPFDMARC | out-string).trim())" ;
+                } else { 
+                    $smsg = "`n=>Matched to DMARC domain record:`n$(($DMARC|ft -a $prpSPFDMARC | out-string).trim())" ;
+                } ; 
                 $smsg += "`nStrings:`n$(($hit|select -expand Strings | out-string).trim())`n"
                 write-host -foregroundcolor green $smsg ;
                 $PolTag = $hit.strings.split(';').trim() |?{$_ -match 'p='} ;
@@ -574,22 +808,46 @@ function Resolve-DnsSenderIDRecords {
                 $rType = $DMARC.Type ;
 
                 $DmarcReturnValues = New-Object psobject ;
-                $DmarcReturnValues | Add-Member NoteProperty "Name" $item ;
-                $DmarcReturnValues | Add-Member NoteProperty "DmarcRecord" $Dmarc ;
+                $DmarcReturnValues | Add-Member NoteProperty "Name" $DomainName ;
+                if($dmarcCname){
+                    $DmarcReturnValues | Add-Member NoteProperty "DmarcRecord" @($dmarcCname,$Dmarc) ;
+                } else {
+                    $DmarcReturnValues | Add-Member NoteProperty "DmarcRecord" $Dmarc ;
+                } ; 
                 $DmarcReturnValues | Add-Member NoteProperty "PolicyTag" $PolTag ;
                 $DmarcReturnValues | Add-Member NoteProperty "SubDomainPolicyTag" $SubdomPol ;
 
                 $smsg = "Policy tag:$($PolTag)" ;
-                $smsg += "`n$($poltag.split('=')[1]) all traffic that doesn't pass either:"
+                $smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
                 $smsg += "`n  -- SPF (egressed from an SPF IP)" ;
                 $smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+                switch($poltag.split('=')[1]){ 
+                    'none'{
+                        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+                    } 
+                    'quarantine'{
+                        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+                    }
+                    'reject'{
+                        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+                    }
+                    default {
+                        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+                    }                
+                }
                 if($PolTag -AND -not $SubdomPol){
-                    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+                    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
                     $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
                 } elseif($PolTag -AND $SubdomPol){
-                    $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
-                    $smsg += "`n(unless subdomain has it's own DMARC record)" ;
-                    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy (unless subdomain has it's own DMARC record)" ;
+                    if($SubdomPol -like '*=reject'){
+                        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+                        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+                        $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy (unless subdomain has it's own DMARC record w a p= pol)" ;
+                    } else { 
+                        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+                        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+                        $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy (unless subdomain has it's own DMARC record)" ;
+                    } ; 
                 } ;
                 write-host -fore yellow $smsg ;
 
@@ -609,11 +867,11 @@ function Resolve-DnsSenderIDRecords {
                 #$DmarcReturnValues | Add-Member NoteProperty "DKIMAdvisory" $DmarcAdvisory ;
 
             } else {
-                $smsg = "`n=>NO DMARC RECORD FOUND FOR DOMAIN:$($item )`n" ;
+                $smsg = "`n=>NO DMARC RECORD FOUND FOR DOMAIN:$($DomainName )`n" ;
                 write-warning $smsg ;
 
                 $DmarcReturnValues = New-Object psobject ;
-                $DmarcReturnValues | Add-Member NoteProperty "Name" $item ;
+                $DmarcReturnValues | Add-Member NoteProperty "Name" $DomainName ;
                 $DmarcReturnValues | Add-Member NoteProperty "DmarcRecord" $null ;
             } ;
             $DmarcObject.Add($DmarcReturnValues) ;
@@ -629,6 +887,7 @@ function Resolve-DnsSenderIDRecords {
             $objReturn.SPF = $SpfObject ; 
             $objReturn.DKIM = $DKIMObject ; 
             $objReturn.DMARC = $DMARCObject ; 
+            $objReturn.MX = $MXObject ; 
             write-host -foregroundcolor green "(returning summary object to pipeline)" ; 
             New-Object -TypeName PsObject -Property $objReturn | write-output ; 
 
