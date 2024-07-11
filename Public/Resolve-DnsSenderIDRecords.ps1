@@ -12,12 +12,14 @@ function Resolve-DnsSenderIDRecords {
     FileName    : Resolve-DnsSenderIDRecords.ps1
     License     : (none asserted)
     Copyright   : (none asserted)
-    Github      : https://github.com/tostka/powershell
+    Github      : https://github.com/tostka/verb-Network
     Tags        : Powershell,DNS,Email,SPF
     AddedCredit : Todd Kadrie
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
+    * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
+    * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
     * 9:57 AM 5/2/2024 updated to accomodate Sec's decision to start parking dmarcs on domains as cnames pointed at a common dmarc txt (recogs cname, resolves to txt, and returns both in output)
     * 9:24 AM 3/20/2024 rework output - dumping mix of record types into the pipeline - with mult dkim selectors is a confusing mismatch return: flip to a constructed object with SPF, DKIM & DMARC as sub-objects that can be examined in isolation.
@@ -299,6 +301,29 @@ $(
         ) ; 
         #>
 
+        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
+        $whPASS = @{
+        Object = "$([Char]8730) PASS" ;
+        ForegroundColor = 'Green' ;
+        NoNewLine = $true ;
+        } ;
+        $whFAIL = @{
+            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
+            ForegroundColor = 'RED' ;
+            NoNewLine = $true ;
+        } ;
+        <#
+        # inline pass/fail color-coded w char
+        $smsg = "Testing:THING" ; 
+        $Passed = $true ; 
+        Write-Host "$($smsg)... " -NoNewline ; 
+        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
+        Write-Host " (Done)" ;
+        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
+        #>
+        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
+
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
@@ -338,45 +363,17 @@ $(
             #$smsg = "Running specified `Name:$($Name) through common selector names:" ; 
             $smsg = "Running with common selector names:" ; 
             $smsg += "`n($($DKSelArray -join '|'))..." ; 
+            $smsg += "`n$(($DkimSelector |  measure | select -expand count |out-string).trim()) selector variants being checked" ; 
             #write-host -Object $smsg @whElement ; 
         } else {
             $noSelectorSpecified = $false ; 
             #$smsg = "Running specified `Name:$($Name) through specified -DkimSelector selector names:" ; 
             $smsg = "Running specified -DkimSelector selector names:" ; 
             $smsg += "`n($($DkimSelector -join '|'))..." ; 
+            $smsg += "`n$(($DkimSelector |  measure | select -expand count |out-string).trim()) selector variants being checked" ; 
             #write-host -Object $smsg @whElement ;
         }; 
         write-host -Object $smsg @whElement ; 
-
-        $greenCheck = @{
-          #Object = [Char]8730 ;
-          Object = "$([Char]8730) PASS" ;  ;
-          ForegroundColor = 'Green' ;
-          NoNewLine = $true ;
-        } ;
-        $PASS = @{
-            Object = "$([Char]8730) PASS" ;
-            ForegroundColor = 'Green' ;
-            NoNewLine = $true ;
-        } ;
-        $FAIL = @{
-            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS
-            #Object = [Char]2573 ;
-            object = ' X FAIL'
-            ForegroundColor = 'RED' ;
-            NoNewLine = $true ;
-        } ;
-        #$mnuBurger = ą  U+2261
-        # $mnu3dotsHoriz = ą┅ U+2505
-        # $mnu3dotsVert = ą┅┇ U+2507
-        <#$smsg = "Test:Thing" ; 
-        $Passed = $true ; 
-        Write-Host "$($smsg)... " -NoNewline ; 
-        if($Passed){Write-Host @greenCheck} else {write-host @FAIL} ; 
-        Write-Host " (Done)" ;
-        # echoing through set to find what displays: 1..128 | %{"$_ $([char]$_)"}
-        # extended asci 128..255:  128..255 | %{"$_ $([char]$_)"}
-        #>
 
     } ; 
 
@@ -414,13 +411,13 @@ $(
             $prpMX = 'Name','Typ','TTL','Section','NameExchange','Preference' ; 
             if($MX){
                 $rType = $MX.Type ;
-                write-host @PASS ; 
+                write-host @whPASS ; 
                 $smsg = "`n=>Matched to MX:`n$(($MX|ft -a $prpMX | out-string).trim())" ;
                 #$smsg += "`nStrings:`n$(($MX|select -expand Strings | out-string).trim())`n"
                 write-host -foregroundcolor green $smsg ;
                 $MXReturnValues | Add-Member NoteProperty "MXRecord" $MX ;
             } else {
-                write-host @FAIL ; 
+                write-host @whFAIL ; 
                 $smsg = "`n=>NO MX RECORD FOUND FOR DOMAIN:$($DomainName )`n" ;
                 write-warning $smsg ;
                 write-verbose "asserting MXRecord:`$null" ;
@@ -471,11 +468,11 @@ $(
                             #write-host -foregroundcolor green "SPF $($item) present" ; 
                             #Write-Host "$($smsg)... " -NoNewline ; 
                             #Write-Host " (Done)" ;
-                            #if($Passed){Write-Host @greenCheck} else {write-host @FAIL} ; 
-                            Write-Host @PASS ; 
+                            #if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
+                            Write-Host @whPASS ; 
                         }else{
                             #write-warning "$item missing"
-                            Write-Host @fail ; 
+                            Write-Host @whFAIL ; 
                             $FailCount++ ; 
                             $cacheFails += @($item) ; 
                         }  ; 
@@ -517,12 +514,28 @@ $(
                 $smsg = "Resolve-DNSName DKIM $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
                 write-host -foregroundcolor yellow $smsg ; 
                 $DKIM  = $null ;
+                $smsg = "Testing:DKIM" ; 
                 TRY{
                     $DKIM  = Resolve-DNSName @pltRvDN ;
                 }CATCH{write-host -nonewline '.'} ;
                 if($DKIM){
-                    write-host @PASS ; 
-                } else { 
+                    Write-Host @whPASS ; 
+                    switch($dkim.type){
+                        'CNAME' {
+                            write-host " : $($DKIM.type): $($DKIM.Name) => $($DKIM.NameHost)" 
+                        }
+                        'TXT' {
+                            write-host " : $($DKIM.type): $($DKIM.Name) => $($DKIM.Strings)" 
+                        }
+                        'SOA'{
+                            write-warning " : (invalid lookup)" ; 
+                        }
+                        default{
+                            write-warning " : (invalid return)" ; 
+                        }
+                    }
+                } else {
+                    write-host @whFAIL ; Write-Host " " ;
                     # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
                     $smsg = "Fail on prior TXT qry" ; 
                     $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
@@ -530,6 +543,7 @@ $(
                     write-verbose $smsg ; 
                     $DKIM = Resolve-DnsName -Type TXT -Name "$($DSel).$($DomainName)" @SplatParameters ; 
                 } ;  
+                write-host "`n" ; 
                 
                 if(($DKIM |  measure).count -gt 1){
                     write-host -foregroundcolor yellow "Multiple Records returned on qry: Likely resolution chain CNAME->(CNAME->)TXT`nuse the TXT record in the chain" ;   
@@ -574,25 +588,25 @@ $(
                                     $smsg += "`n" ; 
                                 } ; 
                                 if($rec.Strings -match 'v=DKIM1;\sk=rsa;\sp='){
-                                    write-host @PASS ; 
+                                    write-host @whPASS ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS FULLY VALIDATED* to contain a DKIM key.`n`n" ; 
                                 }elseif($rec.Strings -match 'v=DKIM1;\s.*;\sp='){
                                     # per above, this matches only the bare minimum!
-                                    write-host @PASS ; 
+                                    write-host @whPASS ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to start with v=DKIM1 and contains a key (lacks k=rsa; tag, partial standard compliant).`n`n" ; 
                                 }elseif($rec.Strings -match 'p=\w+'){
-                                    write-host @PASS ; 
+                                    write-host @whPASS ; 
                                     # per above, this matches only the bare minimum!
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *IS VALIDATED* to contain a DKIM key only (min standard compliant).`n`n" ; 
                                 }else {
-                                    write-host @FAIL ; 
+                                    write-host @whFAIL ; 
                                     $smsg += "`n`n--->TXT: $($rec.Name).strings *DOES NOT VALIDATE* to contain a DKIM key!" ;
                                     $smsg += "`n(strings should start with 'v=DKIM1', or at minimum include a p=xxx public key)`n`n" ; 
                                     $RecFail = $true ; 
                                 } ; 
                             } 
                             'SOA' {
-                                write-host @FAIL ; 
+                                write-host @whFAIL ; 
                                 $smsg += "`nSOA/Lookup-FAIL record detected!" ; 
                                 $smsg += "`n$(($rec | ft -a $prpSOA | out-string).trim())" ; 
                                 #throw $smsg ;
@@ -602,11 +616,11 @@ $(
                         } ; 
 
                         if($RecFail -eq $true){
-                            write-host @FAIL ; 
+                            write-host @whFAIL ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
                             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                         } else { 
-                            write-host @PASS ; 
+                            write-host @whPASS ; 
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
                             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                         } ; 
@@ -620,10 +634,10 @@ $(
                         $rtype = $DKIM.type ; 
                         $DKIM  = $DKIM | Select-Object -ExpandProperty Strings -ErrorAction SilentlyContinue ;
                         if ($DKIM -eq $null) {
-                            write-host @FAIL ; 
+                            write-host @whFAIL ; 
                             $DkimAdvisory = "No DKIM-record found for selector $($DSel)._domainkey." ;
                         } elseif ($DKIM -match "v=DKIM1" -or $DKIM -match "k=") {
-                            write-host @PASS ; 
+                            write-host @whPASS ; 
                             $DkimAdvisory = "DKIM-record found." ;
                             if($noSelectorSpecified -AND ($DSel -match "^selector1|everlytickey1|s1$") ){
                                 $smsg = "$($DkimSelector) is one of a pair of records, contining, to run the second partner record" ; 
@@ -645,11 +659,11 @@ $(
                                     write-verbose "always run all explicit -DkimSelector values" ; 
                                 } else { 
                                     #break ; 
-                                    write-host @PASS ; 
+                                    write-host @whPASS ; 
                                     $foundSelector = $true ; ; 
                                 } ; 
                         } else {;
-                            write-host @FAIL ; 
+                            write-host @whFAIL ; 
                             $DkimAdvisory = "We couldn't find a DKIM record associated with your domain." ;
                             $DkimAdvisory += "`n$($rType) record returned, unrecognized:" ; 
                             $DkimAdvisory += "`n$(($DKIM | format-list |out-string).trim())" ;
@@ -765,7 +779,45 @@ $(
                 } ; 
             } # loop-E DkimSelectors
 
-            if($DkimReturnValues.DKIMAdvisory -eq 'No DKIM-record found for selector email._domainkey.'){
+            #if($DkimReturnValues.DKIMAdvisory -eq 'No DKIM-record found for selector email._domainkey.'){
+            if($DKimObject){
+                $prpDKIMSels = 'name','dkimselector','returnedtype','dkimadvisory' ; 
+
+                foreach($ditem in $dkimobject){ 
+                    $smsg = "`n====`n$(($ditem | ft -a $prpDKIMSels|out-string).trim())" ; 
+                    switch($ditem.DkimRecord.type){
+                        'CNAME' {
+                            $smsg += "`n$($ditem.dkimrecord.type): $($ditem.dkimrecord.Name) => $($ditem.dkimrecord.NameHost)" 
+                            write-host $smsg ; 
+                        }
+                        'TXT' {
+                            $smsg += "`n$($ditem.dkimrecord.type): $($ditem.dkimrecord.Name) => $($ditem.dkimrecord.Strings)" 
+                            write-host $smsg ; 
+                        }
+                        'SOA'{
+                            $smsg += "`n(invalid lookup)" ; 
+                            write-warning $smsg ; 
+                        }
+                        default{
+                            # DKIM TXT'S ARE STORED AS THE STRING, NOT TYPE
+                            if($ditem.DkimRecord -match 'v=DKIM1;'){
+                                $smsg += "`n$($ditem.dkimselector) : dkim key string:`n`n$($ditem.DkimRecord)`n`n" 
+                                write-host $smsg ; 
+                            } ELSE { 
+                                $smsg += "`n(invalid return)" ; 
+                                write-warning $smsg ; 
+                            } ; 
+                        }
+                    } ; 
+                } ; 
+
+                <#$smsg = "`n`n DKIM:`nThe following matched selector CNAME or TXT records were discovered (in $($DkimSelector|  measure | select -expand count ) names series run)" ; 
+                $smsg = "`n$(($DKimObject | ft -a prpDKIMSels |out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level PROMPT } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)`n`n" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                #>
+            } else {
                 $smsg = "`n(No matching DKIM Selector found in series checked:" ; 
                 if($DkimSelector){
                     $smsg += "`n$(($DkimSelector -join ', '|out-string).trim()))" ; 
