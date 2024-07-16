@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 3.3.1.0
+Version     : 3.3.4.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3043,7 +3043,7 @@ function save-WebDownload {
             } ; 
             <#
             # alt: hack of resolve-path (which norm can't resolve non-exist paths), grabbing resolved path out of the error of a fail, as TargetObject prop.
-            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3038337/powershell-resolve-path-that-might-not-exist)
+            # Src: joshuapoehls | https://stackoverflow.com/users/31308/joshuapoehls | Sep 26, 2012 at 15:56 | [Powershell: resolve path that might not exist? - Stack Overflow - stackoverflow.com/](https://stackoverflow.com/questions/3.3.437/powershell-resolve-path-that-might-not-exist)
             $Path = Resolve-Path $path -ErrorAction SilentlyContinue -ErrorVariable _frperror ; 
             if (-not($Destination)) {$Destination = $_frperror[0].TargetObject} ; 
             #>
@@ -5704,8 +5704,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUFfoAmRqsLe8qFcqrjMl1p4SG
-# 4GCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUw/K6ecfVP2uRvScIaJK+0+Ti
+# zeugggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -5720,9 +5720,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,Disconnect-PSR,ge
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSdvn2l
-# 3jQlXA/zCc1accymSHGvJjANBgkqhkiG9w0BAQEFAASBgHsGBZnv31tWI81qp59d
-# QhWh1lTJbjoqiXRm5csT8WEnfTD64L/wPPzURfHePu2NxY/wx9HovimT7XpAOyWn
-# 1JWsYhl6rU1OgYIvfUI0Aw29nY8e/qSj4bdP63wqFCBXNrrLOFevUTHBZeiFDzyo
-# GGR3AtRH008bG5s0WN2paJYd
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSMqlT5
+# arTaEHOT7Rtvi4dXliG7KzANBgkqhkiG9w0BAQEFAASBgEsTRvBvGUPuT9D4HgVw
+# 0jpYTlzzrZPPLxAO+8ESUr2x7c+rTC48Cs3zEFH+eSFfS+5y9aJ4/e60JN6dwQdY
+# bEV3I08siD+8jkya8YfAFtMOUlgJNH/VK/V+Z+YsRttD2KD/NhD3E6O9n6U/PYsQ
+# 3+m2z/lBjhX068bpUz+7eF2A
 # SIG # End signature block
