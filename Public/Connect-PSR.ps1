@@ -15,6 +15,7 @@ Function Connect-PSR {
     Github      : https://github.com/tostka
     Tags        : Powershell,Remote
     REVISIONS
+    * 1:30 PM 9/5/2024 added  update-SecurityProtocolTDO() SB to begin
     * 8:56 AM 6/9/2020 added to verb-Network ; added verbose echo
     * 9:34 AM 12/21/2016 port to Powershell remote
     * 12:09 PM 12/9/2016 implented and debugged as part of verb-PSR set
@@ -46,14 +47,30 @@ Function Connect-PSR {
     #>
     [CmdletBinding()]
     [Alias('cPSR')]
-    Param( 
+    PARAM( 
         [Parameter(Position=0,Mandatory=$True,HelpMessage="Server to Remote to")][Alias('__ServerName', 'Computer')]
         [string]$Server,
         [Parameter(HelpMessage="OptionalCommand Prefix for cmdlets from this session[PSR]")][string]$CommandPrefix,
         [Parameter(HelpMessage = 'Credential object')][System.Management.Automation.PSCredential]$Credential = $credTORSID,
         [Parameter(HelpMessage='Silent flag [-silent]')][switch]$silent
     )  ; 
-    $verbose = ($VerbosePreference -eq "Continue") ; 
+    $Verbose = ($VerbosePreference -eq 'Continue')
+    $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+    write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+    # psv6+ already covers, test via the SslProtocol parameter presense
+    if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+        $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
+        write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+        $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+        if($newerTlsTypeEnums){
+            write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+        } else {
+            write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
+        };
+        $newerTlsTypeEnums | ForEach-Object {
+            [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+        } ;
+    } ;
     if(!$silent){
         write-verbose -verbose:$true  "$((get-date).ToString("yyyyMMdd HH:mm:ss")):Adding Remote PS (connecting to $($Server))..." ; 
     } ; 
