@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','convert-IPAddressToReverseTDO','Disconnect-PSR','get-CertificateChainOfTrust','Get-DnsDkimRecord','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','get-tsUsers','get-WebTableTDO','get-whoami','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-DnsSenderIDRecords','resolve-SMTPHeader','resolve-SPFMacros','resolve-SPFMacrosTDO','convert-IPAddressToReverseTDO','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','convert-IPAddressToReverseTDO','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','save-WebFaveIcon','Send-EmailNotif','split-DnsTXTRecord','summarize-PassStatus','summarize-PassStatusHtml','test-ADComputerName','test-CertificateTDO','_getstatus_','test-Connection-T','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','Test-IPAddressInRangeIp6','Test-IPAddressInRangeIp6','test-isADComputerName','test-isComputerDNSRegistered','test-isComputerNameFQDN','test-isComputerNameNetBios','test-isComputerSMBCapable','Test-NetAddressIpv4TDO','Test-NetAddressIpv6TDO','Test-Port','test-PrivateIP','Test-RDP','update-SecurityProtocolTDO')
+FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','Disconnect-PSR','get-CertificateChainOfTrust','Get-DnsDkimRecord','get-DNSServers','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','get-tsUsers','get-WebTableTDO','get-whoami','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-DnsSenderIDRecords','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','save-WebFaveIcon','Send-EmailNotif','summarize-PassStatus','summarize-PassStatusHtml','test-ADComputerName','test-CertificateTDO','_getstatus_','test-Connection-T','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','test-isADComputerName','test-isComputerDNSRegistered','test-isComputerNameFQDN','test-isComputerNameNetBios','test-isComputerSMBCapable','Test-NetAddressIpv4TDO','Test-NetAddressIpv6TDO','Test-Port','test-PrivateIP','Test-RDP','update-SecurityProtocolTDO')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUXCgXqY4geqceG6RI0eB7Ulvy
-# rNegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUuhAh15TTnJ+2HUHE0YuoioPN
+# niOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQuE0LN
-# BuI+teCdJRmQ2EMMtlyhSjANBgkqhkiG9w0BAQEFAASBgJhxBIReNU0yYxQNfA8i
-# GVvSPL6zB40+oCu/2OA8kDWCTTCSqZYCwoAcUUoAvaZ01OkjvNbE8GJkgQPiWEFc
-# xljrJu9afw/Mfg1jr5CBIWi0yKUABBrY7wQaRe92opBaOehH3vWYjOcxwbBdXcq4
-# YAERt9K+6tOCwhwOphBqgIG3
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTqnDFt
+# XIJXXWP8iJXjKG4X7ERlHzANBgkqhkiG9w0BAQEFAASBgEcOQJAZB0iDmdoSL4pY
+# vvg/sczoR/ZtqUeP+AQmrDGeHaacx2XhBeDOHlWk3lFjmQ8ushthIolHQScylufo
+# KuYNyxzSC8ZTqLGbljKTuO3Dga0Xh0H0JwS1p0ZaeUAPGiJ2L4uuEkEeEc1RA2pg
+# Wf+c9AgT3TgAt51dCohK0pqN
 # SIG # End signature block
