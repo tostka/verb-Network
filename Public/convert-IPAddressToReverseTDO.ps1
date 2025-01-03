@@ -1,3 +1,4 @@
+#convert-IPAddressToReverseTDO.ps1
 #*------v Function convert-IPAddressToReverseTDO v------
         if(-not (get-command convert-IPAddressToReverseTDO -ea 0)){
             function convert-IPAddressToReverseTDO {
@@ -18,7 +19,8 @@
                 AddedCredit : REFERENCE
                 AddedWebsite: URL
                 AddedTwitter: URL
-                * 4:39 PM 1/2/2025 coded in solid ipv6 support (IP reverse process is diff ipv4 & ipv6)
+                * 4:44 PM 1/2/2025 replace borked Copilot ipv4 demo (didn't work, as expected, clearly [-1..1] isn't reverse array, it's pull last & first element); 
+                    coded in solid ipv6 support (IP reverse process is diff ipv4 & ipv6)
                     ren Reverse-IP -> convert-IPAddressToReverseTDO, alias Reverse-IP
                 * 8:58 AM 1/2/2025 generated source via Copilot
                 .DESCRIPTION
@@ -60,7 +62,11 @@
                 switch($IPAddress.AddressFamily){
                     'InterNetwork' { 
                         write-verbose "Ipv4 address specified:$($IPAddress)" ; 
-                        return ($IPAddress -split '\.')[-1..0] -join '.' ; 
+                        #return ($IPAddress -split '\.')[-1..0] -join '.' ; 
+                        # Copilot's algo above didn't work properly :'P [-1..1] doesn't reverse the array, it pulls [last..first]. 
+                        $IpParts = $IPAddress -split '\.' ; 
+                        [array]::Reverse($IpParts);
+                        return ($IpParts -join ".")
                     }
                     'InterNetworkV6' { 
                         write-verbose "Ipv6 address specified:$($IPAddress.IPAddressToString)" ; 
