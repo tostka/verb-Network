@@ -1,137 +1,138 @@
-﻿# verb-IO.Tests.ps1
+﻿# verb-Network.Tests.ps1
 
-<#
-.SYNOPSIS
-verb-IO.ps1 - verb-IO Pester Tests
-.NOTES
-Version     : 1.0.1
-Author      : Todd Kadrie
-Website     :	http://www.toddomation.com
-Twitter     :	@tostka / http://twitter.com/tostka
-CreatedDate : 2020-
-FileName    : verb-IO.Tests.ps1
-License     : MIT License
-Copyright   : (c) 2020 Todd Kadrie
-Github      : https://github.com/tostka
-Tags        : Powershell,Pester,Testing,Development
-REVISIONS
-* 9:23 AM 4/1/2020 updated to include workaround for Test-ModuleManifest failure to reload updated psd1s (uses a force loaded copy of current file), now storing the output of the import-module -force passthrugh ; also added Pester tests for: Author, CompanyName, LicenseURI, PowerShellVersion,CopyRight, !RequiredModule,!ExportedFormatFiles,Prefix,comparre missing Exported functions (to determine which unexported), more detailed checking of Exports, and check CBH for Synopsis,Description & 1+ Example (several are remmed by default), restored guid template text
-* 7:49 AM 3/4/2020 version debugged to work with Psv5.1/ISE/VSC
-.DESCRIPTION
-verb-IO.ps1 - verb-IO Pester Tests
-Note, two different PSSA settings files are included, edit the $scriptStylePath to suit (and/or edit the files to suit)
-.EXAMPLE
-cd c:\sc\verb-IO\ ;
-.\verb-IO.Tests.ps1
-Run in default config
-.EXAMPLE
-cd c:\sc\verb-IO\ ;
-.\verb-IO.Tests.ps1 -verbose
-Run with Verbose outputs
-.LINK
-https://github.com/tostka
-#>
+BeforeAll {
+    <#
+    .SYNOPSIS
+    verb-Network.ps1 - verb-Network Pester Tests
+    .NOTES
+    Version     : 1.0.1
+    Author      : Todd Kadrie
+    Website     :	http://www.toddomation.com
+    Twitter     :	@tostka / http://twitter.com/tostka
+    CreatedDate : 2020-
+    FileName    : verb-Network.Tests.ps1
+    License     : MIT License
+    Copyright   : (c) 2020 Todd Kadrie
+    Github      : https://github.com/tostka
+    Tags        : Powershell,Pester,Testing,Development
+    REVISIONS
+    * 9:23 AM 4/1/2020 updated to include workaround for Test-ModuleManifest failure to reload updated psd1s (uses a force loaded copy of current file), now storing the output of the import-module -force passthrugh ; also added Pester tests for: Author, CompanyName, LicenseURI, PowerShellVersion,CopyRight, !RequiredModule,!ExportedFormatFiles,Prefix,comparre missing Exported functions (to determine which unexported), more detailed checking of Exports, and check CBH for Synopsis,Description & 1+ Example (several are remmed by default), restored guid template text
+    * 7:49 AM 3/4/2020 version debugged to work with Psv5.1/ISE/VSC
+    .DESCRIPTION
+    verb-Network.ps1 - verb-Network Pester Tests
+    Note, two different PSSA settings files are included, edit the $scriptStylePath to suit (and/or edit the files to suit)
+    .EXAMPLE
+    cd c:\sc\verb-Network\ ;
+    .\verb-Network.Tests.ps1
+    Run in default config
+    .EXAMPLE
+    cd c:\sc\verb-Network\ ;
+    .\verb-Network.Tests.ps1 -verbose
+    Run with Verbose outputs
+    .LINK
+    https://github.com/tostka
+    #>
 
 
-[CmdletBinding()]
-PARAM() ;
-$Verbose = ($VerbosePreference -eq 'Continue') ;
+    [CmdletBinding()]
+    PARAM() ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ;
 
-<#
-# patch in ISE support
-if ($psISE){
-    $ScriptDir = Split-Path -Path $psISE.CurrentFile.FullPath ;
-    $ScriptBaseName = split-path -leaf $psise.currentfile.fullpath ;
-    $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($psise.currentfile.fullpath) ;
-    $PSScriptRoot = $ScriptDir ;
-    if($PSScriptRoot -ne $ScriptDir){ write-warning "UNABLE TO UPDATE BLANK `$PSScriptRoot TO CURRENT `$ScriptDir!"} ;
-    $PSCommandPath = $psise.currentfile.fullpath ;
-    if($PSCommandPath -ne $psise.currentfile.fullpath){ write-warning "UNABLE TO UPDATE BLANK `$PSCommandPath TO CURRENT `$psise.currentfile.fullpath!"} ;
-}
-#>
-if ($PSScriptRoot -eq "") {
+    <#
+    # patch in ISE support
     if ($psISE){
-        $ScriptName = $psISE.CurrentFile.FullPath ; 
-    } elseif ($context = $psEditor.GetEditorContext()) {
-        $ScriptName = $context.CurrentFile.Path ;  
-    } elseif($host.version.major -lt 3){
-        $ScriptName = $MyInvocation.MyCommand.Path ; 
-        $PSScriptRoot = Split-Path $ScriptName -Parent ;
-        $PSCommandPath = $ScriptName ;
-    } else {
-        if($MyInvocation.MyCommand.Path) {
+        $ScriptDir = Split-Path -Path $psISE.CurrentFile.FullPath ;
+        $ScriptBaseName = split-path -leaf $psise.currentfile.fullpath ;
+        $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($psise.currentfile.fullpath) ;
+        $PSScriptRoot = $ScriptDir ;
+        if($PSScriptRoot -ne $ScriptDir){ write-warning "UNABLE TO UPDATE BLANK `$PSScriptRoot TO CURRENT `$ScriptDir!"} ;
+        $PSCommandPath = $psise.currentfile.fullpath ;
+        if($PSCommandPath -ne $psise.currentfile.fullpath){ write-warning "UNABLE TO UPDATE BLANK `$PSCommandPath TO CURRENT `$psise.currentfile.fullpath!"} ;
+    }
+    #>
+    if ($PSScriptRoot -eq "") {
+        if ($psISE){
+            $ScriptName = $psISE.CurrentFile.FullPath ; 
+        } elseif ($context = $psEditor.GetEditorContext()) {
+            $ScriptName = $context.CurrentFile.Path ;  
+        } elseif($host.version.major -lt 3){
             $ScriptName = $MyInvocation.MyCommand.Path ; 
-            $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent ;
+            $PSScriptRoot = Split-Path $ScriptName -Parent ;
+            $PSCommandPath = $ScriptName ;
         } else {
-            throw "UNABLE TO POPULATE SCRIPT PATH, EVEN `$MyInvocation IS BLANK!" ;
-        } ;
-    }; 
-    $ScriptDir = Split-Path -Parent $ScriptName ; 
-    $ScriptBaseName = split-path -leaf $ScriptName ;
-    $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($ScriptName) ;
-} else {
-    $ScriptDir = $PSScriptRoot ;
-    if($PSCommandPath){
-        $ScriptName = $PSCommandPath ; 
+            if($MyInvocation.MyCommand.Path) {
+                $ScriptName = $MyInvocation.MyCommand.Path ; 
+                $PSScriptRoot = Split-Path $MyInvocation.MyCommand.Path -Parent ;
+            } else {
+                throw "UNABLE TO POPULATE SCRIPT PATH, EVEN `$MyInvocation IS BLANK!" ;
+            } ;
+        }; 
+        $ScriptDir = Split-Path -Parent $ScriptName ; 
+        $ScriptBaseName = split-path -leaf $ScriptName ;
+        $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($ScriptName) ;
     } else {
-        $ScriptName = $myInvocation.ScriptName
-        $PSCommandPath = $ScriptName ;
-    } ;
-    $ScriptBaseName = (Split-Path -Leaf ((&{$myInvocation}).ScriptName))  ;
-    $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($MyInvocation.InvocationName) ;
-} ; 
+        $ScriptDir = $PSScriptRoot ;
+        if($PSCommandPath){
+            $ScriptName = $PSCommandPath ; 
+        } else {
+            $ScriptName = $myInvocation.ScriptName
+            $PSCommandPath = $ScriptName ;
+        } ;
+        $ScriptBaseName = (Split-Path -Leaf ((&{$myInvocation}).ScriptName))  ;
+        $ScriptNameNoExt = [system.io.path]::GetFilenameWithoutExtension($MyInvocation.InvocationName) ;
+    } ; 
 
 
-$ModuleName = Split-Path (Resolve-Path "$ScriptDir\..\" ) -Leaf ; 
-$ModuleManifest = (Resolve-Path "$ScriptDir\..\$ModuleName\$ModuleName.psd1").path ; 
-# work around 'never-reloads' bug in Test-ModuleManifest, by force-loading a fresh hash of *curr* manifest, for use in all but *initial* TMM tests
-$Script:ManifestHash = Invoke-Expression (Get-Content $ModuleManifest -Raw)
-$ProjectRoot = (Resolve-path "$ScriptDir\..\").path ; 
-if(!(test-path $ProjectRoot\README.md)){
-    throw "Unable to resolve ProjectRoot!" ;
-}
-$moduleComponents = Get-ChildItem $ProjectRoot  -Include *.psd1, *.psm1, *.ps1 -Exclude *.tests.ps1,PPoShScriptingStyle.psd1 -Recurse
-$projectScripts = $moduleComponents | ?{$_.extension -eq '.ps1'} | sort name ;
-$projectModules = $moduleComponents | ?{$_.extension -eq '.psm1'} | sort name ;
-$projectDatafiles = $moduleComponents | ?{$_.extension -eq '.psd1'} | sort name ;
-# enable to suit pref
-#$scriptStylePath = (Resolve-Path "$ProjectRoot\Tests\PPoShScriptingStyle.psd1").path ;
-$scriptStylePath = (Resolve-Path "$ProjectRoot\Tests\ToddomationScriptingStyle-medium.psd1").path ;
+    $ModuleName = Split-Path (Resolve-Path "$ScriptDir\..\" ) -Leaf ; 
+    $ModuleManifest = (Resolve-Path "$ScriptDir\..\$ModuleName\$ModuleName.psd1").path ; 
+    # work around 'never-reloads' bug in Test-ModuleManifest, by force-loading a fresh hash of *curr* manifest, for use in all but *initial* TMM tests
+    $Script:ManifestHash = Invoke-Expression (Get-Content $ModuleManifest -Raw)
+    $ProjectRoot = (Resolve-path "$ScriptDir\..\").path ; 
+    if(!(test-path $ProjectRoot\README.md)){
+        throw "Unable to resolve ProjectRoot!" ;
+    }
+    $moduleComponents = Get-ChildItem $ProjectRoot  -Include *.psd1, *.psm1, *.ps1 -Exclude *.tests.ps1,PPoShScriptingStyle.psd1 -Recurse
+    $projectScripts = $moduleComponents | ?{$_.extension -eq '.ps1'} | sort name ;
+    $projectModules = $moduleComponents | ?{$_.extension -eq '.psm1'} | sort name ;
+    $projectDatafiles = $moduleComponents | ?{$_.extension -eq '.psd1'} | sort name ;
+    # enable to suit pref
+    #$scriptStylePath = (Resolve-Path "$ProjectRoot\Tests\PPoShScriptingStyle.psd1").path ;
+    $scriptStylePath = (Resolve-Path "$ProjectRoot\Tests\ToddomationScriptingStyle-medium.psd1").path ;
 
-$smsg=@"
+    $smsg=@"
 
-    ==Current Config:
-    `$ModuleName:$ModuleName
-    `$ProjectRoot :$ProjectRoot
-    `$ModuleManifest:$ModuleManifest
-    `$scriptStylePath:$scriptStylePath
+        ==Current Config:
+        `$ModuleName:$ModuleName
+        `$ProjectRoot :$ProjectRoot
+        `$ModuleManifest:$ModuleManifest
+        `$scriptStylePath:$scriptStylePath
 
-    `$moduleComponents:
-    $(($moduleComponents.fullname|ft -a | out-string).trim())" ;
+        `$moduleComponents:
+        $(($moduleComponents.fullname|ft -a | out-string).trim())" ;
 
-    `$projectScripts:
-    $(($projectScripts.fullname|ft -a | out-string).trim())" ;
+        `$projectScripts:
+        $(($projectScripts.fullname|ft -a | out-string).trim())" ;
 
-    `$projectModules:
-    $(($projectModules.fullname|ft -a | out-string).trim())" ;
+        `$projectModules:
+        $(($projectModules.fullname|ft -a | out-string).trim())" ;
 
-    `$projectDatafiles:
-    $(($projectDatafiles.fullname|ft -a | out-string).trim())" ;
+        `$projectDatafiles:
+        $(($projectDatafiles.fullname|ft -a | out-string).trim())" ;
 
 "@ ;
-write-verbose -verbose:$verbose $smsg ;
+    write-verbose -verbose:$verbose $smsg ;
 
-# Force Import the module and store the information about the module
-Get-Module $ModuleName | Remove-Module
-$ModuleInformation = Import-Module $ModuleManifest -Force -PassThru ; 
-
+    # Force Import the module and store the information about the module
+    Get-Module $ModuleName | Remove-Module
+    $ModuleInformation = Import-Module $ModuleManifest -Force -PassThru ; 
+}
 
 Describe 'Module Information' -Tags 'Command'{
     Context 'Manifest Testing' {
         It 'Valid Module Manifest' {
             {
                 $Script:Manifest = Test-ModuleManifest -Path $ModuleManifest -ErrorAction Stop -WarningAction SilentlyContinue
-            } | Should Not Throw
+            } | Should -Not -Throw
         }
         # Name & Version are not values in psd1 - they're *asserted* by TMM, don't use the hash for these tests
         It 'Valid Manifest Name' {
@@ -146,13 +147,13 @@ Describe 'Module Information' -Tags 'Command'{
         }
         #>
         It "Valid Author"{
-            $Script:ManifestHash.Author | Should not BeNullOrEmpty
+            $Script:ManifestHash.Author | Should -not -BeNullOrEmpty
         }
         It "Valid Company Name"{
-            $Script:ManifestHash.CompanyName | Should not BeNullOrEmpty
+            $Script:ManifestHash.CompanyName | Should -not -BeNullOrEmpty
         }
         It "Valid License"{
-            $ModuleInformation.LicenseURI | Should not BeNullOrEmpty
+            $ModuleInformation.LicenseURI | Should -not -BeNullOrEmpty
         }
         <#
         It "has a valid copyright" {
@@ -180,7 +181,7 @@ Describe 'Module Information' -Tags 'Command'{
         #>
         # added from https://powershell.getchell.org/2016/05/16/generic-pester-tests/
         It 'Required Modules' {
-            $Script:ManifestHash.RequiredModules | Should BeNullOrEmpty
+            $Script:ManifestHash.RequiredModules | Should -BeNullOrEmpty
         }
         
         <# extra mani tests:
@@ -212,7 +213,7 @@ Describe 'Module Information' -Tags 'Command'{
             write-verbose -verbose:$verbose $smsg ;
             
 
-            $ExportedCount | Should be $FileCount
+            $ExportedCount | Should -be $FileCount
         }
         
         # another approach
@@ -222,7 +223,7 @@ Describe 'Module Information' -Tags 'Command'{
                 Select-Object -ExpandProperty BaseName
             $FunctionNames = $FunctionFiles
             foreach ($FunctionName in $FunctionNames){
-                $ExFunctions -contains $FunctionName | Should Be $true
+                $ExFunctions -contains $FunctionName | Should -Be $true
             }
         }
         # https://lazywinadmin.com/2016/05/using-pester-to-test-your-manifest-file.html
@@ -230,7 +231,7 @@ Describe 'Module Information' -Tags 'Command'{
             if (-not ($ExportedCount -eq $FileCount))
             {
                 $Compare = Compare-Object -ReferenceObject $ExFunctions -DifferenceObject $FunctionFiles
-                $Compare.inputobject -join ',' | Should BeNullOrEmpty
+                $Compare.inputobject -join ',' | Should -BeNullOrEmpty
             }
         }
         
@@ -246,14 +247,14 @@ Get-Command -Module $ModuleName | ForEach-Object {
     Describe 'Help' -Tags 'Help' {
         Context "Function - $_" { 
             It 'Synopsis' {
-                Get-Help $_ | Select-Object -ExpandProperty synopsis | should not benullorempty
+                Get-Help $_ | Select-Object -ExpandProperty synopsis | should -not -benullorempty
             }
             It 'Description' {
-                Get-Help $_ | Select-Object -ExpandProperty Description | should not benullorempty
+                Get-Help $_ | Select-Object -ExpandProperty Description | should -not -benullorempty
             }
             It 'Examples' {
                 $Examples = Get-Help $_ | Select-Object -ExpandProperty Examples | Measure-Object 
-                $Examples.Count -gt 0 | Should be $true
+                $Examples.Count -gt 0 | Should -be $true
             }
         }
     }
@@ -262,10 +263,10 @@ Get-Command -Module $ModuleName | ForEach-Object {
 Describe 'General - Testing all scripts and modules against the Script Analyzer Rules' {
     Context "Checking files to test exist and Invoke-ScriptAnalyzer cmdLet is available" {
         It "Checking files exist to test." {
-            $moduleComponents.count | Should Not Be 0
+            $moduleComponents.count | Should -Not -Be 0
         }
         It "Checking Invoke-ScriptAnalyzer exists." {
-            { Get-Command Invoke-ScriptAnalyzer -ErrorAction Stop } | Should Not Throw
+            { Get-Command Invoke-ScriptAnalyzer -ErrorAction Stop } | Should -Not -Throw
         }
     }
 } 
@@ -316,7 +317,7 @@ Describe -Tags 'PSSA' -Name 'Testing against PSScriptAnalyzer rules' {
             #>
             It "Should pass $Rule" -Skip:$Skip {
                 $Failures = $AnalyzerIssues | Where-Object -Property RuleName -EQ -Value $rule
-                ($Failures | Measure-Object).Count | Should Be 0
+                ($Failures | Measure-Object).Count | Should -Be 0
             }
         }
     }
@@ -384,7 +385,62 @@ Describe 'General - Testing all scripts and modules against the Script Analyzer 
 
     #>
 
+# Pester Test for resolve-SMTPHeader function
 
+Describe "resolve-SMTPHeader Function Tests" {
+    # Sample SMTP header for testing
+    $sampleHeader = @"
+Received: from CH2PR14CA0024.namprd14.prod.outlook.com (2603:10b6:610:60::34)
+ by SA6PR04MB9493.namprd04.prod.outlook.com (2603:10b6:806:444::18) with
+ Microsoft SMTP Server (version=TLS1_2,
+ cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8207.18; Mon, 2 Dec
+ 2024 22:34:58 +0000
+Received: from CH3PEPF0000000A.namprd04.prod.outlook.com
+ (2603:10b6:610:60:cafe::7c) by CH2PR14CA0024.outlook.office365.com
+ (2603:10b6:610:60::34) with Microsoft SMTP Server (version=TLS1_3,
+ cipher=TLS_AES_256_GCM_SHA384) id 15.20.8207.18 via Frontend Transport; Mon,
+ 2 Dec 2024 22:34:58 +0000
+Authentication-Results: spf=pass (sender IP is 23.251.226.11)
+ smtp.mailfrom=us-east-2.amazonses.com; dkim=pass (signature was verified)
+ header.d=amazonses.com;dmarc=fail action=quarantine
+ header.from=toro.com;compauth=fail reason=000
+Received-SPF: Pass (protection.outlook.com: domain of us-east-2.amazonses.com
+ designates 23.251.226.11 as permitted sender)
+ receiver=protection.outlook.com; client-ip=23.251.226.11;
+ helo=e226-11.smtp-out.us-east-2.amazonses.com; pr=C
+Received: from e226-11.smtp-out.us-east-2.amazonses.com (23.251.226.11) by
+ CH3PEPF0000000A.mail.protection.outlook.com (10.167.244.37) with Microsoft
+ SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.8230.7
+ via Frontend Transport; Mon, 2 Dec 2024 22:34:58 +0000
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
+ s=xplzuhjr4seloozmmorg6obznvt7ijlt; d=amazonses.com; t=1733178897;
+ h=From:Reply-To:To:Subject:MIME-Version:Content-Type:Message-ID:Date:Feedback-ID;
+ bh=jxlsOZBqq0nUQqX5ofi0H+YQbyRMNFXWk4D+NdI3ZAo=;
+ b=rAOY09c+aUgCNF1gYH+bM0oElSuYLFgFpUsmUIJlq/lAU+TaRa5DIDFWsAkkAikR
+ R8USYlHlInRZ2nq71qgnz+MQpScHCTFKg10hC34MyfWiV5pV2QUCxFJJ/eWdSTBZPHB
+ aDjWnbOcBDzN80T4XyC9nIs2+nQ8Yqt0ePYBk8QY=
+From: sender.name@domain.com
+"@
+
+    It "Should parse the SMTP header into Name:Value pairs" {
+        $result = resolve-SMTPHeader -Header $sampleHeader
+        $result | Should -Not -BeNullOrEmpty
+        $result | Should -FileContentMatch @{ HeaderName = "Received:"; HeaderValue = "from CH2PR14CA0024.namprd14.prod.outlook.com (2603:10b6:610:60::34) by SA6PR04MB9493.namprd04.prod.outlook.com (2603:10b6:806:444::18) with Microsoft SMTP Server (version=TLS1_2, cipher=TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384) id 15.20.8207.18; Mon, 2 Dec 2024 22:34:58 +0000" }
+        $result | Should -FileContentMatch @{ HeaderName = "Authentication-Results:"; HeaderValue = "spf=pass (sender IP is 23.251.226.11) smtp.mailfrom=us-east-2.amazonses.com; dkim=pass (signature was verified) header.d=amazonses.com;dmarc=fail action=quarantine header.from=toro.com;compauth=fail reason=000" }
+        $result | Should -FileContentMatch @{ HeaderName = "DKIM-Signature:"; HeaderValue = "v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple; s=xplzuhjr4seloozmmorg6obznvt7ijlt; d=amazonses.com; t=1733178897; h=From:Reply-To:To:Subject:MIME-Version:Content-Type:Message-ID:Date:Feedback-ID; bh=jxlsOZBqq0nUQqX5ofi0H+YQbyRMNFXWk4D+NdI3ZAo=; b=rAOY09c+aUgCNF1gYH+bM0oElSuYLFgFpUsmUIJlq/lAU+TaRa5DIDFWsAkkAikR R8USYlHlInRZ2nq71qgnz+MQpScHCTFKg10hC34MyfWiV5pV2QUCxFJJ/eWdSTBZPHB aDjWnbOcBDzN80T4XyC9nIs2+nQ8Yqt0ePYBk8QY=" }
+        $result | Should -FileContentMatch @{ HeaderName = "From:"; HeaderValue = "sender.name@domain.com" }
+    }
+
+    It "Should handle empty header input gracefully" {
+        $result = resolve-SMTPHeader -Header ""
+        $result | Should -BeNullOrEmpty
+    }
+
+    It "Should handle null header input gracefully" {
+        $result = resolve-SMTPHeader -Header $null
+        $result | Should -BeNullOrEmpty
+    }
+}
 
 $ofile = join-path -path (split-path $scriptStylePath) -child "ScriptAnalyzer-Results-$(get-date -format 'yyyyMMdd-HHmmtt').xml" ;
 $AnalyzerIssues | export-clixml -path $ofile
