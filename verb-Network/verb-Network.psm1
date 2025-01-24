@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 4.1.0.0
+Version     : 4.2.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2663,9 +2663,9 @@ function Resolve-DnsSenderIDRecords {
         GetHashCode Method       int GetHashCode()                                                                                                                      
         GetType     Method       type GetType()                                                                                                                         
         ToString    Method       string ToString()                                                                                                                      
-        DKIM        NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] DKIM=  
-        DMARC       NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] DMARC= 
-        SPF         NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.1.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] SPF=   
+        DKIM        NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] DKIM=  
+        DMARC       NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] DMARC= 
+        SPF         NoteProperty System.Collections.Generic.List`1[[System.Object, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089]] SPF=   
 
     PS> write-verbose 'Includes SPF, DKIM, and DMARC information for specified domain' ; 
     PS> write-verbose "examine properties of SPF returned" ; 
@@ -8718,7 +8718,7 @@ function split-DnsTXTRecord{
     -   A TXT record contains one or more strings that are enclosed in double quotation marks (").
     -   You can enter a value of up to 255 characters in one string in a TXT record.
     -   You can add multiple strings of 255 characters in a single TXT record.
-    -   The maximum length of a value in a TXT record is 4.1.0 characters.
+    -   The maximum length of a value in a TXT record is 4,000 characters.
     -   TXT record values are case-sensitive.
 
     For values that exceed 255 characters, break the value into strings of 255 characters or less. Enclose each string in double quotation marks (") using the following syntax: 
@@ -10821,6 +10821,63 @@ Function test-isComputerSMBCapable{
 #*------^ test-isComputerPSRemoteable.ps1 ^------
 
 
+#*------v test-isRDPSession.ps1 v------
+function test-isRDPSession {
+    <#
+    .SYNOPSIS
+    test-isRDPSession() - determine if powershell is running within an RDP session
+    .NOTES
+    Author: Todd Kadrie
+    Website:	http://toddomation.com
+    Twitter:	http://twitter.com/tostka
+    CreatedDate : 2025-01-24
+    FileName    : test-isRDPSession.ps1
+    License     : MIT License
+    Copyright   : (c) 2024 Todd Kadrie
+    Github      : https://github.com/tostka/verb-Network
+    Tags        : Powershell,RDP,TsClient
+    REVISIONS   :
+    # 9:49 AM 1/24/2025 rename test-Rdp -> test-isRDPSession, and alias the original name (orig name could be confused for testing is rdp server accessible); added min reqs for advfunc
+    # 9:48 AM 9/25/2020 fixed to explicitly check for an RDP & clientname evari: wasn't properly firing on work box, $env:sessionname is blank, not 'Console' 
+    # 3:45 PM 4/17/2020 added cbh
+    # 10:45 AM 7/23/2014
+    .DESCRIPTION
+    test-isRDPSession() - determine if powershell is running within an RDP session
+    
+    RDP sets 2 environment variables on remote connect:
+    $env:sessionname: RDP-Tcp#[session#]
+    $env:clientname: [connecting client computername]
+    
+    If both are set, you're in an RDP 
+    
+    Proviso: unless Explorer Folder Option "Launch folder windows in a separate process" is enabled, 
+    applications launched from an additional Explorer window do not have these e-varis.
+
+    Old approach:
+    if ($env:SESSIONNAME -ne 'Console') { return $True; }; 
+    -> win10 on my workbox doesn't have $env:SESSIONNAME -eq 'Console', evals false positive
+    
+    .INPUTS
+    None. Does not accepted piped input.
+    .OUTPUTS
+    System.Boolean
+    .EXAMPLE
+    PS> if(test-isRDPSession){write-host "Running in RDP"} ; 
+    Simple test for execution within an RDP seession.
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    
+    # better test is test match rgx on RDP-Tcp# string & $env:clientname populated 
+    [CmdletBinding()]
+    [alias("Test-RDP")]
+    PARAM()
+    if(($env:sessionname -match 'RDP-Tcp#\d*') -AND ($env:clientname)){ return $True} ;
+}
+
+#*------^ test-isRDPSession.ps1 ^------
+
+
 #*------v Test-NetAddressIpv4TDO.ps1 v------
 function Test-NetAddressIpv4TDO {
     <#
@@ -10950,6 +11007,8 @@ function Test-Port {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell
     REVISIONS
+    # 9:11 AM 1/24/2025 added -ea 0 to the gcm's; expanded gcms; added try/catch to the Net.Sockets.TcpClient code (output friendly error fail); added CBH demo rdp users poll
+        ; removed aliases 's' & 'p' (they're already usable as abbrev $server & $port, no other conflicting params ); flip 1st expl to commonly used 3389 (rdp) port; added cmdletbinding (full adv func/verbose support); added alias test-portTDO
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
     # 10:42 AM 4/15/2015 fomt cleanup, added help
     # vers: 8:42 AM 7/24/2014 added proper fail=$false
@@ -10962,24 +11021,42 @@ function Test-Port {
     .PARAMETER  port
     Port number to be connected to
     .EXAMPLE
-    PS> test-port -ComputerName hostname -Port 1234 -verbose
-    Check hostname port 1234, with verbose output
+    PS> test-port -ComputerName hostname -Port 3389 -verbose
+    Check hostname port 3389 (rdp server), with verbose output
+    .EXAMPLE
+    PS> 'SERVER1','SERVER2'|%{
+    PS>     $ts = $_ ;
+    PS>     write-host "`n`n==$($ts)" ;
+    PS>     if(test-port -server $ts -port 3389){
+    PS>         quser.exe /server:$ts
+    PS>     } else {
+    PS>         write-warning "$($ts):TSCPort 3389 unavailable! (check ping...)" ;
+    PS>         $ctest = $null ; 
+    PS>         TRY{$ctest = test-connection -ComputerName $ts -Count 1 -ErrorAction stop} CATCH {write-warning $Error[0].Exception.Message} 
+    PS>         if($ctest){
+    PS>             write-warning "$($ts):_Pingable_, but TSCPort 3389 unavailable!" ;
+    PS>         }else {
+    PS>             write-warning "$($ts):UNPINGABLE!" ;
+    PS>         };
+    PS>     };
+    PS> } ; 
+    Scriptblock that stacks test-port 3389 (rdp server) & test-connection against series of computers, to conditionally exec a query (run quser.exe rdp-user report)
     .LINK
     https://github.com/tostka/verb-network
     #>
+    [CmdletBinding()]
+    [alias("test-portTDO")]
     PARAM(
         [parameter(Position=0,Mandatory=$true)]
-        [alias("s",'ComputerName','TargetName')]
-        [string]$Server,
+            [alias('ComputerName','TargetName')]
+            [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
-        [alias("p",'TcpPort')]
-        [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
-        [int32]$Port
+            [alias('TcpPort')]
+            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [int32]$Port
     )
-    # tree down an if than and only use .net/win-specific netsockets if nothing else avail
-    if($host.version.major -ge 6 -AND (gcm test-connection)){
+    if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
         write-verbose "(Psv6+:using PS native:test-connection -Targetname  $($server) -tcpport $($port)...)" ; 
-        # has *ugly* output and down-state handling, so wrap & control the output
         TRY {$PortTest = test-connection -targetname $Server -tcpport $port -Count 1 -ErrorAction SilentlyContinue -ErrorVariable Err } CATCH { $PortTest = $Null } ;
         if($PortTest -ne $null ){
             write-verbose "Success" ; 
@@ -10988,9 +11065,8 @@ function Test-Port {
             write-verbose "Failure" ; 
             return $False;
         } ; 
-    } elseif (gcm Test-NetConnection){
+    } elseif (get-command Test-NetConnection -ea STOP){
         write-verbose "(Psv5:using NetTCPIP:Test-NetConnection -computername $($server) -port $($port)...)" ; 
-        # (test-netconnection  -computername boojum -port 3389 -verbose).PingSucceeded
         if( (Test-NetConnection -computername $Server -port $port).TcpTestSucceeded ){
             write-verbose "Success" ; 
             return $true ; 
@@ -11000,10 +11076,10 @@ function Test-Port {
         } ; 
     } elseif([System.Environment]::OSVersion.Platform -eq 'Win32NT'){ 
         write-verbose "(Falling back to PsWin:Net.Sockets.TcpClient)" ; 
-        $Socket = new-object Net.Sockets.TcpClient
-        $Socket.Connect($Server, $Port)
+        $Socket = new-object Net.Sockets.TcpClient ; 
+        TRY{ $Socket.Connect($Server, $Port) }CATCH{ write-warning "FAILED:($Socket).Connect(($Server), ($Port)" };
         if ($Socket.Connected){
-            $Socket.Close()
+            $Socket.Close() ; 
             write-verbose "Success" ; 
             return $True;
         } else {
@@ -11012,9 +11088,8 @@ function Test-Port {
         } # if-block end
         $Socket = $null
     } else {
-        throw "Unsupported OS/Missing depedancy module! (missing PSCore6+, NetTCPIP, .net.sockets.tcpClient)! Aborting!" ;
+        throw "Unsupported OS/Missing depedancy! (missing PSCore6+, NetTCPIP, or even .net.sockets.tcpClient)! Aborting!" ;
     } ; 
-    #} # if-E port-range valid
 }
 
 #*------^ Test-Port.ps1 ^------
@@ -11352,7 +11427,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -11360,8 +11435,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSwBN7CoVXN5lybNUFLlc0sGb
-# H1mgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUJImYxaqNHh8usnoALqID1xV9
+# /tSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -11376,9 +11451,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRSPjBf
-# OA28pb8KBEgBCRSHGe3C4DANBgkqhkiG9w0BAQEFAASBgGpuioEBU50ik9lRDTv6
-# 8ZRaavWoZd9vFVEZyTcLIWK5Qcmb4stCstAu4/w/M/ntQAyYgVIeYLFUeye00Fby
-# +yKKZf86IZYtFilI9tofylCi40zg/QNZQj7FVEYzVxRKlzQB/7vrw6Be8OJS4w4t
-# hf2v87HSx42dXljHH7VMghwZ
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQltUIG
+# w6ktuUG4sM0bm4AIaBPvXDANBgkqhkiG9w0BAQEFAASBgAu5jOhQx57C3E7CybEb
+# 5wpVlzmbfR//Fy+SIZftTtngXqHP13lrd0a4HRAiMTRuCTxehXPvJdH3WOJos+Oq
+# VareMXm4xIrFv/1GDkbtsRycAbs64DysXdIugVSAGE6TQpjBg6Rh4MlfeclCA7aT
+# jtet+FDhl8wizCF8Hz7NV4j9
 # SIG # End signature block
