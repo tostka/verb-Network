@@ -4,7 +4,7 @@
 function resolve-SMTPHeader {
     <#
     .SYNOPSIS
-    resolve-SMTPHeader.ps1 - Parse an SMTP message header stack into Name:Value combos for further analysis.
+    resolve-SMTPHeader - Parse an SMTP message header stack into Name:Value combos for further analysis.
     .NOTES
     Version     : 0.0.
     Author      : Todd Kadrie
@@ -20,17 +20,22 @@ function resolve-SMTPHeader {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 9:29 AM 4/16/2025 added -noTrim to read-MultiLineInputDialogAdvanced call when Header isn't specified (and test for indents in header - line-wrap detection requires indents!).
+        fixed CBH input spec; cleaned
     * 12:59 PM 12/9/2024 init
     .DESCRIPTION
-    resolve-SMTPHeader.ps1 - Parse an SMTP message header stack into Name:Value combos for further analysis.
+    resolve-SMTPHeader - Parse an SMTP message header stack into Name:Value combos for further analysis.
     .PARAMETER  Header
     SMTP Header [-Header `$headertext]
     .INPUTS
-    None. Does not accepted piped input.(.NET types, can add description)
+    System.String
+    System.String[]
+    Accepts piped input
     .OUTPUTS
-    System.PSCustomObject Returns summary object as an array of parsed Header Name:Value combos
+    System.PSCustomObject 
+    Returns summary object as an array of parsed Header Name:Value combos
     .EXAMPLE
-    PS> $parseHdrs = resolve-SMTPHeader.ps1 -header $headertext ;
+    PS> $parseHdrs = resolve-SMTPHeader -header $headertext ;
     PS> write-verbose "Filter the Received: headers" ; 
     PS> $parsedHdrs | ?{$_.headername -match 'Received:'}
 
@@ -91,7 +96,7 @@ function resolve-SMTPHeader {
     ## [OutputType('bool')] # optional specified output type
     [CmdletBinding()]
     ## PSV3+ whatif support:[CmdletBinding(SupportsShouldProcess)]
-    ###[Alias('Alias','Alias2')]
+    [Alias('parse-SMTPHeader')]
     PARAM(
         # Mandatory = $true,
         [Parameter(ValueFromPipeline=$true, HelpMessage="SMTP Header [-Header `$headertext]")]
@@ -138,11 +143,14 @@ public class ProcessDPI {
 } ;
             $null = [ProcessDPI]::SetProcessDPIAware() ;
             #write-verbose "Normal Prompting (allows empty output) - Textbox mode - String output" ;
+            # 8:59 AM 4/16/2025 appears this is trim()'ing, de-indenting the header: no indents are coming through!
             $pltRdMLIDA=[ordered]@{
                 Message = "No -header specified: Paste header text into the dialog" ;
                 WindowTitle = "Prompt: (Textbox: String return)" ;
                 InboxType = "txt" ;
                 ReturnType = "str" ;
+                FixSquareBrkts = $false ;
+                NoTrim = $true ; # added 9:22 AM 4/16/2025, recoded verb-io\read-MultilineInputDialogAdvanced to support
                 ShowDebug = $true ;
             } ;
             $smsg = "read-MultiLineInputDialogAdvanced w`n$(($pltRdMLIDA|out-string).trim())" ;
@@ -171,7 +179,8 @@ public class ProcessDPI {
             break ; #Exit  ; 
         }; 
         #endregion PARAMHELP  ; #*------^ END PARAMHELP  ^------        
-        <#
+
+       <# Testing headers:
 $hsHdr = @"
 Received: from CH2PR14CA0024.namprd14.prod.outlook.com (2603:10b6:610:60::34)
  by SA6PR04MB9493.namprd04.prod.outlook.com (2603:10b6:806:444::18) with
@@ -186,7 +195,7 @@ Received: from CH3PEPF0000000A.namprd04.prod.outlook.com
 Authentication-Results: spf=pass (sender IP is 23.251.226.11)
  smtp.mailfrom=us-east-2.amazonses.com; dkim=pass (signature was verified)
  header.d=amazonses.com;dmarc=fail action=quarantine
- header.from=toro.com;compauth=fail reason=000
+ header.from=xxxx.com;compauth=fail reason=000
 Received-SPF: Pass (protection.outlook.com: domain of us-east-2.amazonses.com
  designates 23.251.226.11 as permitted sender)
  receiver=protection.outlook.com; client-ip=23.251.226.11;
@@ -196,16 +205,16 @@ Received: from e226-11.smtp-out.us-east-2.amazonses.com (23.251.226.11) by
  SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.8230.7
  via Frontend Transport; Mon, 2 Dec 2024 22:34:58 +0000
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/simple;
-	s=xplzuhjr4seloozmmorg6obznvt7ijlt; d=amazonses.com; t=1733178897;
+	s=xplzuhxxxxxxxxxxxxxxxxxxnvt7ijlt; d=amazonses.com; t=1733178897;
 	h=From:Reply-To:To:Subject:MIME-Version:Content-Type:Message-ID:Date:Feedback-ID;
 	bh=jxlsOZBqq0nUQqX5ofi0H+YQbyRMNFXWk4D+NdI3ZAo=;
 	b=rAOY09c+aUgCNF1gYH+bM0oElSuYLFgFpUsmUIJlq/lAU+TaRa5DIDFWsAkkAikR
 	R8USYlHlInRZ2nq71qgnz+MQpScHCTFKg10hC34MyfWiV5pV2QUCxFJJ/eWdSTBZPHB
 	aDjWnbOcBDzN80T4XyC9nIs2+nQ8Yqt0ePYBk8QY=
-From: walker.olson@toro.com
-Reply-To: walker.olson@toro.com
-To: walker.olson@toro.com, walkdude99@hotmail.com
-Subject: Fuel Tracking: Machine Provisioned
+From: xxxxxx.xxxxx@xxxx.com
+Reply-To: xxxxxx.xxxxx@xxxx.com
+To: xxxxxx.xxxxx@xxxx.com, xxxxxxxxxx@xxxxxxx.com
+Subject: xxxx xxxxxxxx: xxxxxxx xxxxxxxxxxx
 MIME-Version: 1.0
 Content-Type: text/plain
 Message-ID: <010f0193898333b2-294e9589-d10c-43e6-94ba-4bc88a999262-000000@us-east-2.amazonses.com>
@@ -219,7 +228,7 @@ X-EOPTenantAttributedMessage: 549366ae-e80a-44b9-8adc-52d0c29ba08b:0
 X-MS-PublicTrafficType: Email
 X-MS-TrafficTypeDiagnostic: CH3PEPF0000000A:EE_|SA6PR04MB9493:EE_
 X-MS-Office365-Filtering-Correlation-Id: 95c7a6f1-8e9f-4a75-156e-08dd13218d84
-ToroRule-ApplyExternalStamp: Rule triggered
+xxxxRule-ApplyExternalStamp: Rule triggered
 X-Forefront-Antispam-Report:
  CIP:23.251.226.11;CTRY:US;LANG:en;SCL:5;SRV:;IPV:NLI;SFV:SPM;H:e226-11.smtp-out.us-east-2.amazonses.com;PTR:e226-11.smtp-out.us-east-2.amazonses.com;CAT:SPOOF;SFS:(13230040)(32142699015)(8096899003);DIR:INB;
 X-Microsoft-Antispam: BCL:0;ARA:13230040|32142699015|8096899003;
@@ -261,7 +270,7 @@ X-Microsoft-Antispam-Message-Info:
  =?utf-8?B?WDk1VE1oa3VRWVZ5Zm1XTzJucGdKYUN3TjlTYjFMdXJ6QU5kRjRYMFlIRzRv?=
  =?utf-8?B?SnMzQnNtdGFXWlpac1IvR2QxWmU0enBzK0pPbFFZdkwyRlpsdExoMjdubmtF?=
  =?utf-8?B?S0R0cVhRYjFFUDVadXAzZkwzYVVSMS9YSHRwOFlLOW5SUCtzb3oyb3RZdzlJ?=
- =?utf-8?B?cWcyeGdDVFV5MWd2Vk9KRXBMdTVDM2ZXekpFTHJ4aUhSNTVoZkk4Y0huZmZm?=
+ =?utf-8?B?cWcyeGdDVFV5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxhSNTVoZkk4Y0huZmZm?=
  =?utf-8?B?eUxxZ0g3VW9pczhBUnVGWlh6WDR1SXZmY2hlUnZzM2dETG5OdUdtZ1dXYmlt?=
  =?utf-8?B?ZjZwR0FFSnIzdGorclFwRWl0N043Z0NDb2pScUZRajI1UnVINXRrNGhrUzdn?=
  =?utf-8?B?QXJGYzQycjM2dHZVYlRhRE1VQzdoRUtQWldWN0tqRG9sV0greEVycG9NS1Iw?=
@@ -298,46 +307,46 @@ Received: from CH1PEPF0000AD83.namprd04.prod.outlook.com
  (2603:10b6:610:118::28) with Microsoft SMTP Server (version=TLS1_3,
  cipher=TLS_AES_256_GCM_SHA384) id 15.20.8230.12 via Frontend Transport; Thu,
  5 Dec 2024 21:07:10 +0000
-Authentication-Results: spf=pass (sender IP is 136.175.108.142)
- smtp.mailfrom=kadrie.net; dkim=pass (signature was verified)
- header.d=kadrie.net;dmarc=pass action=none
- header.from=kadrie.net;compauth=pass reason=100
-Received-SPF: Pass (protection.outlook.com: domain of kadrie.net designates
- 136.175.108.142 as permitted sender) receiver=protection.outlook.com;
- client-ip=136.175.108.142; helo=mail-108-mta142.mxroute.com; pr=C
-Received: from mail-108-mta142.mxroute.com (136.175.108.142) by
+Authentication-Results: spf=pass (sender IP is 123.123.123.123)
+ smtp.mailfrom=xxxxxx.xxx; dkim=pass (signature was verified)
+ header.d=xxxxxx.xxx;dmarc=pass action=none
+ header.from=xxxxxx.xxx;compauth=pass reason=100
+Received-SPF: Pass (protection.outlook.com: domain of xxxxxx.xxx designates
+ 123.123.123.123 as permitted sender) receiver=protection.outlook.com;
+ client-ip=123.123.123.123; helo=mail-108-xxxxxx.xxxxxxx.xxx; pr=C
+Received: from mail-108-xxxxxx.xxxxxxx.xxx (123.123.123.123) by
  CH1PEPF0000AD83.mail.protection.outlook.com (10.167.244.85) with Microsoft
  SMTP Server (version=TLS1_3, cipher=TLS_AES_256_GCM_SHA384) id 15.20.8230.7
  via Frontend Transport; Thu, 5 Dec 2024 21:07:09 +0000
-Received: from filter006.mxroute.com ([136.175.111.3] filter006.mxroute.com)
+Received: from xxxxxxxxx.xxxxxxx.xxx ([123.456.789.0] xxxxxxxxx.xxxxxxx.xxx)
  (Authenticated sender: mN4UYu2MZsgR)
- by mail-108-mta142.mxroute.com (ZoneMTA) with ESMTPSA id 19398a5d8640003e01.001
- for <Todd.Kadrie@toro.com>
+ by mail-108-xxxxxx.xxxxxxx.xxx (ZoneMTA) with ESMTPSA id 19398a5d8640003e01.001
+ for <xxxx.xxxxxx@xxxx.com>
  (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
  Thu, 05 Dec 2024 21:07:05 +0000
 X-Zone-Loop: 4cb2588f304a7c1711c10a9b5c4913136ce484dc7f3c
-X-Originating-IP: [136.175.111.3]
-DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=kadrie.net;
+X-Originating-IP: [123.456.789.0]
+DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=xxxxxx.xxx;
 	s=x; h=Content-Transfer-Encoding:Content-Type:MIME-Version:Message-ID:Subject
 	:To:From:Date:Sender:Reply-To:Cc:Content-ID:Content-Description:Resent-Date:
 	Resent-From:Resent-Sender:Resent-To:Resent-Cc:Resent-Message-ID:In-Reply-To:
 	References:List-Id:List-Help:List-Unsubscribe:List-Subscribe:List-Post:
 	List-Owner:List-Archive; bh=3BNWhTiaKphQvWfI/Drg+j+X2Bz/+YePgyVANN02pbo=; b=Q
-	CKkMkhDEJO2ECib2gUxQtHNfw8fkhl5Ursfy08kExgyso0ccx58xdnlGQnaeUWIQbzJ3+l4roPgRv
+	CKkMkhDEJO2ECib2gUxQtHNfw8xxxxxxxxxxxxxxxxxxxxxcx58xdnlGQnaeUWIQbzJ3+l4roPgRv
 	Cep1RUvloULNEoV4IBgsfheJAusQrbMSjfdDK6I/oW5HfX6S6y53ghIIQp4hJeFrdqXaHlbIOZZy6
 	DZvglDdwO6wjUWo8Hwk8ztXHVvMmqXahV9jWy3ngS7soL9w4z+gck2dziNrrcPELHpYJYNnWVb4zw
 	NMx/4z8VJ5mjBNcC6tId3vZAI7TbqoqVCU+Aj/xZHHzYOODqPRi4HMn0o1K4IwCRbWjYqvSu3K/91
 	mh3AvzVSDhzTnjdffEtp2nvGotlTeAGzA==;
 Date: Thu, 05 Dec 2024 15:07:03 -0600
-From: Todd Kadrie <todd@kadrie.net>
-To: Todd Kadrie <Todd.Kadrie@toro.com>
+From: xxxx xxxxxx <xxxx@xxxxxx.xxx>
+To: xxxx xxxxxx <xxxx.xxxxxx@xxxx.com>
 Subject: Test message
-Message-ID: <0C03B518-554F-4B18-BB6F-73D9B9E556E2@kadrie.net>
+Message-ID: <0C03B518-554F-4B18-BB6F-73D9B9E556E2@xxxxxx.xxx>
 MIME-Version: 1.0
 Content-Type: multipart/alternative;
  boundary=----O23DT15SDX1UZ783340ZO38BRXUIZ2
 Content-Transfer-Encoding: 7bit
-Autocrypt: addr=todd@kadrie.net; prefer-encrypt=mutual; keydata=
+Autocrypt: addr=xxxx@xxxxxx.xxx; prefer-encrypt=mutual; keydata=
  mQGNBGJDpsgBDAD1Bj44kgvX2gMJx6fg4GeGOk6+NpRx/Zmkxffl/+YZ8tNmXhGvaMAd32EKJIM/
  Yj9jeTQ+Xw3PsELRCFQSRZxXHfxcId187+RHurvXX8+1tMNLnRzJIx0buZQUiZ/7Xf4tIjIBrkyR
  r20vR+UH+DFwenY7UUFVSsrZAMc7PQ67Lx2WPNhRiRh6Ujq7QoUVkxU6A6ymcoFbZFFoV69bUoBw
@@ -350,7 +359,7 @@ Autocrypt: addr=todd@kadrie.net; prefer-encrypt=mutual; keydata=
  wFro+dzyiDZLt4DFmL+WYDCSDS0icYeXXhINM0tSaSpWT7NKsHZ3dv1MGqdwfOvq87Xvw8utgiaf
  EiVkVpLdh6wJHGJLIpR9XHTRweqx9kBznTzup6Bjhp3/NgQaTyyNzVIaTNPoa0t9voZvIse8OuUY
  PEG5CFc5msOWtVZzn8Z1Ol0a8cNf1fDWkAdBE3dRvxtD6OpshpnRtS/o4CUMoZX6ZS01Tn15TK5T
- VnmxhaRAYkmODalZxELbaQ092V3XGXCjMC/yUJ1AGWhsOGCtu639OKA6o0CoKNGXPth3VmohsLkZ
+ VnmxhaRAYkmODalZxELbaxxxxxxxxxxxxx/xxxxxxxxxOGCtu639OKA6o0CoKNGXPth3VmohsLkZ
  kUI/6IMPc7fhpj8Od81hBMSsG9EOEaTsiPYXvbnN6b8B8sIPb3Op/33Bm7US08V4tAyzMKLL2KNg
  lXXr1N565YkbeaMA52wFyvzPbS/zjlraITZ2al1O6WSkb3A2Y4ha35hUkFYBNxDO2qlYENnT8kkI
  JgZpN6zJzUe8ZQ+PIrFJuQGNBGJDpsgBDADLzyYquLjGWdb3QPSNLvwiioH1+aLp9Sj+Lo2VXXbh
@@ -368,8 +377,8 @@ Autocrypt: addr=todd@kadrie.net; prefer-encrypt=mutual; keydata=
  cikfMlFBWQHJLSWbauTQveb1u15oFFkkkZ1Zzwpm5NmGEI2mOIhUD8TngsmJ3q32UMZzqR7b5gQo
  IjO1pc4+1aSZUak7VMGdYcuJl7SltKaixOEwW9FUq2Ovu60MZ1LOGX2QdoKYSOfrfvSZnuQpdxdJ
  XBrYgeM7G2d4tPz/xuW5cRjyzINzR5RvJsSleqhFVKbbzxQ=
-X-Authenticated-Id: todd@kadrie.net
-Return-Path: todd@kadrie.net
+X-Authenticated-Id: xxxx@xxxxxx.xxx
+Return-Path: xxxx@xxxxxx.xxx
 X-MS-Exchange-Organization-ExpirationStartTime: 05 Dec 2024 21:07:09.9059
  (UTC)
 X-MS-Exchange-Organization-ExpirationStartTimeReason: OriginalSubmit
@@ -390,7 +399,7 @@ X-MS-Office365-Filtering-Correlation-Id: 9f29b644-9c23-4b7f-fa55-08dd1570c864
 X-MS-Exchange-Organization-SCL: 1
 X-Microsoft-Antispam: BCL:0;ARA:13230040|8096899003;
 X-Forefront-Antispam-Report:
- CIP:136.175.108.142;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-108-mta142.mxroute.com;PTR:mail-108-mta142.mxroute.com;CAT:NONE;SFS:(13230040)(8096899003);DIR:INB;
+ CIP:123.123.123.123;CTRY:US;LANG:en;SCL:1;SRV:;IPV:NLI;SFV:NSPM;H:mail-108-xxxxxx.xxxxxxx.xxx;PTR:mail-108-xxxxxx.xxxxxxx.xxx;CAT:NONE;SFS:(13230040)(8096899003);DIR:INB;
 X-MS-Exchange-CrossTenant-OriginalArrivalTime: 05 Dec 2024 21:07:09.8278
  (UTC)
 X-MS-Exchange-CrossTenant-Network-Message-Id: 9f29b644-9c23-4b7f-fa55-08dd1570c864
@@ -420,7 +429,7 @@ X-Microsoft-Antispam-Message-Info:
  =?us-ascii?Q?xt7Wk8spUi2r1Cj1O+rDFTgbwCBQ9tZRfcaI6off4EsZQRPdaC9hv0nXxEOn?=
  =?us-ascii?Q?HYqBnBYQp/T86IzVzGB5w+emPbSM7P9U1xCn8fzdi80+L+QkCU4iXW/LVxKq?=
  =?us-ascii?Q?7bg+UPvk2Q6NpPeQxA2JB5iMwqkr5Grk1gapp6nJv5hlUhWOSmWutqwY1FoL?=
- =?us-ascii?Q?M6cnSbgK1y4ww7ise0pnj7foNZ8GEG1VcHg8jM5OCVwXZm26rdqkJH3IYG46?=
+ =?us-ascii?Q?M6cnSbgK1y4ww7ixxxxxxxxxxxxxxxxxxxxxxx5OCVwXZm26rdqkJH3IYG46?=
  =?us-ascii?Q?nWmr9wz2u5kkw8exgsdR7uD/QuvSPuN2TUcaTR2oZDtV1yIMVuUMfBoF+2mb?=
  =?us-ascii?Q?vbO+Q/ri/sWp3tCWElFW+F2C1WV/D9L3JtXqM8MeggmHlqQiLz3kGGCCIcix?=
  =?us-ascii?Q?vB/qvYza1+9xxwKvN6x6twDtwfa+GPSIL8vh9MUHez+q7E3UsTtp8/bIpokL?=
@@ -438,6 +447,7 @@ X-Microsoft-Antispam-Message-Info:
  =?us-ascii?Q?xBLr2MzBvBGva+1TOoMXLrVDKGK1NXagS/uesbkUFUXK8QQKZcGGfAEs?=
 "@.Split([Environment]::NewLine) | ?{$_} ;
     #>
+
         switch ($header.gettype().fullname){
             'System.String'{
                 write-verbose '-Header likely herestring: splitting on crlfs & removing empty lines'
@@ -450,70 +460,75 @@ X-Microsoft-Antispam-Message-Info:
                 write-verbose '-Header of unrecognized type, attempting default string processing'
             }
         } ; 
+        # sanity test for indents: wo indents you can't unwrap line-spanning headers
+        if($header -match '^\s+.*$'){
+            write-verbose "indents validated present in header"
+        } else { 
+            $smsg = "Header provided has *no* indented lines: May result in failure to detect line-wrapped headers!"
+            $smsg += "`n(re-run, ensuring that no .trim() or other leading/line removal is being performed on your input text header)" ;
+        } ; 
+
 
         $ttl = $header |  measure | select -expand count ;  
         $Prcd = 0 ; 
-        #region PIPELINE_PROCESSINGLOOP ; #*------v PIPELINE_PROCESSINGLOOP v------
-        #foreach($HDR in $Header) {
-            #$ttl = $HDR |  measure | select -expand count ; 
-            $ttl = $header |  measure | select -expand count ;             
-            $aggHdr = @() ; 
-            $hdrSumm = [ordered]@{
-                HeaderName=$null ; 
-                HeaderValue=$null ; 
-                HeaderIndex = $null ; 
-            } ;
-            foreach($ln in $header){
-                $Prcd ++ ; 
-                #if($ln -eq 'X-Microsoft-Antispam-Message-Info:'){ 
-                if($ln -match '(X-MS-Exchange-Organization-Network-Message-Id:|X-MS-TrafficTypeDiagnostic:|X-MS-Exchange-Organization-AuthSource:|X-Forefront-Antispam-Report:|X-MS-Exchange-CrossTenant-AuthSource:|X-Microsoft-Antispam-Mailbox-Delivery:)'){
-                    #write-host 'BOO'
-                    write-verbose "dbg: '$($ln)'" ;
+        # pulled PIPELINE_PROCESSINGLOOP
+        $ttl = $header |  measure | select -expand count ;             
+        $aggHdr = @() ; 
+        $hdrSumm = [ordered]@{
+            HeaderName=$null ; 
+            HeaderValue=$null ; 
+            HeaderIndex = $null ; 
+        } ;
+        foreach($ln in $header){
+            $Prcd ++ ; 
+            #if($ln -eq 'X-Microsoft-Antispam-Message-Info:'){ 
+            if($ln -match '(X-MS-Exchange-Organization-Network-Message-Id:|X-MS-TrafficTypeDiagnostic:|X-MS-Exchange-Organization-AuthSource:|X-Forefront-Antispam-Report:|X-MS-Exchange-CrossTenant-AuthSource:|X-Microsoft-Antispam-Mailbox-Delivery:)'){
+                #write-host 'BOO'
+                write-verbose "dbg: '$($ln)'" ;
+            } ; 
+            if($ln -match 'X-Microsoft-Antispam-Message-Info:'){ 
+                write-verbose "dbg: '$($ln)'" ;
+            } ; 
+            if($ln.length -eq 0){
+                write-host "skipping empty line #$($Prcd):`n'$($ln)'" ; 
+            #}elseif($ln | ?{$_ -match '^\S+'}){  # matches *not* leading with a space+
+            #}elseif($ln  -match '^([A-Za-z0-9-]+):\s+(.*)$'){
+            }elseif($ln  -match '^([A-Za-z0-9-]+):\s+(.*)$' -OR $ln -match '^([A-Za-z0-9-]+):$((\s)*)$'){
+                write-verbose "line is new HeaderName: #$($Prcd):`n'$($ln)'" ; 
+                if($hdrSumm.HeaderName){
+                    $aggHdr+= [pscustomobject]$hdrSumm ; 
                 } ; 
-                if($ln -match 'X-Microsoft-Antispam-Message-Info:'){ 
-                    write-verbose "dbg: '$($ln)'" ;
-                } ; 
-                if($ln.length -eq 0){
-                    write-host "skipping empty line #$($Prcd):`n'$($ln)'" ; 
-                #}elseif($ln | ?{$_ -match '^\S+'}){  # matches *not* leading with a space+
-                #}elseif($ln  -match '^([A-Za-z0-9-]+):\s+(.*)$'){
-                }elseif($ln  -match '^([A-Za-z0-9-]+):\s+(.*)$' -OR $ln -match '^([A-Za-z0-9-]+):$((\s)*)$'){
-                    write-verbose "line is new HeaderName: #$($Prcd):`n'$($ln)'" ; 
-                    if($hdrSumm.HeaderName){
-                        $aggHdr+= [pscustomobject]$hdrSumm ; 
-                    } ; 
-                    $hdrSumm = [ordered]@{
-                        HeaderName=$null ; 
-                        HeaderValue=$null ; 
-                        HeaderIndex = $Prcd ; 
-                    } ;
-                    #if($null -eq $matches[2]){
-                    if(-not $matches[2]){
-                        write-verbose "(Header has wrapped value, next line): #$($Prcd):`n'$($ln)'" ; 
-                        if($matches[1]){
-                            $hdrSumm.HeaderName = "$($matches[1]):" ;
-                        } else {
-                            throw "blank HeaderName header match!" ; 
-                        } ; 
-                    } else { 
+                $hdrSumm = [ordered]@{
+                    HeaderName=$null ; 
+                    HeaderValue=$null ; 
+                    HeaderIndex = $Prcd ; 
+                } ;
+                #if($null -eq $matches[2]){
+                if(-not $matches[2]){
+                    write-verbose "(Header has wrapped value, next line): #$($Prcd):`n'$($ln)'" ; 
+                    if($matches[1]){
                         $hdrSumm.HeaderName = "$($matches[1]):" ;
-                        $hdrSumm.HeaderValue += @($matches[2]) ;  
+                    } else {
+                        throw "blank HeaderName header match!" ; 
                     } ; 
-                }elseif($ln  -match '^\s+.*$'){
-                    # indented HeaderValue continues...
-                    $hdrSumm.HeaderValue += @($matches[0]) ;  
                 } else { 
-                    write-warning "no match!: #$($Prcd):`n'$($ln)'" ; 
-                }
-            } ; 
-            if($hdrSumm.HeaderValue -ne $aggHdr[-1].HeaderName){
-                $aggHdr+= [pscustomobject]$hdrSumm ; 
-            } ; 
-            $smsg = "Returning $($agghdr|  measure | select -expand count ) summarized Headers to pipeline:$(($aggHdr |out-string).trim())" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            $aggHdr | write-output  ; 
-        #} ;  # loop-E
+                    $hdrSumm.HeaderName = "$($matches[1]):" ;
+                    $hdrSumm.HeaderValue += @($matches[2]) ;  
+                } ; 
+            }elseif($ln  -match '^\s+.*$'){
+                # indented HeaderValue continues...
+                $hdrSumm.HeaderValue += @($matches[0]) ;  
+            } else { 
+                write-warning "no match!: #$($Prcd):`n'$($ln)'" ; 
+            }
+        } ; 
+        if($hdrSumm.HeaderValue -ne $aggHdr[-1].HeaderName){
+            $aggHdr+= [pscustomobject]$hdrSumm ; 
+        } ; 
+        $smsg = "Returning $($agghdr|  measure | select -expand count ) summarized Headers to pipeline:$(($aggHdr |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $aggHdr | write-output  ; 
     } #  # PROC-E
 } ; 
 #*------^ END Function resolve-SMTPHeader ^------
