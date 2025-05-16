@@ -22,6 +22,7 @@
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
+        11:07 AM 5/15/2025 get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
         12:55 PM 5/13/2025 added get-CimInstance/get-WMIInstance fail through logic, added OS.Domain & .Workgroup properties to return
         .DESCRIPTION
         resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
@@ -47,13 +48,15 @@
         PROCESS {
             $netsettings = [ordered]@{ DNSHostName = $null ;  ServiceName = $null ;  DNSServerSearchOrder = $null ;  IPAddress = $null ;  DefaultIPGateway = $null ;  Fqdn = $null ; Domain = $null ; Workgroup = $null }  ;                    
             TRY{
-                #$ret = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP|
-                #     ? {$_.IPEnabled -match "True"} | Select -property $prpNS ; 
                 if(get-command get-ciminstance -ea 0){
                     $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ; 
+                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
+                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
                     $nic = Get-ciminstance -class Win32_NetworkAdapterConfiguration -ComputerName localhost -ea STOP ;
                 } else { 
                     $OS = (Get-WmiObject -Class Win32_ComputerSystem -ea STOP)
+                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
+                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
                     $nic = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP ;
                 } ; 
                 if($nic = $nic | ?{$_.IPEnabled -match "True"} | Select -property $prpNS){
@@ -77,8 +80,6 @@
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
                     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
                 } ; 
-                $netsettings.Domain = $OS.Domain ; 
-                $netsettings.Workgroup = $OS.Workgroup ; 
                 if($netsettings.Workgroup){
                     $smsg = "WorkgroupName:$($WorkgroupName)" ; 
                     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
