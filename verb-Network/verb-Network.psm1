@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.0.0.0
+Version     : 5.1.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3557,6 +3557,103 @@ $(
 }
 
 #*------^ Resolve-DnsSenderIDRecords.ps1 ^------
+
+
+#*------v resolve-networkLocalTDO.ps1 v------
+Function resolve-NetworkLocalTDO {
+        <#
+        .SYNOPSIS
+        resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2025-04-28
+        FileName    : resolve-NetworkLocalTDO.ps1
+        License     : MIT License
+        Copyright   : (c) 2025 Todd Kadrie
+        Github      : https://github.com/tostka/verb-XXX
+        Tags        : Powershell
+        AddedCredit : REFERENCE
+        AddedWebsite: URL
+        AddedTwitter: URL
+        REVISIONS
+        11:07 AM 5/15/2025 get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
+        12:55 PM 5/13/2025 added get-CimInstance/get-WMIInstance fail through logic, added OS.Domain & .Workgroup properties to return
+        .DESCRIPTION
+        resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
+        .INPUTS
+        None. Does not accepted piped input.(.NET types, can add description)
+        .OUTPUTS
+        System.PsCustomObject summary of useful Nic descriptors                
+        .EXAMPLE
+        PS> $netsettings = resolve-NetworkLocalTDO ; 
+        Demo run
+        .LINK
+        https://github.com/tostka/verb-Network
+        #>                
+        [CmdletBinding()]
+        Param () ;
+        BEGIN{
+            $rgxIP4Addr = "(?:\d{1,3}\.){3}\d{1,3}" ;
+            $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ; 
+            $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;  
+            $prpNS = 'DNSHostName','ServiceName',@{N="DNSServerSearchOrder";E={"$($_.DNSServerSearchOrder)"}}, 
+                @{N='IPAddress';E={$_.IPAddress}},@{N='DefaultIPGateway';E={$_.DefaultIPGateway}} ;
+        } ; 
+        PROCESS {
+            $netsettings = [ordered]@{ DNSHostName = $null ;  ServiceName = $null ;  DNSServerSearchOrder = $null ;  IPAddress = $null ;  DefaultIPGateway = $null ;  Fqdn = $null ; Domain = $null ; Workgroup = $null }  ;                    
+            TRY{
+                if(get-command get-ciminstance -ea 0){
+                    $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ; 
+                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
+                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
+                    $nic = Get-ciminstance -class Win32_NetworkAdapterConfiguration -ComputerName localhost -ea STOP ;
+                } else { 
+                    $OS = (Get-WmiObject -Class Win32_ComputerSystem -ea STOP)
+                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
+                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
+                    $nic = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP ;
+                } ; 
+                if($nic = $nic | ?{$_.IPEnabled -match "True"} | Select -property $prpNS){
+                    $netsettings.DNSHostName = $nic.DNSHostName; 
+                    $netsettings.ServiceName = $nic.ServiceName;  
+                    $netsettings.DNSServerSearchOrder = $nic.DNSServerSearchOrder;  
+                    $netsettings.IPAddress = $nic.IPAddress;  
+                    $netsettings.DefaultIPGateway = $nic.DefaultIPGateway;  
+                    if($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ){
+                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ) -type ptr).namehost | select -first 1 ;   
+                    } ; 
+                }else {
+                    $smsg = "NO IPEnabled -match True NICS FOUND!" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ; 
+                }
+                # 9:45 AM 5/13/2025 add workgroup collection, if non-domain-joined
+                if($env:Userdomain -eq $env:COMPUTERNAME){
+                    $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } ; 
+                if($netsettings.Workgroup){
+                    $smsg = "WorkgroupName:$($WorkgroupName)" ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                [pscustomobject]$netsettings | write-output ; 
+            } CATCH {
+                $ErrTrapd=$Error[0] ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;                     
+        } ; 
+    }
+
+#*------^ resolve-networkLocalTDO.ps1 ^------
 
 
 #*------v resolve-SMTPHeader.ps1 v------
@@ -11442,7 +11539,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -11450,8 +11547,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUUx/en6G9rHNIY+E+GWe5reLD
-# 2gCgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU5F8W6jqiLkEgX5QC+32kQk4s
+# my6gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -11466,9 +11563,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTDTzaW
-# G6dNwqA07FUs4BKrJLrevjANBgkqhkiG9w0BAQEFAASBgDNAvS8LhkxnFz3UNhZe
-# e/Kps3Z84RvaBbQdXoM9g6A9Zj4/n0v84to01vCjZu2rUs9ASOUldgiLo0B/himc
-# 5XGKKqZvZ1njqnpE6F7iQzeQVI8x344fiH7uG8kNx3In85ZZlYLARaQu5RUZKVv3
-# zbYcgnree3FpCPupD/ahtqtr
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTZwCi0
+# bmAboqi/cHyntChSaeg5JDANBgkqhkiG9w0BAQEFAASBgD29nP4bN7c6ge++JCSH
+# WLkKUBnzVdGQMjO96NFQ38H9DcbPEG2xvzovSf7YQHq3TTs9734UN9gJy7+KVpes
+# mKz8WOjSSVdAYibM92msjyhx7/tOVNSsf+QMevZ+vN+3a5faN0ERmNiaj22ZdOC1
+# 9WV3hFmAE6KilKysBkEjv8KD
 # SIG # End signature block
