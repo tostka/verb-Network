@@ -1122,7 +1122,6 @@ Send-EmailNotif:useSSL
 Send-EmailNotif:SmtpBody
 Send-EmailNotif:Body
 Send-EmailNotif:BodyAsHtml
-Send-EmailNotif:StripBodyHtml
 Send-EmailNotif:SmtpAttachment
 Send-EmailNotif:attach
 Send-EmailNotif:Attachments
