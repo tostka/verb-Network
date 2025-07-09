@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.3.0.0
+Version     : 5.4.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -390,6 +390,7 @@ Function get-CertificateChainOfTrust {
     AddedWebsite: https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
     AddedTwitter: URL
     REVISIONS
+    * 10:03 AM 7/9/2025 updated CBH to reflect preference for use of vnet\test-certificateTDO for this niche. 
     * 10:31 AM 10/26/2023 add -CertificateStoreRoot param, to permit runs against CurrentUser or default LocalMachine; 
         ren CertificateName param -> CertificateID w alias for orig name ; 
         ren get-CertificatePath -> get-CertificateChainOfTrust (better reflects what it does) ; 
@@ -400,6 +401,9 @@ Function get-CertificateChainOfTrust {
     * 1/2/2019 AS posted version
     .DESCRIPTION
     get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+
+    ## Note: vnet\test-CertificateTDO() substantially reproduces this function -also dumps the COT, but has benefit of working for self-signed certs, where this one fails. 
+
     Function to get and display all the properties of the certificates in a certificate path (chain) until the Root CA.
     The Function would use Authority Key Identifier and the Subject Key Identifier to determine the certificate path
     [Get and Enumerate Certificate Chains Remotely Using PowerShell - Amir Sayes](https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/)
@@ -7047,7 +7051,7 @@ function Resolve-SPFRecord {
 
                             # do a test Test-IPAddressInRange agains the $SenderIP, now NOPE
                             <#
-                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
+                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
                             PS>     write-host -foregroundcolor green  "is in range!" 
                             PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
                             #>
@@ -9425,12 +9429,13 @@ function test-CertificateTDO {
     FileName    : test-CertificateTDO.ps1
     License     : (none asserted)
     Copyright   : Vadims Podans (c) 2009
-    Github      : https://github.com/tostka/verb-IO
-    Tags        : Powershell,FileSystem,File,Lock
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Certificate,Validation,Authentication,Network
     AddedCredit : Todd Kadrie
     AddedWebsite: http://www.toddomation.com
     AddedTwitter: @tostka / http://twitter.com/tostka
     REVISIONS
+    * 9:55 AM 7/9/2025 updated CBH, corrected link vio -> vnet mod; updated CBH to explicitly note it supports testing _installed_ certs as well (VP's original didn't and relied on filesystem .ext for logic handling pfx pw etc). Shifted copies of the pki\test-certificate examples down into actual CBH expl entries, for broad reference
     * 8:20 AM 8/30/2024 pulled errant alias (rol, restart-outlook)
     * 2:29 PM 8/22/2024 fixed process looping (lacked foreach); added to verb-Network; retoololed to return a testable summary report object (summarizes Subject,Issuer,Not* dates,thumbprint,Usage (FriendlyName),isSelfSigned,Status,isValid,and the full TrustChain); 
         added param valid on [ValidateSet, CRLMode, CRLFlag, VerificationFlags ; updated CBH; added support for .p12 files (OpenSSL pfx variant ext), rewrite to return a status object
@@ -9439,10 +9444,11 @@ function test-CertificateTDO {
     test-CertificateTDO -  Tests specified certificate for certificate chain and revocation status for each certificate in chain
         exluding Root certificates
     
-        Based on Vadim Podan's 2009-era Test-Certificate function, expanded/reworked to return a testable summary report object (summarizes Subject,Issuer,NotBefore|After dates,thumbprint,Usage(FriendlyName),isSelfSigned,Status,isValid
+        Based on Vadim Podan's 2009-era Test-Certificate function, expanded/reworked to return a testable summary report object (summarizes Subject,Issuer,NotBefore|After dates,thumbprint,Usage(FriendlyName),isSelfSigned,Status,isValid. 
+        
+        Also revised to support testing _installed_ certs (original only did filesystem, used .extension to determine pw etc handling)
 
-
-        ## Note:Powershell v4+ includes a native Test-Certificate cmdlet that returns a boolean, and supports -DNSName to test a given fqdn against the CN/SANs list on the certificate. 
+        ## Note:Powershell v4+ PKI mod includes a native Test-Certificate cmdlet that returns a boolean, and supports -DNSName to test a given fqdn against the CN/SANs list on the certificate. 
         Limitations of that alternate, for non-public certs, include that it lacks the ability to suppress CRL-testing to evaluate *private/internal-CA-issued certs, which lack a publcly resolvable CRL url. 
         Those certs, will always fail the bundled Certificate Revocation List checks. 
 
@@ -9459,7 +9465,6 @@ function test-CertificateTDO {
 
         This example verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
         with the DNS name specified.
-
 
         Demo 2:
 
@@ -9523,10 +9528,19 @@ function test-CertificateTDO {
     PS>         write-host "A-OK for code signing!"
     PS> } else { write-warning 'Bad Cert for code signing!'} ; 
     Demo conditional branching on basis of output valid value.
+    .EXAMPLE
+    PS C:\>Get-ChildItem -Path Cert:\localMachine\My | Test-Certificate -Policy SSL -DNSName "dns=contoso.com"
+    Native PKI\test-certificate() demo: verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
+    with the DNS name specified.
+    .EXAMPLE
+    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+    -EKU "1.3.6.1.5.5.7.3.1" –User
+    Native PKI\test-certificate() demo: Verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
+    checking is not performed.    
     .LINK
     https://web.archive.org/web/20160715110022/poshcode.org/1633
     .LINK
-    https://github.com/tostka/verb-io
+    https://github.com/tostka/verb-network
     #>
     #requires -Version 2.0
     [CmdletBinding()]
@@ -10368,7 +10382,7 @@ function Test-IPAddressInRange {
             PS> @('10.10.10.230','10.10.11.230') | Test-IPAddressInRange -Range 10.10.10.10/24 -verbose ;
             Pipeline demo, fed with array of ip's, loops each through a test on the specified cidr range.
             .EXAMPLE
-            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
+            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
             PS>     write-host -foregroundcolor green  "is in range!" 
             PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
             Test ipv6 IP Address & CIDR subnet
@@ -10455,7 +10469,7 @@ function Test-IPAddressInRange {
                         Expanded from Google AI offered snippet from search.
 
                         .PARAMETER IPAddress
-                        IPv6 IP Address to be tested (e.g., "2001:0db8:85a3:0000:0000:8a2e:0370:7334").
+                        IPv6 IP Address to be tested (e.g., "2001:0db8:85.4.0000:0000:8a2e:0370:7334").
                         .PARAMETER CIDR
                         IPv6 CIDR-notation Subnet to be tested against (e.g., "2001:0db8:85a3::/48").
                         .INPUTS
@@ -10463,14 +10477,14 @@ function Test-IPAddressInRange {
                         .OUTPUTS
                         System.Boolean. Returns $true if the IP address is within the CIDR range, otherwise $false.
                         .EXAMPLE
-                        PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
+                        PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
                         .LINK
                         https://github.com/tostka/verb-Network
                         #>
                         [CmdletBinding()]
                         [Alias('Test-IPv6InCIDR','Alias2')]
                         PARAM(
-                            [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85a3:0000:0000:8a2e:0370:7334']")]
+                            [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85.4.0000:0000:8a2e:0370:7334']")]
                                 [string]$IPAddress,
                             [Parameter(Mandatory=$True,HelpMessage="IPv6 CIDR-notation Subnet to be tested against[-Ipv6 CIDR  '2001:0db8:85a3::/48']")]
                                 [string]$CIDR
@@ -10671,7 +10685,7 @@ function Test-IPAddressInRangeIp6 {
 
     Expanded from Google AI offered snippet from search.
     .PARAMETER IPAddress
-    IPv6 IP Address to be tested (e.g., "2001:0db8:85a3:0000:0000:8a2e:0370:7334").
+    IPv6 IP Address to be tested (e.g., "2001:0db8:85.4.0000:0000:8a2e:0370:7334").
     .PARAMETER CIDR
     IPv6 CIDR-notation Subnet to be tested against (e.g., "2001:0db8:85a3::/48").
     .INPUTS
@@ -10679,14 +10693,14 @@ function Test-IPAddressInRangeIp6 {
     .OUTPUTS
     System.Boolean. Returns $true if the IP address is within the CIDR range, otherwise $false.
     .EXAMPLE
-    PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
+    PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
     .LINK
     https://github.com/tostka/verb-Network
     #>
     [CmdletBinding()]
     [Alias('Test-IPv6InCIDR','Alias2')]
     PARAM(
-        [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85a3:0000:0000:8a2e:0370:7334']")]
+        [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85.4.0000:0000:8a2e:0370:7334']")]
             [string]$IPAddress,
         [Parameter(Mandatory=$True,HelpMessage="IPv6 CIDR-notation Subnet to be tested against[-Ipv6 CIDR  '2001:0db8:85a3::/48']")]
             [string]$CIDR
@@ -11224,7 +11238,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern("^(65.4.0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -11607,8 +11621,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUQPS8M6T9YOMd8/Dl/gN1LWFw
-# FIigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUsE8NJqioPqXx2KqRM+eVEdI2
+# vDWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -11623,9 +11637,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTMjG33
-# eO8W4FGW2lpGGM3c3yHDKzANBgkqhkiG9w0BAQEFAASBgDC8tTmxGHu4ueEv5xwX
-# PPQ2PGV3fPH5reHa6NvFsu380615MWJl56PXEKJGXci3bZcRbz2ktXWaPqwQQqQK
-# xsOSOu5S6PwT43wRp2OKQ96JPsRgZfEmhELnsVvBcsCHLMKkNo79D2A0MgHDvsr9
-# BGblBIlcU5wa41QLxGPz3HMb
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS/eXlG
+# OLEe9WnhCch5zGgZ95ltcTANBgkqhkiG9w0BAQEFAASBgHBD4iDR38WggSWN0x17
+# zxnK4Vv3aO96ul5v1OFjPGmrJAnWhy92ihiHdKjh7m2IOOyIsmMchcPqXzbI0AqR
+# Bo0Tfard3MNSYgRNptbcaPGMV2kMw10lZc7XHaAHE6OP3/wHa5bvfJkfizo4SnzK
+# qBASKCeFUYGCclVXlZfCGDri
 # SIG # End signature block
