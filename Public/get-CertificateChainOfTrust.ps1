@@ -19,6 +19,7 @@ Function get-CertificateChainOfTrust {
     AddedWebsite: https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/
     AddedTwitter: URL
     REVISIONS
+    * 10:03 AM 7/9/2025 updated CBH to reflect preference for use of vnet\test-certificateTDO for this niche. 
     * 10:31 AM 10/26/2023 add -CertificateStoreRoot param, to permit runs against CurrentUser or default LocalMachine; 
         ren CertificateName param -> CertificateID w alias for orig name ; 
         ren get-CertificatePath -> get-CertificateChainOfTrust (better reflects what it does) ; 
@@ -29,6 +30,9 @@ Function get-CertificateChainOfTrust {
     * 1/2/2019 AS posted version
     .DESCRIPTION
     get-CertificateChainOfTrust.ps1 - Function to get all certificate in in a certificate path (chain)
+
+    ## Note: vnet\test-CertificateTDO() substantially reproduces this function -also dumps the COT, but has benefit of working for self-signed certs, where this one fails. 
+
     Function to get and display all the properties of the certificates in a certificate path (chain) until the Root CA.
     The Function would use Authority Key Identifier and the Subject Key Identifier to determine the certificate path
     [Get and Enumerate Certificate Chains Remotely Using PowerShell - Amir Sayes](https://amirsayes.co.uk/2019/01/02/get-and-enumerate-certificate-chains-remotely-using-powershell/)
