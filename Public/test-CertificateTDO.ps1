@@ -14,12 +14,13 @@ function test-CertificateTDO {
     FileName    : test-CertificateTDO.ps1
     License     : (none asserted)
     Copyright   : Vadims Podans (c) 2009
-    Github      : https://github.com/tostka/verb-IO
-    Tags        : Powershell,FileSystem,File,Lock
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Certificate,Validation,Authentication,Network
     AddedCredit : Todd Kadrie
     AddedWebsite: http://www.toddomation.com
     AddedTwitter: @tostka / http://twitter.com/tostka
     REVISIONS
+    * 9:55 AM 7/9/2025 updated CBH, corrected link vio -> vnet mod; updated CBH to explicitly note it supports testing _installed_ certs as well (VP's original didn't and relied on filesystem .ext for logic handling pfx pw etc). Shifted copies of the pki\test-certificate examples down into actual CBH expl entries, for broad reference
     * 8:20 AM 8/30/2024 pulled errant alias (rol, restart-outlook)
     * 2:29 PM 8/22/2024 fixed process looping (lacked foreach); added to verb-Network; retoololed to return a testable summary report object (summarizes Subject,Issuer,Not* dates,thumbprint,Usage (FriendlyName),isSelfSigned,Status,isValid,and the full TrustChain); 
         added param valid on [ValidateSet, CRLMode, CRLFlag, VerificationFlags ; updated CBH; added support for .p12 files (OpenSSL pfx variant ext), rewrite to return a status object
@@ -28,10 +29,11 @@ function test-CertificateTDO {
     test-CertificateTDO -  Tests specified certificate for certificate chain and revocation status for each certificate in chain
         exluding Root certificates
     
-        Based on Vadim Podan's 2009-era Test-Certificate function, expanded/reworked to return a testable summary report object (summarizes Subject,Issuer,NotBefore|After dates,thumbprint,Usage(FriendlyName),isSelfSigned,Status,isValid
+        Based on Vadim Podan's 2009-era Test-Certificate function, expanded/reworked to return a testable summary report object (summarizes Subject,Issuer,NotBefore|After dates,thumbprint,Usage(FriendlyName),isSelfSigned,Status,isValid. 
+        
+        Also revised to support testing _installed_ certs (original only did filesystem, used .extension to determine pw etc handling)
 
-
-        ## Note:Powershell v4+ includes a native Test-Certificate cmdlet that returns a boolean, and supports -DNSName to test a given fqdn against the CN/SANs list on the certificate. 
+        ## Note:Powershell v4+ PKI mod includes a native Test-Certificate cmdlet that returns a boolean, and supports -DNSName to test a given fqdn against the CN/SANs list on the certificate. 
         Limitations of that alternate, for non-public certs, include that it lacks the ability to suppress CRL-testing to evaluate *private/internal-CA-issued certs, which lack a publcly resolvable CRL url. 
         Those certs, will always fail the bundled Certificate Revocation List checks. 
 
@@ -48,7 +50,6 @@ function test-CertificateTDO {
 
         This example verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
         with the DNS name specified.
-
 
         Demo 2:
 
@@ -112,10 +113,19 @@ function test-CertificateTDO {
     PS>         write-host "A-OK for code signing!"
     PS> } else { write-warning 'Bad Cert for code signing!'} ; 
     Demo conditional branching on basis of output valid value.
+    .EXAMPLE
+    PS C:\>Get-ChildItem -Path Cert:\localMachine\My | Test-Certificate -Policy SSL -DNSName "dns=contoso.com"
+    Native PKI\test-certificate() demo: verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
+    with the DNS name specified.
+    .EXAMPLE
+    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+    -EKU "1.3.6.1.5.5.7.3.1" –User
+    Native PKI\test-certificate() demo: Verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
+    checking is not performed.    
     .LINK
     https://web.archive.org/web/20160715110022/poshcode.org/1633
     .LINK
-    https://github.com/tostka/verb-io
+    https://github.com/tostka/verb-network
     #>
     #requires -Version 2.0
     [CmdletBinding()]
