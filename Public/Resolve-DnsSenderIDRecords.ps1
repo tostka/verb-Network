@@ -18,6 +18,7 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
+    * 2:22 PM 8/1/2025 updated whpassfail block to curr
     * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
     * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
@@ -301,29 +302,62 @@ $(
         ) ; 
         #>
 
-        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
-        $whPASS = @{
-        Object = "$([Char]8730) PASS" ;
-        ForegroundColor = 'Green' ;
-        NoNewLine = $true ;
-        } ;
-        $whFAIL = @{
-            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
-            ForegroundColor = 'RED' ;
-            NoNewLine = $true ;
-        } ;
-        <#
-        # inline pass/fail color-coded w char
-        $smsg = "Testing:THING" ; 
-        $Passed = $true ; 
-        Write-Host "$($smsg)... " -NoNewline ; 
-        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
-        Write-Host " (Done)" ;
-        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
+        #region WHPASSFAIL ; #*======v WHPASSFAIL v======
+        $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
+        if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
+        if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
+        # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+        if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
+        if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
+        <# WHPASSFAIL:SAMPLE TESTS:
+        #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
+        $tFormat = 'NTFS' ; 
+        $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
+        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+        if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
+        #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
+        #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
+        # Test: Capacity match, threshold vs %:
+        $tSpaceThresh = 10 * 1GB ; # .9 (for %)
+        if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
+        elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
+        else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
+        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+        if($tSpaceThresh -lt 1){
+            $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
+            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
+                $rptDrive.SizeRemainingStatus = $false ;
+                write-host @whFAIL ;
+                $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
+                $rptDrive.DriveIssues += @($smsg)
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } else {
+                $rptDrive.SizeRemainingStatus = $true ;
+                Write-Host @whPASS ;   ;
+                $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        }else{
+            $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
+            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if ($tv.SizeRemaining -lt $tSpaceThresh){
+                $rptDrive.SizeRemainingStatus = $false ;
+                write-host @whFAIL ;
+                $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } else {
+                $rptDrive.SizeRemainingStatus = $true ;
+                Write-Host @whPASS ;   ;
+                $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        } ; 
+        #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
         #>
-        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
-
+        #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
+        
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
