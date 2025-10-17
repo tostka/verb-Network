@@ -1,7 +1,8 @@
-﻿# get-IISLocalBoundCertifcateTDO
+﻿# get-IISLocalBoundCertifcateTDO.ps1
 
-    #region GET_IISLOCALBOUNDCERTIFCATETDO ; #*------v get-IISLocalBoundCertifcateTDO v------
-    Function get-IISLocalBoundCertifcateTDO {
+
+#region GET_IISLOCALBOUNDCERTIFCATETDO ; #*------v get-IISLocalBoundCertifcateTDO v------
+Function get-IISLocalBoundCertifcateTDO {
         <#
         .SYNOPSIS
         get-IISLocalBoundCertifcateTDO - Retrieves the certificate bound to the IIS Default Website (also handy for independantly verifyinig Exchange Service bindings, when get-exchangecertificate is mangled by Exchange Auth cert expiration). 
@@ -20,6 +21,7 @@
         AddedWebsite: 
         AddedTwitter: 
         REVISIONS
+        * 2:40 PM 10/1/2025 updated CBH example; added to xopBuildLibrary.psm1
         * 4:01 PM 9/30/2025 init
         .DESCRIPTION
         get-IISLocalBoundCertifcateTDO - Retrieves the certificate bound to the IIS Default Website (also handy for independantly verifyinig Exchange Service bindings, when get-exchangecertificate is mangled by Exchange Auth cert expiration). 
@@ -32,7 +34,9 @@
         .OUTPUTS
         System.Security.Cryptography.X509Certificates.X509Certificate2 bound certificate object
         .EXAMPLE
-        PS> $iisCert = get-IISLocalBoundCertifcateTDO; 
+        PS> if($iisCert = get-IISLocalBoundCertifcateTDO){
+        PS>     write-host "IIS has a bound certificate: implies the IIS ExchangeCertifidate Binding is intact"
+        PS> } ; 
         Demo default output        
         .LINK
         https://github.org/tostka/verb-network/
@@ -62,5 +66,6 @@
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
             else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
         } ;  
-    } ; 
-    #endregion GET_IISLOCALBOUNDCERTIFCATETDO ; #*------^ END get-IISLocalBoundCertifcateTDO ^------
+    }
+#endregion GET_IISLOCALBOUNDCERTIFCATETDO ; #*------^ END get-IISLocalBoundCertifcateTDO ^------
+
