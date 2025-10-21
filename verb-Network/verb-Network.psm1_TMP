@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.4.0.0
+Version     : 5.4.1.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -584,6 +584,174 @@ Function get-CertificateChainOfTrust {
 #*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
+#*------v get-CredentialsTDO.ps1 v------
+function get-CredentialsTDO{
+    <#
+    .SYNOPSIS
+    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory, returns a Credential object
+    .NOTES
+    Version     : 0.0.1
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 20250711-0423PM
+    FileName    : get-CredentialsTDO.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-io
+    Tags        : Powershell,ActiveDirectory,Account,Credential
+    AddedCredit : Michel de Rooij / michel@eightwone.com
+    AddedWebsite: http://eightwone.com
+    AddedTwitter: URL        
+    REVISIONS
+    * 9:02 AM 10/17/2025 pulled pw systemstring conv: test-CredentialsTDO natively accomodatese as ss; add mising wlt for return msg
+    * 1:06 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
+    * 3:15 PM 8/8/2025 rejiggered to return a credential object, (orig updated a global vari in host script);  ren get-Credentials821 -> get-821, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
+    11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
+    .DESCRIPTION
+    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory
+                
+    .INPUTS
+    None, no piped input.
+    .OUTPUTS
+    System.Object summary of Exchange server descriptors, and service statuses.
+    .EXAMPLE ; 
+    PS> if($Credentials = get-CredentialsTDO){
+    PS>     write-host -foregroundcolor green "Obtained Credential:$($Credentials.Username) (validated against AD)" ; 
+    PS> } else {
+    PS>     write-warning "INVALID CREDENTIALS SPECIFIED!" ; 
+    PS> }; 
+    .LINK
+    https://github.org/tostka/verb-ex2010/
+    #>
+    [CmdletBinding()]
+    [alias('get-Credentials')]
+    PARAM(
+        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
+            [Alias('AdminAccount','logon')]
+            [string]$UserName,
+        [Parameter(HelpMessage = "Account password (securestring)")]
+            [Alias('AdminPassword')]
+            [System.Security.SecureString]$Password
+    ) ;
+    If( -not( $UserName -and $Password)) {
+        TRY {
+		    $Script:Credentials= Get-Credential -UserName ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -Message 'Enter credentials to use'
+            $UserName= $Credentials.UserName
+            #$Password= ($Credentials.Password | ConvertFrom-SecureString)
+            # test-CredentialsTDO() can natively handle securestring pw
+            $Password= $Credentials.Password 
+        }CATCH {
+            $ErrTrapd=$Error[0] ;
+            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+            $smsg += 'No or improper credentials provided'
+            $smsg = "" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            throw $smsg ; 
+        }
+	}
+    $smsg = 'Checking provided credentials'
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+    If( test-CredentialsTDO -UserName:$UserName -Password:$Password) {
+        $smsg = 'Credential test-CredentialsTDO:PASS`n(returning Credential object to pipeline)'
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+        [System.Management.Automation.PSCredential]$Credentials = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $UserName, $Password
+        $Credentials | write-output ; 
+    } Else {
+        $smsg = 'Credential test-CredentialsTDO:FAIL/INVALID'
+        $smsg = "" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        $false | write-output ; 
+    }
+}
+
+#*------^ get-CredentialsTDO.ps1 ^------
+
+
+#*------v Get-CurrentUserNameTDO.ps1 v------
+function Get-CurrentUserNameTDO{
+    <#
+        .SYNOPSIS
+        Get-CurrentUserNameTDO - Returns local machine's windows security principal 'DOMAIN\logon' string
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250917-0114PM
+        FileName    : Get-CurrentUserNameTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Account,Credential
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 9:19 AM 10/17/2025 hadn't actually copied in the raw code, now fully populated, and covers fallback to env varis, and supports non-domain-connected boxese
+        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+        .DESCRIPTION
+        Get-CurrentUserNameTDO - Returns local machine's windows security principal 'DOMAIN\logon' string
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.String windows security principal in 'DOMAIN\logon' format
+        .EXAMPLE ; 
+        PS> if($Username = Get-CurrentUserNameTDO){
+        PS>     write-host -foregroundcolor green "UserName:$($UserName)" ; 
+        PS> } else {
+        PS>     write-warning "Unable to get local windows security principal name" ; 
+        PS> }; 
+        .LINK
+        https://github.org/tostka/verb-Network/
+        #>
+    [CmdletBinding()]
+    [alias('Get-CurrentUserName')]
+    PARAM(
+        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
+            [Alias('AdminAccount','logon')]
+            [string]$UserName,
+        [Parameter(HelpMessage = "Account password (securestring)")]
+            [Alias('AdminPassword')]
+            [System.Security.SecureString]$Password
+    ) ;
+    if([System.Security.Principal.WindowsIdentity]::GetCurrent().Name){
+        return [System.Security.Principal.WindowsIdentity]::GetCurrent().Name 
+    }else{
+        $smsg = "Unpopulated[System.Security.Principal.WindowsIdentity]:`nfallback to `$env:USERDOMAIN & USERNAME checks" ; 
+        if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        if($env:USERDOMAIN -eq $env:COMPUTERNAME){
+            if($env:USERNAME){
+                $smsg = "Non-Domain-connected system, returning non-Domain local `$env:USERNAME string" ; 
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                return $env:USERNAME ; 
+            }else{
+                $smsg = "Unpopulated `$env:USERNAME!" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ; 
+            } 
+        }else{
+            $smsg = "Returning ``$env:USERDOMAIN\$env:USERNAME string: $($env:USERDOMAIN)\$($env:USERNAME)" ; 
+            if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            return "$($env:USERDOMAIN)\$($env:USERNAME)" ; 
+        }
+
+    } ; 
+}
+
+#*------^ Get-CurrentUserNameTDO.ps1 ^------
+
+
 #*------v Get-DnsDkimRecord.ps1 v------
 function Get-DnsDkimRecord {
     <#
@@ -1049,6 +1217,127 @@ function get-DNSServers{
 }
 
 #*------^ get-DNSServers.ps1 ^------
+
+
+#*------v Get-ForestRootNCTDO.ps1 v------
+function Get-ForestRootNCTDO{
+        <#
+        .SYNOPSIS
+        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250917-0114PM
+        FileName    : Get-ForestRootNCTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Forest,Domain
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 10:42 AM 10/17/2025 updated CBH to indicate format of the DN returned.
+        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+        .DESCRIPTION
+        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.String local ForestRoot 
+        .EXAMPLE ; 
+        PS> $FRNC= Get-ForestRootNCTDO
+        PS> $FRNC ; 
+
+            DC=sub,DC=dom,DC=tld
+
+        .LINK
+        https://github.org/tostka/verb-Network/
+        #>
+        [CmdletBinding()]
+        [alias('Get-ForestRootNC')]
+        PARAM() ;
+        return ([ADSI]'LDAP://RootDSE').rootDomainNamingContext.toString()
+    }
+
+#*------^ Get-ForestRootNCTDO.ps1 ^------
+
+
+#*------v get-FullDomainAccountTDO.ps1 v------
+Function get-FullDomainAccountTDO {
+    <#
+    .SYNOPSIS
+    get-FullDomainAccountTDO - Validates an account logon specification string is either a UserPrincipalName (acct@DOMAIN.TLD) or legacy format (DOMAIN\Account) specification. If no domain is specified (just an accountname), it substitutes the local UserDomain environment variable as the Domain specification. The resolved UPN or Legacy spec is passed through (UPN -> UPN; legacy -> legacy)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 20250711-0423PM
+    FileName    : get-FullDomainAccountTDO.ps1
+    License     : (none asserted)
+    Copyright   : (none asserted)
+    Github      : https://github.com/tostka/verb-ex2010
+    Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+    AddedCredit : Michel de Rooij / michel@eightwone.com
+    AddedWebsite: http://eightwone.com
+    AddedTwitter: URL
+    REVISIONS
+    * 4:33 PM 10/16/2025 reworked logic to make self-contained, no-dep, updated cbh demo; replaced all of MdR's original logic
+    * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+    * 1:58 PM 8/8/2025 added CBH; init; renamed AdminAccount -> Account, aliased  orig param and logon variant. ren: get-FullDomainAccountTDO -> get-FullDomainAccountTDO, aliased orig name
+    .DESCRIPTION
+    get-FullDomainAccountTDO - Validates an account logon specification string is either a UserPrincipalName (acct@DOMAIN.TLD) or legacy format (DOMAIN\Account) specification. If no domain is specified (just an accountname), it substitutes the local UserDomain environment variable as the Domain specification. The resolved UPN or Legacy spec is passed through (UPN -> UPN; legacy -> legacy)
+        
+    .INPUTS
+    None, no piped input.
+    .OUTPUTS
+    System.Object summary of Exchange server descriptors, and service statuses.
+    .EXAMPLE
+    PS> $tcred = get-credential ; 
+    PS> $rvLogon = get-FullDomainAccountTDO -Account $tcred.username
+    .LINK
+    https://github.org/tostka/verb-io/
+    #>
+    [CmdletBinding()]
+    [alias('get-FullDomainAccount')]
+    PARAM(
+        [Parameter(Mandatory=$true,HelpMessage = "Account specification")]
+            [Alias('AdminAccount','logon','credential')]
+            [string]$Account
+    ) ;
+        $PlainTextAccount= $Account;        
+    switch -regex ($PlainTextAccount){
+        '(.*)\\(.*)' {
+            $Parts = $PlainTextAccount.split('\') ; 
+            $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "Account is in Legacy format" ; 
+            return $FullPlainTextAccount ;
+            break ; 
+        } ; 
+        '(.*)@(.*)' {
+            write-host  "Account is in UPN format"  ; 
+            $FullPlainTextAccount = $PlainTextAccount ;              
+            return $FullPlainTextAccount ;
+            #break ;
+        }
+        default{
+            if($env:USERDOMAIN){
+                $FullPlainTextAccount = "$($env:USERDOMAIN)\$($PlainTextAccount)" ; 
+                write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
+                return $FullPlainTextAccount ; 
+                break ;
+            } else{
+                throw "Unrecognized -Account format:$($PlainTextAccount)" ; 
+            };
+            break ;  
+        } ; 
+    } ; 
+}
+
+#*------^ get-FullDomainAccountTDO.ps1 ^------
 
 
 #*------v get-IPSettings.ps1 v------
@@ -1875,6 +2164,53 @@ function Get-RestartInfo {
 #*------^ Get-RestartInfo.ps1 ^------
 
 
+#*------v Get-RootNCTDO.ps1 v------
+function Get-RootNCTDO{
+        <#
+        .SYNOPSIS
+        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250917-0114PM
+        FileName    : Get-RootNCTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Forest,Domain
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 11:50 AM 10/17/2025 updated CBH, incl output DN example
+        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
+        .DESCRIPTION
+        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.String local ForestRoot 
+        .EXAMPLE ; 
+        PS> $NC= Get-RootNC
+        PS> $NC; 
+
+            DC=sub,DC=sub,DC=domain,DC=tld
+
+        .LINK
+        https://github.org/tostka/verb-Network/
+        #>
+        [CmdletBinding()]
+        [alias('Get-RootNC')]
+        PARAM() ;
+        return ([ADSI]'').distinguishedName.toString()
+    }
+
+#*------^ Get-RootNCTDO.ps1 ^------
+
+
 #*------v get-tsusers.ps1 v------
 function get-tsUsers {
     <# 
@@ -2469,8 +2805,8 @@ function Invoke-SecurityDialog {
 
 
 #*------v push-TLSLatest.ps1 v------
-function push-TLSLatest{
-        <#
+function push-TLSLatest {
+            <#
         .SYNOPSIS
         push-TLSLatest - Elevates TLS on Powershell connections to highest available local version
         .NOTES
@@ -2479,21 +2815,20 @@ function push-TLSLatest{
         Website     : http://www.toddomation.com
         Twitter     : @tostka / http://twitter.com/tostka
         CreatedDate : 2025-
-        FileName    : test-ModulesAvailable.ps1
+        FileName    : push-TLSLatest.ps1
         License     : MIT License
         Copyright   : (c) 2025 Todd Kadrie
         Github      : https://github.com/tostka/verb-Network
-        Tags        : Powershell
+        Tags        : Powershell,Security,TLS,protocol,Encryption
         AddedCredit : REFERENCE
         AddedWebsite: URL
         AddedTwitter: URL
-        REVISIONS
+        REVISIONS        
+        * 12:46 PM 9/17/2025 spliced orig expanded CBH over, brought up to date
         * 9:05 AM 6/2/2025 expanded CBH, copied over current call from psparamt
         * 4:41 PM 5/29/2025 init (replace scriptblock in psparamt)
         .DESCRIPTION
-        push-TLSLatest - Elevates TLS on Powershell connections to highest available local version
-        .PARAMETER ModuleSpecifications
-        Array of semicolon-delimited module test specifications in format 'modulename;moduleurl;testcmdlet'[-ModuleSpecifications 'verb-logging;localRepo;write-log'
+        push-TLSLatest - Elevates TLS on Powershell connections to highest available local version        
         .INPUTS
         None. Does not accepted piped input.
         .OUTPUTS
@@ -2502,26 +2837,30 @@ function push-TLSLatest{
         PS> push-TLSLatest ;     
         .LINK
         https://github.com/tostka/verb-Network      
-        #>
-        [CmdletBinding()]
-        PARAM() ; 
-        $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
-        write-verbose "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
-        # psv6+ already covers, test via the SslProtocol parameter presense
-        if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
-            $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__,[Net.SecurityProtocolType]::Tls.value__) ;
-            write-verbose "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
-            $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
-            if($newerTlsTypeEnums){
-                write-verbose "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
-            } else {
-                write-verbose "Current TLS `$enums are up to date with max rev available on this machine" ;
-            };
-            $newerTlsTypeEnums | ForEach-Object {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+            #>
+            [CmdletBinding()]
+            PARAM() ;
+            $CurrentVersionTlsLabel = [Net.ServicePointManager]::SecurityProtocol ; # Tls, Tls11, Tls12 ('Tls' == TLS1.0)  ;
+            $smsg = "PRE: `$CurrentVersionTlsLabel : $($CurrentVersionTlsLabel )" ;
+            if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            # psv6+ already covers, test via the SslProtocol parameter presense
+            if ('SslProtocol' -notin (Get-Command Invoke-RestMethod).Parameters.Keys) {
+                $currentMaxTlsValue = [Math]::Max([Net.ServicePointManager]::SecurityProtocol.value__, [Net.SecurityProtocolType]::Tls.value__) ;
+                $smsg = "`$currentMaxTlsValue : $($currentMaxTlsValue )" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $newerTlsTypeEnums = [enum]::GetValues('Net.SecurityProtocolType') | Where-Object { $_ -gt $currentMaxTlsValue }
+                if ($newerTlsTypeEnums) {
+                    $smsg = "Appending upgraded/missing TLS `$enums:`n$(($newerTlsTypeEnums -join ','|out-string).trim())" ;
+                    if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                } else {
+                    $smsg = "Current TLS `$enums are up to date with max rev available on this machine" ;
+                    if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                };
+                $newerTlsTypeEnums | ForEach-Object {
+                    [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor $_
+                } ;
             } ;
-        } ;
-    }
+        }
 
 #*------^ push-TLSLatest.ps1 ^------
 
@@ -2685,6 +3024,7 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
+    * 2:22 PM 8/1/2025 updated whpassfail block to curr
     * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
     * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
@@ -2968,29 +3308,62 @@ $(
         ) ; 
         #>
 
-        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
-        $whPASS = @{
-        Object = "$([Char]8730) PASS" ;
-        ForegroundColor = 'Green' ;
-        NoNewLine = $true ;
-        } ;
-        $whFAIL = @{
-            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
-            ForegroundColor = 'RED' ;
-            NoNewLine = $true ;
-        } ;
-        <#
-        # inline pass/fail color-coded w char
-        $smsg = "Testing:THING" ; 
-        $Passed = $true ; 
-        Write-Host "$($smsg)... " -NoNewline ; 
-        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
-        Write-Host " (Done)" ;
-        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
+        #region WHPASSFAIL ; #*======v WHPASSFAIL v======
+        $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
+        if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
+        if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
+        # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+        if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
+        if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
+        <# WHPASSFAIL:SAMPLE TESTS:
+        #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
+        $tFormat = 'NTFS' ; 
+        $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
+        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+        if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
+        #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
+        #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
+        # Test: Capacity match, threshold vs %:
+        $tSpaceThresh = 10 * 1GB ; # .9 (for %)
+        if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
+        elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
+        else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
+        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+        if($tSpaceThresh -lt 1){
+            $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
+            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
+                $rptDrive.SizeRemainingStatus = $false ;
+                write-host @whFAIL ;
+                $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
+                $rptDrive.DriveIssues += @($smsg)
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } else {
+                $rptDrive.SizeRemainingStatus = $true ;
+                Write-Host @whPASS ;   ;
+                $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        }else{
+            $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
+            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            if ($tv.SizeRemaining -lt $tSpaceThresh){
+                $rptDrive.SizeRemainingStatus = $false ;
+                write-host @whFAIL ;
+                $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } else {
+                $rptDrive.SizeRemainingStatus = $true ;
+                Write-Host @whPASS ;   ;
+                $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            } ;
+        } ; 
+        #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
         #>
-        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
-
+        #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
+        
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
@@ -3622,7 +3995,8 @@ $(
 
 
 #*------v resolve-networkLocalTDO.ps1 v------
-Function resolve-NetworkLocalTDO {
+if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
+    Function resolve-NetworkLocalTDO {
         <#
         .SYNOPSIS
         resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
@@ -3641,79 +4015,84 @@ Function resolve-NetworkLocalTDO {
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
-        11:07 AM 5/15/2025 get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
+        * 11:20 AM 9/17/2025 removed write-my* calls: implemented support in vio\write-log() instead (avoids all this manual updating)
+        * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+        * 4:07 PM 5/15/2025 added psv2-compat hash code; get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
         12:55 PM 5/13/2025 added get-CimInstance/get-WMIInstance fail through logic, added OS.Domain & .Workgroup properties to return
         .DESCRIPTION
         resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
         .INPUTS
         None. Does not accepted piped input.(.NET types, can add description)
         .OUTPUTS
-        System.PsCustomObject summary of useful Nic descriptors                
+        System.PsCustomObject summary of useful Nic descriptors
         .EXAMPLE
-        PS> $netsettings = resolve-NetworkLocalTDO ; 
+        PS> $netsettings = resolve-NetworkLocalTDO ;
         Demo run
         .LINK
         https://github.com/tostka/verb-Network
-        #>                
+        #>
         [CmdletBinding()]
         Param () ;
-        BEGIN{
+        BEGIN {
             $rgxIP4Addr = "(?:\d{1,3}\.){3}\d{1,3}" ;
-            $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ; 
-            $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;  
-            $prpNS = 'DNSHostName','ServiceName',@{N="DNSServerSearchOrder";E={"$($_.DNSServerSearchOrder)"}}, 
-                @{N='IPAddress';E={$_.IPAddress}},@{N='DefaultIPGateway';E={$_.DefaultIPGateway}} ;
-        } ; 
+            $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ;
+            $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;
+            $prpNS = 'DNSHostName', 'ServiceName', @{N = "DNSServerSearchOrder"; E = { "$($_.DNSServerSearchOrder)" } },
+            @{N = 'IPAddress'; E = { $_.IPAddress } }, @{N = 'DefaultIPGateway'; E = { $_.DefaultIPGateway } } ;
+        } ;
         PROCESS {
-            $netsettings = [ordered]@{ DNSHostName = $null ;  ServiceName = $null ;  DNSServerSearchOrder = $null ;  IPAddress = $null ;  DefaultIPGateway = $null ;  Fqdn = $null ; Domain = $null ; Workgroup = $null }  ;                    
-            TRY{
-                if(get-command get-ciminstance -ea 0){
-                    $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ; 
-                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
-                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
+
+            if ($host.version.major -ge 3) { $netsettings = [ordered]@{Dummy = $null ; } }
+            else { $netsettings = @{Dummy = $null ; } } ;
+            if ($netsettings.keys -contains 'dummy') { $netsettings.remove('Dummy') };
+            #$fieldsBoolean = 'isLocalExchangeServer','IsEdgeTransport','isEx2019','isEx2016','isEx2010','isEx2007','isEx2003','isEx2000' | sort ; $fieldsBoolean | foreach-object { $netsettings.add($_,$false) } ;
+            $fieldsnull = 'DNSHostName', 'ServiceName', 'DNSServerSearchOrder', 'IPAddress', 'DefaultIPGateway', 'Fqdn', 'Domain', 'Workgroup' | sort ; $fieldsnull | foreach-object { $netsettings.add($_, $null) } ;
+
+            TRY {
+                if (get-command get-ciminstance -ea 0) {
+                    $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ;
+                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
+                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
                     $nic = Get-ciminstance -class Win32_NetworkAdapterConfiguration -ComputerName localhost -ea STOP ;
-                } else { 
+                } else {
                     $OS = (Get-WmiObject -Class Win32_ComputerSystem -ea STOP)
-                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ; 
-                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ; 
+                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
+                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
                     $nic = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP ;
-                } ; 
-                if($nic = $nic | ?{$_.IPEnabled -match "True"} | Select -property $prpNS){
-                    $netsettings.DNSHostName = $nic.DNSHostName; 
-                    $netsettings.ServiceName = $nic.ServiceName;  
-                    $netsettings.DNSServerSearchOrder = $nic.DNSServerSearchOrder;  
-                    $netsettings.IPAddress = $nic.IPAddress;  
-                    $netsettings.DefaultIPGateway = $nic.DefaultIPGateway;  
-                    if($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ){
-                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ) -type ptr).namehost | select -first 1 ;   
-                    } ; 
-                }else {
-                    $smsg = "NO IPEnabled -match True NICS FOUND!" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                    throw $smsg ; 
+                } ;
+                if ($nic = $nic | ? { $_.IPEnabled -match "True" } | Select -property $prpNS) {
+                    $netsettings.DNSHostName = $nic.DNSHostName;
+                    $netsettings.ServiceName = $nic.ServiceName;
+                    $netsettings.DNSServerSearchOrder = $nic.DNSServerSearchOrder;
+                    $netsettings.IPAddress = $nic.IPAddress;
+                    $netsettings.DefaultIPGateway = $nic.DefaultIPGateway;
+                    if ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) {
+                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) -type ptr).namehost | select -first 1 ;
+                    } ;
+                } else {
+                    $smsg = "No IPEnabled NIC found!" ; 
+                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error} else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    throw $smsg ;
                 }
                 # 9:45 AM 5/13/2025 add workgroup collection, if non-domain-joined
-                if($env:Userdomain -eq $env:COMPUTERNAME){
-                    $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                } ; 
-                if($netsettings.Workgroup){
-                    $smsg = "WorkgroupName:$($WorkgroupName)" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
-                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-                } ; 
-                [pscustomobject]$netsettings | write-output ; 
+                if ($env:Userdomain -eq $env:COMPUTERNAME) {
+                    $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                }
+                if ($netsettings.Workgroup) {
+                    $smsg = "WorkgroupName:$($WorkgroupName)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                } ;
+                [pscustomobject]$netsettings | write-output ;
             } CATCH {
-                $ErrTrapd=$Error[0] ;
+                $ErrTrapd = $Error[0] ;
                 $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
-                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;                     
-        } ; 
-    }
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            } ;
+        } ;
+    } ; 
+}
 
 #*------^ resolve-networkLocalTDO.ps1 ^------
 
@@ -7051,7 +7430,7 @@ function Resolve-SPFRecord {
 
                             # do a test Test-IPAddressInRange agains the $SenderIP, now NOPE
                             <#
-                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
+                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
                             PS>     write-host -foregroundcolor green  "is in range!" 
                             PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
                             #>
@@ -8862,6 +9241,94 @@ Function Send-EmailNotif {
 #*------^ Send-EmailNotif.ps1 ^------
 
 
+#*------v Set-CertificatesInCAHierarchyTDO.ps1 v------
+function Set-CertificatesInCAHierarchyTDO {
+    <#
+    .SYNOPSIS
+    Set-CertificatesInCAHierarchyTDO - Fed an array of Certificate Authority 'CA' cert names in cert (.cer|.cert|.crt) format, this will sort the Root CA certs first, followed by any Intermediate certificates (and any non-CA cert files will be appended last). Does not do more than two layers of sorting - CA & IA:  3rd level IAs will all be returned in initial order, along with 2nd-level IAs.
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 20250711-0423PM
+    FileName    : Set-CertificatesInCAHierarchyTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2025 Todd Kadrie
+    Github      : https://github.com/tostka/Network
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 4:31 PM 7/11/2025 init; expanded into full function, adding to vnet
+    .DESCRIPTION
+    Set-CertificatesInCAHierarchyTDO - Fed an array of Certificate Authority 'CA' cert names in cert (.cer|.cert|.crt) format, this will sort the Root CA certs first, followed by any Intermediate certificates (and any non-CA cert files will be appended last). Does not do more than two layers of sorting - CA & IA:  3rd level IAs will all be returned in initial order, along with 2nd-level IAs.
+    .PARAMETER  Path
+    Array of cert-format CA file paths to be ordered[-Path @('c:\path-to\IA.cer','c:\path-to\Root.crt')]
+    .INPUTS
+    String[] Accepts piped input
+    .OUTPUTS
+    System.Array
+    .EXAMPLE
+    gci C:\OpenSSL-CAs\XXXCA\*.crt -recur | select -expand fullname | Set-CertificatesInCAHierarchyTDO;
+    Pipeline example
+    .EXAMPLE
+    PS> Set-CertificatesInCAHierarchyTDO -path (gci C:\OpenSSL-CAs\XXXCA\*.crt -recur | select -expand fullname) -verbose
+    Splatted example: Import specified pfx, using NotBefore and Change number, with -whatif & -verbose output
+    .LINK
+    https://github.org/tostka/powershellBB/
+    #>
+    [CmdletBinding()]
+    [Alias('Set-CertificatesInCAHierarchy','sort-CertificatesInCAHierarchy')]
+    PARAM(
+        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="Array of cert-format CA file paths to be ordered[-Path @('c:\path-to\IA.cer','c:\path-to\Root.crt')]")]
+            [ValidateScript({Test-Path $_})]
+            [string[]]$Path
+    ) ;
+    Begin{
+    $RootCAs = @() ;
+    $IAs = @() ;
+    $NonCAs = @() ;
+    }
+    PROCESS{
+        foreach ($file in $Path) {
+            # load each cert
+            $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($file) ;
+            $basicConstraints = $certificate.Extensions | Where-Object {$_.Oid.FriendlyName -eq "Basic Constraints"}
+            if ($basicConstraints) {
+                $basicConstraintsData = [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]$basicConstraints ;
+                if ($basicConstraintsData.CertificateAuthority) {
+                    write-verbose "$($file) certificate is a Certificate Authority (CA) (basicConstraintsData.CertificateAuthority populated)."
+                    # Root CA certs are self-signed: have matching Issuer & Subject
+                    if ($certificate.Issuer -eq $certificate.Subject) {
+                        write-verbose "$($file) have matching Issuer & Subject: Self-signed: likely a Root CA" ;
+                        $RootCAs += @($file) ;
+                    } else {
+                        write-verbose "$($file) is likely an IA" ;
+                        $IAs += @($file) ;
+                    } ;
+                }
+            } else {
+                write-verbose  "$($file) certificate in the array is NOT a Certificate Authority (CA) (CertificateAuthority UNPOPULATED)."
+                $NonCAs += @($file) ;
+            }
+        } ;
+    }
+    END{
+        # re-combine, Roots, then IAs
+        write-verbose  "`RootCAs:`n$(($RootCAs|out-string).trim())" ;
+        write-verbose  "`IAs:`n$(($IAs|out-string).trim())" ;
+        write-verbose  "`NonCAs:`n$(($NonCAs|out-string).trim())" ;
+        #[string[]]
+        [array]$cafiles = $(@($RootCAs);@($IAs);@($NonCAs)) ;
+        $cafiles | write-output ;
+    }
+}
+
+#*------^ Set-CertificatesInCAHierarchyTDO.ps1 ^------
+
+
 #*------v split-DnsTXTRecord.ps1 v------
 function split-DnsTXTRecord{
     <#
@@ -8882,6 +9349,7 @@ function split-DnsTXTRecord{
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 2:18 PM 8/1/2025 updated WHPASSFAIL defs to curr
     * 4:52 PM 7/17/2024 init
     .DESCRIPTION
     split-DnsTXTRecord - Splits long TXT DNS record strings into quote-space delimited substrings (to permit the record to exceed the DNS Bind '255-character per single string' limit)
@@ -8994,31 +9462,61 @@ function split-DnsTXTRecord{
     $substringMaxChars = 255 ; 
     $TXTRecordMaxChars = 4000 ; 
     
-    #region WHPASSFAIL ; #*------v WHPASSFAIL v------
-    $whPASS = @{
-    Object = "$([Char]8730) PASS" ;
-    ForegroundColor = 'Green' ;
-    NoNewLine = $true ;
-    } ;
-    $whFAIL = @{
-        # light diagonal cross: â•³ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-        'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
-        ForegroundColor = 'RED' ;
-        NoNewLine = $true ;
-    } ;
-    <#
-    # inline pass/fail color-coded w char
-    $smsg = "Testing:THING" ; 
-    $Passed = $true ; 
-    Write-Host "$($smsg)... " -NoNewline ; 
-    if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
-    Write-Host " (Done)" ;
-    # out: Test:Thing... âˆš PASS (Done) | Test:Thing...  X FAIL (Done)
+    #region WHPASSFAIL ; #*======v WHPASSFAIL v======
+    $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
+    if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
+    if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
+    # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+    if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
+    if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
+    <# WHPASSFAIL:SAMPLE TESTS:
+    #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
+    $tFormat = 'NTFS' ; 
+    $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
+    $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+    if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
+    #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
+    #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
+    # Test: Capacity match, threshold vs %:
+    $tSpaceThresh = 10 * 1GB ; # .9 (for %)
+    if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
+    elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
+    else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
+    $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
+    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+    if($tSpaceThresh -lt 1){
+        $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
+        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+        if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
+            $rptDrive.SizeRemainingStatus = $false ;
+            write-host @whFAIL ;
+            $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
+            $rptDrive.DriveIssues += @($smsg)
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else {
+            $rptDrive.SizeRemainingStatus = $true ;
+            Write-Host @whPASS ;   ;
+            $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } ;
+    }else{
+        $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
+        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+        if ($tv.SizeRemaining -lt $tSpaceThresh){
+            $rptDrive.SizeRemainingStatus = $false ;
+            write-host @whFAIL ;
+            $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else {
+            $rptDrive.SizeRemainingStatus = $true ;
+            Write-Host @whPASS ;   ;
+            $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } ;
+    } ; 
+    #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
     #>
-    $psPASS = "$([Char]8730) PASS" ; 
-    $psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'} ;
-    #if($true){write-host -foregroundcolor green $psPASS} else {write-warning $psFAIL } ; 
-    #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
+    #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
 
     # precheck for existing compliance
     $smsg = "Testing:-TextRecord.length -lt $($TXTRecordMaxChars) : " ;
@@ -9718,6 +10216,132 @@ function test-Connection-T {
 #*------^ test-Connection-T.ps1 ^------
 
 
+#*------v test-CredentialsTDO.ps1 v------
+function test-CredentialsTDO{
+        <#
+        .SYNOPSIS
+        test-CredentialsTDO - tests provided uid+pw cred combo
+        .NOTES
+        Version     : 0.0.
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250711-0423PM
+        FileName    : test-CredentialsTDO.ps1
+        License     : (none asserted)
+        Copyright   : (none asserted)
+        Github      : https://github.com/tostka/verb-io
+        Tags        : Powershell,ActiveDirectory,Account,Credential
+        AddedCredit : Michel de Rooij / michel@eightwone.com
+        AddedWebsite: http://eightwone.com
+        AddedTwitter: URL        
+        REVISIONS
+        * 4:33 PM 10/16/2025 logic fix, self-contained, brought in alt deps; CBH demo1 fix
+        * 12:59 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
+        * 1:44 PM 8/8/2025 ren test-Credentials821 -> test-CredentialsTDO, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
+        11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
+        .DESCRIPTION
+        test-CredentialsTDO - tests provided uid+pw cred combo
+                
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.Object summary of Exchange server descriptors, and service statuses.
+        .EXAMPLE
+        PS> $tcred = get-credential ; 
+        PS> if(test-CredentialsTDO -UserName $tcred.username -Password $tcred.GetNetworkCredential().Password){
+        PS>     write-host -foregroundcolor green "Credential validated" ; 
+        PS> } ; 
+        .LINK
+        https://github.org/tostka/verb-ex2010/
+        #>
+        [CmdletBinding()]
+        [alias('test-Credentials')]
+        PARAM(            
+            [Parameter(HelpMessage = "Account to be tested")]
+                [Alias('Account','logon')]
+                [string]$UserName,
+            [Parameter(Mandatory=$true,HelpMessage = "Account password to be tested (securestring or plain text)")]
+                [Alias('AdminPassword')]
+                #[string]
+                $Password                       
+        ) ;
+        switch ($Password.gettype().fullname){
+            'System.String' {
+                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
+                $PlainTextPassword= $Password ; 
+            }
+            'System.Security.SecureString'{
+                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( $Password ))
+                $tmpCred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("None",$Password ) ;                
+                #$PlainTextPassword = $Password.GetNetworkCredential().Password 
+                $PlainTextPassword = $tmpcred.GetNetworkCredential().Password ; 
+                remove-variable tmpCred
+            }
+            default{
+                $smsg = "Unrecognized -Password type:$($Password.gettype().fullname)" ; 
+                $smsg += "`nSpecify as either plain text or SecureSTring" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                throw $smsg ; 
+            }
+        }
+        #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
+        if(get-command FullPlainTextAccount -ea SilentlyContinue){
+            $FullPlainTextAccount= get-FullDomainAccountTDO -Account $UserName ;
+        }else{
+            #write-warning "missing:FullPlainTextAccount(), skipping account format specification" ; 
+            switch -regex ($username){
+                '(.*)\\(.*)' {
+                    $Parts = $UserName.split('\') ; 
+                    $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "UserName is in Legacy format" ; 
+                    break ; 
+                } ; 
+                '(.*)@(.*)' {
+                    write-host  "Username is in UPN format"  ; 
+                    $FullPlainTextAccount = $UserName ; 
+                    break ; 
+                }
+                default{
+                    if($env:USERDOMAIN){
+                        $FullPlainTextAccount = "$($env:USERDOMAIN)\$($UserName)" ; 
+                        write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
+                    } else{
+                        throw "Unrecognized -Username format:$($Username)" ; 
+                    };
+                    break ;  
+                } ; 
+            } ; 
+        }
+        TRY {
+            if($env:USERDOMAIN -eq $env:COMPUTERNAME){
+                write-host "`$env:USERDOMAIN -eq `$env:COMPUTERNAME: => non-domain-joined, checking Test-LocalCredentialTDO()" ; 
+                $Username = $FullPlainTextAccount.split("\")[-1]
+                if(get-command Test-LocalCredentialTDO){
+                    Return $( Test-LocalCredentialTDO -UserName $Username -Password $PlainTextPassword)
+                }else{
+                    #throw "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  
+                    $smsg = "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  write-host -foregroundcolor yellow $smsg ; 
+                    TRY {Add-Type -AssemblyName System.DirectoryServices.AccountManagement} CATCH {} ; 
+                    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
+                    Return $($DS.ValidateCredentials($UserName, $Password))
+                } ; 
+            }else{
+                $dc= New-Object DirectoryServices.DirectoryEntry( $Null, $FullPlainTextAccount, $PlainTextPassword)
+                If($dc.Name) {
+                    return $true
+                }Else {
+                    Return $false
+                }
+            }
+        }CATCH {
+            Return $false
+        }
+        Return $false        
+    }
+
+#*------^ test-CredentialsTDO.ps1 ^------
+
+
 #*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
 function Test-DnsDkimCnameToTxtKeyTDO {
     <#
@@ -10382,7 +11006,7 @@ function Test-IPAddressInRange {
             PS> @('10.10.10.230','10.10.11.230') | Test-IPAddressInRange -Range 10.10.10.10/24 -verbose ;
             Pipeline demo, fed with array of ip's, loops each through a test on the specified cidr range.
             .EXAMPLE
-            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
+            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
             PS>     write-host -foregroundcolor green  "is in range!" 
             PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
             Test ipv6 IP Address & CIDR subnet
@@ -10469,7 +11093,7 @@ function Test-IPAddressInRange {
                         Expanded from Google AI offered snippet from search.
 
                         .PARAMETER IPAddress
-                        IPv6 IP Address to be tested (e.g., "2001:0db8:85.4.0000:0000:8a2e:0370:7334").
+                        IPv6 IP Address to be tested (e.g., "2001:0db8:85a3:0000:0000:8a2e:0370:7334").
                         .PARAMETER CIDR
                         IPv6 CIDR-notation Subnet to be tested against (e.g., "2001:0db8:85a3::/48").
                         .INPUTS
@@ -10477,14 +11101,14 @@ function Test-IPAddressInRange {
                         .OUTPUTS
                         System.Boolean. Returns $true if the IP address is within the CIDR range, otherwise $false.
                         .EXAMPLE
-                        PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
+                        PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
                         .LINK
                         https://github.com/tostka/verb-Network
                         #>
                         [CmdletBinding()]
                         [Alias('Test-IPv6InCIDR','Alias2')]
                         PARAM(
-                            [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85.4.0000:0000:8a2e:0370:7334']")]
+                            [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85a3:0000:0000:8a2e:0370:7334']")]
                                 [string]$IPAddress,
                             [Parameter(Mandatory=$True,HelpMessage="IPv6 CIDR-notation Subnet to be tested against[-Ipv6 CIDR  '2001:0db8:85a3::/48']")]
                                 [string]$CIDR
@@ -10685,7 +11309,7 @@ function Test-IPAddressInRangeIp6 {
 
     Expanded from Google AI offered snippet from search.
     .PARAMETER IPAddress
-    IPv6 IP Address to be tested (e.g., "2001:0db8:85.4.0000:0000:8a2e:0370:7334").
+    IPv6 IP Address to be tested (e.g., "2001:0db8:85a3:0000:0000:8a2e:0370:7334").
     .PARAMETER CIDR
     IPv6 CIDR-notation Subnet to be tested against (e.g., "2001:0db8:85a3::/48").
     .INPUTS
@@ -10693,14 +11317,14 @@ function Test-IPAddressInRangeIp6 {
     .OUTPUTS
     System.Boolean. Returns $true if the IP address is within the CIDR range, otherwise $false.
     .EXAMPLE
-    PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85.4.0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
+    PS> Test-IPAddressInRangeIp6 -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -CIDR "2001:0db8:85a3::/48"
     .LINK
     https://github.com/tostka/verb-Network
     #>
     [CmdletBinding()]
     [Alias('Test-IPv6InCIDR','Alias2')]
     PARAM(
-        [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85.4.0000:0000:8a2e:0370:7334']")]
+        [Parameter(Mandatory=$True,HelpMessage="IPv6 IP Address to be tested [-Ticket ;'2001:0db8:85a3:0000:0000:8a2e:0370:7334']")]
             [string]$IPAddress,
         [Parameter(Mandatory=$True,HelpMessage="IPv6 CIDR-notation Subnet to be tested against[-Ipv6 CIDR  '2001:0db8:85a3::/48']")]
             [string]$CIDR
@@ -11064,6 +11688,179 @@ function test-isRDPSession {
 #*------^ test-isRDPSession.ps1 ^------
 
 
+#*------v Test-LocalCredentialTDO.ps1 v------
+function Test-LocalCredentialTDO {
+        <#
+        .SYNOPSIS
+        Test-LocalCredentialTDO - tests provided UserName & ComputerName combo against local machine accounts
+        .NOTES
+        Version     : 0.0.
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 20250711-0423PM
+        FileName    : Test-LocalCredential.ps1
+        License     : MIT License
+        Copyright   : (c) 2025 Todd Kadrie
+        Github      : https://github.com/tostka/verb-ex2010
+        Tags        : Powershell,Exchange,ExchangeServer,Install,Patch,Maintenance
+        AddedCredit : Microsoft
+        AddedWebsite: https://gallery.technet.microsoft.com/scriptcenter/Verify-the-Local-User-1e365545
+        AddedTwitter: URL
+        REVISIONS
+        * 1:04 PM 9/17/2025 remove write-my*() calls (write-log has native defer support now)
+        * 2:27 PM 8/8/2025 ren Test-LocalCredential821 -> Test-LocalCredentialTDO (alias orig name)
+        * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+        * 9:03 AM 7/18/2025 lifted copy of sub from install-Ex15; works
+        .DESCRIPTION
+        Test-LocalCredentialTDO - tests provided UserName & ComputerName combo against local machine accounts
+
+        #From https://gallery.technet.microsoft.com/scriptcenter/Verify-the-Local-User-1e365545
+        .PARAMETER UserName
+        Account to be tested
+        .PARAMETER ComputerName
+        Computer name to test against (defaults to COMPUTERNAME environment variable)
+        .PARAMETER Password
+        Account Password (plaintext)
+        .INPUTS
+        None, no piped input.
+        .OUTPUTS
+        System.Object summary of Exchange server descriptors, and service statuses.
+        .EXAMPLE
+        PS> $tcred = get-credential ; 
+        PS> if(Test-LocalCredentialTDO -UserName $tcred.UserName -Password $tcred.GetNetworkCredential().Password){
+        PS>     write-host -foregroundcolor green "Validated functional credentials" ; 
+        PS> } ; 
+        .LINK
+        https://github.org/tostka/verb-ex2010/
+        #>
+        [CmdletBinding()]
+        [alias('Test-LocalCredential821','Test-LocalCredentials')]
+        Param( 
+            [Parameter(HelpMessage = "Account to be tested")]
+                [Alias('Account','logon')]
+                [string]$UserName,
+            [Parameter(HelpMessage = "Computer name to test against (defaults to COMPUTERNAME environment variable)")]
+                [string]$ComputerName = $env:COMPUTERNAME,
+            [Parameter(HelpMessage = "Account password to be used for install (plaintext)")]
+                [string]$Password
+        )
+        if (!($UserName) -or !($Password)) {
+            $smsg = "Test-LocalCredential: Please specify both user name and password"
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+        } else {
+            TRY {   # Wrap in a try-catch in case we try to add this type twice.
+                Add-Type -AssemblyName System.DirectoryServices.AccountManagement
+            } CATCH {} ; 
+            $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
+            $DS.ValidateCredentials($UserName, $Password)
+        }
+    }
+
+#*------^ Test-LocalCredentialTDO.ps1 ^------
+
+
+#*------v test-LocalDrivePathTDO.ps1 v------
+function test-LocalDrivePathTDO{
+    <#
+    .SYNOPSIS
+    test-LocalDrivePathTDO.ps1 - Evaluate specified path, to determine if it points to _locally stored_ content: That is, not a remote-network-mapped drive (e.g. passes, even if it's a UNC path, back to the local host)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2025-
+    FileName    : test-LocalDrivePathTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2025 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 1:37 PM 8/20/2025 added region tags; adding to xopBuildLibrary.ps1 as well
+    3:44 PM 7/10/2025 made the rgx case-insensitive; fixed $filepath refs -> $item
+    * 3:46 PM 7/9/2025 init
+    .DESCRIPTION
+    test-LocalDrivePathTDO.ps1 - Evaluate specified path, to determine if it points to _locally stored_ content: That is, not a remote-network-mapped drive (e.g. passes, even if it's a UNC path, back to the local host)
+
+    Performs the following tests and comparisons: 
+
+    - Collects all locally-mapped drives _without_ a network UNC path (which is stored in the associated DisplayRoot property).
+        get-psdrive -PSProvider FileSystem | ?{-not $_.displayroot}
+    - Builds a comparitive regex of the matching Root properties (which correspond to the 'C:\' drive letter & root directory string), then checks the specified -Path for a match to the collected known 'local' drive roots
+    - uses the [uri] type on the path to check status of:
+        IsUnc: indicates a UNC path, which *may* indicate remote-stored content
+        IsAbsoluteUri: indicates a full, non-relative path specification (used to differentiate relative path from full paths).
+    - where an isUNC:$true is found, it then checks the [uri].host value against the $env:COMPUTERNAME environment variable for the local host, and also checks it against the Resolved DNS A Record for the host (if a DNS A is configured for the host): 
+        If either matches, the path is classified as 'local' content.
+
+    .PARAMETER  Path
+    Path [-path c:\path-to\file.ext]
+    .INPUTS
+    System.String path. Accepts piped input.
+    .OUTPUTS
+    System.Boolean
+    .EXAMPLE    
+    PS> test-LocalDrivePathTDO.ps1 -path 'D:\cab\FILE.pfx' ; 
+    Demo testing a full absolute local path1 
+    .EXAMPLE
+    PS> test-LocalDrivePathTDO.ps1 -path .\FILE.pfx 
+    Demo testing a relative path    
+    .EXAMPLE
+    PS> test-LocalDrivePathTDO -path '\\SERVER.SUB.DOM.DOMAIN.COM\D$\cab\FILE.pfx' -verbose     
+    Demo of testing a UNC path, that resolves back to the local host resolved DNS A fqdn 
+    .EXAMPLE
+    PS> test-LocalDrivePathTDO -path '\\SERVER\D$\cab\FILE.pfx' -verbose     
+    Demo of testing a UNC path, that resolves back to the local host nbname
+    .LINK
+    https://github.com/tostka/verb-IO
+    .LINK
+    #>
+    [CmdletBinding()]
+    PARAM(
+        [Parameter(Mandatory = $False,Position = 0,ValueFromPipeline = $True, HelpMessage = 'Path to be tested[-path c:\pathto\file.ext]')]
+            [string[]]$path
+    ) ;
+    BEGIN{
+        # Filesystem psdrives with DisplayRoot: Gets or sets the UNC path of the drive. This property would be populated only if the created PSDrive is targeting a network drive or else this property would be null.
+        #[regex]$rgxlocDriveRoots = ('^(?i:' + ((get-psdrive -PSProvider FileSystem | ?{-not $_.displayroot} | select -expand root |%{[regex]::escape($_)}) -join '|') + ')') ;
+        [regex]$rgxlocDriveRoots = ('^(?i:(' + ((get-psdrive -PSProvider FileSystem | ?{-not $_.displayroot} | select -expand root |%{[regex]::escape($_)}) -join '|') + '))') ;
+    }
+    PROCESS{
+        foreach($item in $Path){
+            if(test-path $item -PathType leaf){
+                [system.io.fileinfo[]]$item = $item ; 
+            } elseif(test-path $item -PathType Container){
+                [System.IO.DirectoryInfo[]]$item = $item ; 
+            } ; 
+            $nonNetwork = $false ;         
+            $uriPath = [uri]$item.fullname ; 
+            if($item.fullname -match $rgxlocDriveRoots){
+                write-verbose "matches local Drive Roots" ; 
+                $nonNetwork = $true ; 
+            } elseif($uriPath.IsUnc) {
+                if (($uriPath.host -eq $env:computername) -OR ($uriPath.host -eq (resolve-dnsname -name $uriPath.host -type A -ErrorAction 0| select -unique Name | select -expand name)) ) {
+                    write-verbose "isUnc: with computername or FQDN as host" ; 
+                    $nonNetwork = $true ;
+                } else { 
+                    $nonNetwork = $false ; 
+                } ; 
+            } elseif($uriPath.IsAbsoluteUri -eq $false){
+                write-verbose "IsAbsoluteUri:false: relative path" ; 
+                $nonNetwork = $true ; 
+            } 
+            #write-host "`$nonNetwork:$($nonNetwork)" ; 
+            $nonNetwork | write-output  ; 
+        } ; 
+    } ; 
+}
+
+#*------^ test-LocalDrivePathTDO.ps1 ^------
+
+
 #*------v Test-NetAddressIpv4TDO.ps1 v------
 function Test-NetAddressIpv4TDO {
     <#
@@ -11238,7 +12035,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(65.4.0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -11377,6 +12174,142 @@ function Test-RDP {
 }
 
 #*------^ Test-RDP.ps1 ^------
+
+
+#*------v test-RDPDriveRedirectionTDO.ps1 v------
+function test-RDPDriveRedirectionTDO {
+        <#
+        .SYNOPSIS
+        test-RDPDriveRedirectionTDO.ps1 - From RDP desktop, test for available drives redirected into \\tsclient mappings
+        .NOTES
+        Version     : 0.0.1
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2025-07-17
+        FileName    : test-RDPDriveRedirectionTDO.ps1
+        License     : MIT License
+        Copyright   : (c) 2025 Todd Kadrie
+        Github      : https://github.com/tostka/verb-XXX
+        Tags        : Powershell
+        AddedCredit : REFERENCE
+        AddedWebsite: URL
+        AddedTwitter: URL
+        REVISIONS
+        * 12:41 PM 9/17/2025 removed write-my* calls: implemented support in vio\write-log() instead (avoids all this manual updating)
+        * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+        * 1:16 PM 7/17/2025 init
+        .DESCRIPTION
+        test-RDPDriveRedirectionTDO.ps1 - From RDP desktop, test for available drives redirected into \\tsclient mappings
+        
+        MS provides sample code for testing local redirected drives in RDP at link below. 
+        I haven't been able to get it to work in Win Server 2016, so I wrapped net use, and have a -useLegacy param, that can be overridden
+        -- -useLegacy:$false -- to divert into the non-functional MS code.
+
+        ## Ref: 
+
+            * [Configure fixed, removable, and network drive redirection over the Remote Desktop Protocol | Microsoft Learn](https://learn.microsoft.com/en-us/azure/virtual-desktop/redirection-configure-drives-storage?tabs=intune&pivots=azure-virtual-desktop)
+            * [Supported RDP properties | Microsoft Learn](https://learn.microsoft.com/en-us/azure/virtual-desktop/rdp-properties#device-redirection)
+                - [drivestoredirect](https://learn.microsoft.com/en-us/azure/virtual-desktop/rdp-properties#drivestoredirect)
+
+                > ### `drivestoredirect`
+                > 
+                > -   **Syntax**: `drivestoredirect:s:<value>`
+                >     
+                > -   **Description**: Determines which fixed, removable, and network drives on the local device will be redirected and available in a remote session.
+                >     
+                > -   **Supported values**:
+                >     
+                >     -   _Empty_: Don't redirect any drives.
+                >     -   `*`: Redirect all drives, including drives that are connected later.
+                >     -   `DynamicDrives`: Redirect any drives that are connected later.
+                >     -   `drivestoredirect:s:C:\;E:\;`: Redirect the specified drive letters for one or more drives, such as this example.
+                > -   **Default value**: _`Empty`_
+                >     
+                > -   **Applies to**:
+                >     
+                >     -   Azure Virtual Desktop
+                >     -   Remote Desktop Services
+                >     -   Remote PC connections
+
+                Note: I'd previously defined (in Create-RDP.ps1 templates) that this was supported syntax:
+                ```text
+                drivestoredirect:s:Windows (C:);
+                ```                    
+
+                But as of 7/17/2025 it's demonstrably not functional. Given the docs only mention drive letters, and what mstsc writes to files is:
+                drivestoredirect:s:C:\;
+                drivestoredirect:s:C:\;D:\;
+                Use of a semi-colon-delimited list appears to be the limit of the supported syntax.    
+
+        .INPUTS
+        None. Does not accepted piped input.
+        .OUTPUTS
+        System.Object[]
+        .EXAMPLE        
+        PS> if((test-RDPDriveRedirectionTDO).clientdriveletter -contains 'C:'){write-host -foregroundcolor green "C: is mapped" }
+
+            C: is mapped
+
+        Demo test for local C drive redirection as \\tsclient\c on remote host.
+        .LINK
+        https://github.com/tostka/verb-IO
+        #>
+        [CmdletBinding()]
+        PARAM([Parameter(ValueFromPipelineByPropertyName = $true, HelpMessage = "Message is the content that you wish to add to the log file")]
+            [switch]$useLegacy = $true
+        ) ;
+        BEGIN{
+            if($env:SESSIONNAME -ne 'Console'){$bRDP=$True;}else{
+                $smsg = "Session/Desktop is *not* running over RDP/Termserve!(Exiting)" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $smsg += "`n(`$env:SESSIONNAME -ne 'Console':$($env:SESSIONNAME) -ne 'Console'" ;
+                write-verbose $smsg ; 
+                Break ; 
+            }; 
+        }
+        PROCESS{
+            if($useLegacy){
+                # having issues with the MS sample code - no results; but net use always works, so wrap it and move on
+                $smsg = "-useLegacy: using parsed CMD> net use output" ; 
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                $Results = @() ; 
+                (net use).trim() -match '\\\\TSCLIENT\\[A-Z]'  | foreach-object{
+                    if($_ -match '\\\\TSCLIENT\\[A-Z]'){
+                        $thismatch = $matches; 
+                        $summary = [ordered]@{
+                            ClientDriveLetter = "$($thismatch.Values -replace '\\\\tsclient\\',''):" ; 
+                            LocalMapping = $($thismatch.Values) ; 
+                            Description = "Remote Client Drive $($thismatch.Values -replace '\\\\tsclient\\',''):\ is mapped locally to $($thismatch.Values)" ; 
+                        }; 
+                        write-verbose  $summary.description ;  
+                        $results += [pscustomobject]$summary ; 
+                    } ; 
+                } ; 
+                $results | write-output ; 
+
+            }else{
+                # ms demo code that doesn't work for me, so far on Win Server 2016, so we defer to net use above
+                # given below doesn't work, I haven't bothered to emulate the outputs from the above net use parsing...
+                $CLSIDs = @() ;
+                foreach($registryKey in (Get-ChildItem "Registry::HKEY_CLASSES_ROOT\CLSID" -Recurse)){
+                    If (($registryKey.GetValueNames() | foreach-object {$registryKey.GetValue($_)}) -eq "Drive or folder redirected using Remote Desktop") {
+                        $CLSIDs += $registryKey ;
+                    } ;
+                } ;
+                $drives = @() ;
+                foreach ($CLSID in $CLSIDs.PSPath) {
+                    $drives += (Get-ItemProperty $CLSID)."(default)" ;
+                } ;
+                #Write-Output "These are the local drives redirected to the remote session:`n" ;
+                $smsg = "These are the local drives redirected to the remote session:`n$(($drives|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                $drives | write-output ;     
+            } ;            
+        }
+    }
+
+#*------^ test-RDPDriveRedirectionTDO.ps1 ^------
 
 
 #*------v update-SecurityProtocolTDO.ps1 v------
@@ -11613,7 +12546,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-DnsDkimRecord,get-DNSServers,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
 
 
 
