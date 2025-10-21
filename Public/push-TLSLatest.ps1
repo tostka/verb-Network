@@ -1,7 +1,7 @@
 ﻿# push-TLSLatest
 
     #region PUSH_TLSLATEST ; #*------v push-TLSLatest v------
-    if (-not(gi function:push-TLSLatest -ea 0)) {
+    #if (-not(gi function:push-TLSLatest -ea 0)) {
         function push-TLSLatest {
             <#
         .SYNOPSIS
@@ -58,5 +58,5 @@
                 } ;
             } ;
         } ;
-    } ;
+    #} ;
     #endregion PUSH_TLSLATEST ; #*------^ END push-TLSLatest ^------
