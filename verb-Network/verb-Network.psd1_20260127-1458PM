@@ -69,7 +69,7 @@ Description = 'Generic network-related functions'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','convert-IPAddressToReverseTDO','Disconnect-PSR','get-CertificateChainOfTrust','get-CredentialsTDO','Get-CurrentUserNameTDO','Get-DnsDkimRecord','get-DNSServers','Get-ForestRootNCTDO','get-FullDomainAccountTDO','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','Get-RootNCTDO','get-tsUsers','get-WebTableTDO','get-whoami','import-CertCERLegacy','Import-CertificateTrustFileTDO','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','push-TLSLatest','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-DnsSenderIDRecords','resolve-NetworkLocalTDO','resolve-SMTPHeader','resolve-SPFMacros','resolve-SPFMacrosTDO','convert-IPAddressToReverseTDO','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','convert-IPAddressToReverseTDO','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','save-WebFaveIcon','Send-EmailNotif','Set-CertificatesInCAHierarchyTDO','split-DnsTXTRecord','summarize-PassStatus','summarize-PassStatusHtml','test-ADComputerName','test-CertificateTDO','_getstatus_','test-Connection-T','test-CredentialsTDO','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','Test-IPAddressInRangeIp6','Test-IPAddressInRangeIp6','test-isADComputerName','test-isComputerDNSRegistered','test-isComputerNameFQDN','test-isComputerNameNetBios','test-isComputerSMBCapable','test-isRDPSession','Test-LocalCredentialTDO','test-LocalDrivePathTDO','Test-NetAddressIpv4TDO','Test-NetAddressIpv6TDO','Test-Port','test-PrivateIP','Test-RDP','test-RDPDriveRedirectionTDO','update-SecurityProtocolTDO')
+FunctionsToExport = @('Add-IntToIPv4Address','Connect-PSR','convert-IPAddressToReverseTDO','Disconnect-PSR','get-CertificateChainOfTrust','get-CredentialsTDO','Get-CurrentUserNameTDO','Get-DnsDkimRecord','get-DNSServers','Get-ForestRootNCTDO','get-FullDomainAccountTDO','get-IPSettings','Get-NetIPConfigurationLegacy','get-NetworkClass','get-NetworkSubnet','Get-RestartInfo','Get-RootNCTDO','get-tsUsers','get-WebTableTDO','get-whoami','Invoke-BypassPaywall','New-RandomFilename','Invoke-SecurityDialog','push-TLSLatest','Reconnect-PSR','Resolve-DNSLegacy.ps1','Resolve-DnsSenderIDRecords','resolve-NetworkLocalTDO','resolve-SMTPHeader','resolve-SPFMacros','resolve-SPFMacrosTDO','convert-IPAddressToReverseTDO','Resolve-SPFRecord','SPFRecord','SPFRecord','SPFRecord','convert-IPAddressToReverseTDO','test-IpAddressCidrRange','save-WebDownload','save-WebDownloadCurl','save-WebDownloadDotNet','save-WebFaveIcon','Send-EmailNotif','Set-CertificatesInCAHierarchyTDO','split-DnsTXTRecord','summarize-PassStatus','summarize-PassStatusHtml','test-ADComputerName','test-CertificateTDO','_getstatus_','test-Connection-T','test-CredentialsTDO','Test-DnsDkimCnameToTxtKeyTDO','test-IpAddressCidrRange','Test-IPAddressInRange','Test-IPAddressInRangeIp6','Test-IPAddressInRangeIp6','test-isADComputerName','test-isComputerDNSRegistered','test-isComputerNameFQDN','test-isComputerNameNetBios','test-isComputerSMBCapable','test-isRDPSession','Test-LocalCredentialTDO','test-LocalDrivePathTDO','Test-NetAddressIpv4TDO','Test-NetAddressIpv6TDO','Test-Port','test-PrivateIP','Test-RDP','test-RDPDriveRedirectionTDO','update-SecurityProtocolTDO')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
 CmdletsToExport = '*'
@@ -126,8 +126,8 @@ PrivateData = @{
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUmx1gQm69+0tZsRv5CnnXI6uD
-# MbegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUcHoKE1T4NM0m1DiCOtcuxlz9
+# hn2gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -142,9 +142,9 @@ PrivateData = @{
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBTfWg/5
-# EjUTgN36Gd4FH1Ob5uycMzANBgkqhkiG9w0BAQEFAASBgDrGTha4P6ol1/KG87VP
-# sfBH15gH9uAT8VoxUugp+tXnuqDl0ogE7W65Y2vfYVu8qK24zYfKy7kLJGCRnUDQ
-# +k0ZA2eZClS3f+iwituO2hdtBeEy9SyAqAKZLbTe4A5gTv/z2movTR3RAtNPjE8b
-# 41SeRBP6/LJqUlyIeLD2FRLU
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRlb1a/
+# ww0XHJVXDjj1zMRSVxEpBDANBgkqhkiG9w0BAQEFAASBgFDP2pI9XXGageeK9wjC
+# VR7p7vq1roQhfvjelVTCecM3qDuugymqresQYQbg+8odKH7pNJaDZPj03+6PRBSU
+# sYfaPqp/Xk/9E6hSUXk5Bdz7jrTcYODU9JiwXrYU/INRk6OCP9TUOeitmsgyIotT
+# A8S6I2OLZJ61W0RAZo1qQKFb
 # SIG # End signature block
