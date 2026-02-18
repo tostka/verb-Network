@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.5.0.0
+Version     : 5.6.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -4897,7 +4897,7 @@ Received: from xxxxxxxxx.xxxxxxx.xxx ([123.456.789.0] xxxxxxxxx.xxxxxxx.xxx)
  for <xxxx.xxxxxx@xxxx.com>
  (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
  Thu, 05 Dec 2024 21:07:05 +0000
-X-Zone-Loop: 4cb2588f304a7c1711c10a9b5.5.03136ce484dc7f3c
+X-Zone-Loop: 4cb2588f304a7c1711c10a9b5c4913136ce484dc7f3c
 X-Originating-IP: [123.456.789.0]
 DKIM-Signature: v=1; a=rsa-sha256; q=dns/txt; c=relaxed/relaxed; d=xxxxxx.xxx;
 	s=x; h=Content-Transfer-Encoding:Content-Type:MIME-Version:Message-ID:Subject
@@ -12184,6 +12184,7 @@ function Test-LocalCredentialTDO {
         AddedWebsite: https://gallery.technet.microsoft.com/scriptcenter/Verify-the-Local-User-1e365545
         AddedTwitter: URL
         REVISIONS
+        * 2:35 PM 2/17/2026 add missing base alias
         * 1:04 PM 9/17/2025 remove write-my*() calls (write-log has native defer support now)
         * 2:27 PM 8/8/2025 ren Test-LocalCredential821 -> Test-LocalCredentialTDO (alias orig name)
         * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
@@ -12211,7 +12212,7 @@ function Test-LocalCredentialTDO {
         https://github.org/tostka/verb-ex2010/
         #>
         [CmdletBinding()]
-        [alias('Test-LocalCredential821','Test-LocalCredentials')]
+        [alias('Test-LocalCredential821','Test-LocalCredentials','Test-LocalCredential')]
         Param( 
             [Parameter(HelpMessage = "Account to be tested")]
                 [Alias('Account','logon')]
