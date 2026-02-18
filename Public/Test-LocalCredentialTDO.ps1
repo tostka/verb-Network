@@ -2,7 +2,7 @@
 
 
 #region TEST_LOCALCREDENTIALTDO ; #*------v Test-LocalCredentialTDO v------
-function Test-LocalCredentialTDO {
+ function Test-LocalCredentialTDO {
         <#
         .SYNOPSIS
         Test-LocalCredentialTDO - tests provided UserName & ComputerName combo against local machine accounts
@@ -21,6 +21,7 @@ function Test-LocalCredentialTDO {
         AddedWebsite: https://gallery.technet.microsoft.com/scriptcenter/Verify-the-Local-User-1e365545
         AddedTwitter: URL
         REVISIONS
+        * 2:35 PM 2/17/2026 add missing base alias
         * 1:04 PM 9/17/2025 remove write-my*() calls (write-log has native defer support now)
         * 2:27 PM 8/8/2025 ren Test-LocalCredential821 -> Test-LocalCredentialTDO (alias orig name)
         * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
@@ -48,7 +49,7 @@ function Test-LocalCredentialTDO {
         https://github.org/tostka/verb-ex2010/
         #>
         [CmdletBinding()]
-        [alias('Test-LocalCredential821','Test-LocalCredentials')]
+        [alias('Test-LocalCredential821','Test-LocalCredentials','Test-LocalCredential')]
         Param( 
             [Parameter(HelpMessage = "Account to be tested")]
                 [Alias('Account','logon')]
