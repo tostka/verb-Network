@@ -1,11 +1,11 @@
-﻿# verb-Network.psm1
+﻿# VERB-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.6.0.0
+Version     : 5.7.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2078,7 +2078,7 @@ function Get-RestartInfo {
 
                     $sfltr = @{ LogName = "Setup"; StartTime = $start; EndTime = $end ; };
             
-                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
                     $SetupEvts = Get-WinEvent -ComputerName $computer -FilterHashtable $sfltr | 
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
@@ -2132,7 +2132,7 @@ function Get-RestartInfo {
                 } else { 
                     $sBnrS="`n#*------v `$bootevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
                             $EventData.Date = $_.TimeCreated
@@ -3500,7 +3500,8 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
-    * 2:22 PM 8/1/2025 updated whpassfail block to curr
+    # 12:34 PM 3/9/2026 added re-qry of TXT dkim's in output report (output didn't include the full record);  fixed DKIM CNAME->TXT type retry (was missing when initial is a key-TXT record) ; add o365/SER selector echo tagging (duped in last demo) ; 
+        add default looping output report (default dummp of obj to pipeline is too inscrutable); add: alias Domainname for Name, added TOL default selectors dkim1 & added dkim2 for paired alt support; 
     * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
     * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
@@ -3656,57 +3657,118 @@ function Resolve-DnsSenderIDRecords {
 
     Example processing the returned TXT DKIM record and outputing the public key tag.
     .EXAMPLE
-    PS> $results = Resolve-DnsSenderIDRecords -name somedomain.tld -TestSPFEgress -verbose ;
-    PS> foreach($result in $results){
-    PS>     $sBnrS="`n#*------v DOMAIN: $($result.mx.name) v------" ; 
-    PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-    PS>     $hsReport = @"
-  
-    ==DomainName: 
-$(($result.mx.name|out-string).trim()) 
-    
-    ==MX Record: 
+PS> foreach($result in $objReturn){
+PS>     $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+PS>     $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
 $(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
-    
-    ==SPF Record: 
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
 $(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
-    
-    ==DKIM Record: 
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
 $(
-      
-      $smsg = "`n`n" ; 
-      foreach($rec in $result.dkim){
-      
-          $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ; 
-          $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ; 
-          
-      } ; 
-      $smsg |out-string
-) 
-    
-    ==DMARC Record: 
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
+    } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
 $(
-    ($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
- )   
-        --PolicyTag:
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
 $(   ($result.dmarc.policytag|out-string).trim()
 )
-      
-        --SubDomainPolicyTag:
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
 $(
-  ($result.dmarc.SubDomainPolicyTag|out-string).trim()
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
 )
-     
-        --PolicyInheritance:
-$(   
-  ($result.dmarc.PolicyInheritance|out-string).trim()
-) 
-     
-"@ ; 
-    PS>     write-host $hsReport ; 
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
-    PS> } ; 
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+PS>     write-host $hsReport ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+PS> }
     Demos a pass with trailing looped reporting
     .LINK
     https://github.com/T13nn3s/Invoke-SpfDkimDmarc/blob/main/public/Get-DMARCRecord.ps1
@@ -3722,10 +3784,11 @@ $(
     PARAM(
         [Parameter(Mandatory = $True, ValueFromPipeline = $True, 
             HelpMessage = "Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]")]
-        [string]$Name,
+            [ALIAS('DomainName')]
+            [string]$Name,
         [Parameter(Mandatory = $False,
             HelpMessage = "An array of custom DKIM selector strings.[-DkimSelector myselector")]
-        [Alias('Selector')]
+            [Alias('Selector')]
             [string[]]$DkimSelector,
         [Parameter(Mandatory = $false,
             HelpMessage = "DNS Server to use.[-Server 8.8.8.8]")]
@@ -3765,13 +3828,17 @@ $(
         # https://help.sendmarc.com/email-provider-commonly-used-dkim-selectors
         # https://www.reddit.com/r/DMARC/comments/1bffol7/list_of_most_common_dkim_selectors/
         # https://github.com/ryancdotorg/dkimscan/blob/master/dkimscan.pl#L313-L451
-        $DKSelArray = 'selector1','selector2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
+        # 11:31 AM 3/9/2026 add TOR SER default dkim1 (and dkim2, to cover switchables)
+        # selector1 & 2 are o365 defaults
+        $DKSelArray = 'selector1','selector2','dkim1','dkim2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
             'kl','kl2','K1','K2','Default','smtpapi','dkim','domk','dk','smtpout','authsmtp','dkrnt','dkimrnt','private',
             'selector','publickey','proddkim','mail-in','key','ed-dkim','smtpauth','smtp','sl','primary','mdaemon',
             'mailrelay','mail-dkim','mailo','global','dksel','dkimmail','allselector','email' ;
         <#$DKSelArray = @(
             'selector1' # Microsoft
             'selector2' # Microsoft
+            'dkim1', # TOR SER default
+            'dkim2', # TOR SER (add 2nd, to support alt selectors)
             'google', # Google
             'everlytickey1', # Everlytic
             'everlytickey2', # Everlytic
@@ -3784,62 +3851,29 @@ $(
         ) ; 
         #>
 
-        #region WHPASSFAIL ; #*======v WHPASSFAIL v======
-        $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
-        if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
-        if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
-        # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-        if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
-        if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
-        <# WHPASSFAIL:SAMPLE TESTS:
-        #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
-        $tFormat = 'NTFS' ; 
-        $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
-        #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
-        #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
-        # Test: Capacity match, threshold vs %:
-        $tSpaceThresh = 10 * 1GB ; # .9 (for %)
-        if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
-        elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
-        else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-        if($tSpaceThresh -lt 1){
-            $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
-                $rptDrive.DriveIssues += @($smsg)
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        }else{
-            $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining -lt $tSpaceThresh){
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        } ; 
-        #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
+        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
+        $whPASS = @{
+        Object = "$([Char]8730) PASS" ;
+        ForegroundColor = 'Green' ;
+        NoNewLine = $true ;
+        } ;
+        $whFAIL = @{
+            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
+            ForegroundColor = 'RED' ;
+            NoNewLine = $true ;
+        } ;
+        <#
+        # inline pass/fail color-coded w char
+        $smsg = "Testing:THING" ; 
+        $Passed = $true ; 
+        Write-Host "$($smsg)... " -NoNewline ; 
+        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
+        Write-Host " (Done)" ;
+        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
         #>
-        #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
-        
+        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
+
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
@@ -4026,6 +4060,9 @@ $(
             $foundSelector = $false ; 
 
             foreach ($DSel in $DkimSelector) {
+                if($Dsel -match 'dkim1'){
+                    write-host 'dkim1!'
+                } ; 
                 $pltRvDN.Name = "$($DSel)._domainkey.$($DomainName )" ;
                 $smsg = "Resolve-DNSName DKIM $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
                 write-host -foregroundcolor yellow $smsg ; 
@@ -4045,6 +4082,13 @@ $(
                         }
                         'SOA'{
                             write-warning " : (invalid lookup)" ; 
+                             write-host @whFAIL ; Write-Host " " ;
+                            # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
+                            $smsg = "Fail on prior $($pltRvDN.Type) qry" ; 
+                            $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
+                            $smsg += "`nResolve-DnsName -Type TXT -Name $($PLTRVDN.NAME)"  ;
+                            write-verbose $smsg ; 
+                            $DKIM = Resolve-DnsName -Type TXT -Name $PLTRVDN.NAME @SplatParameters ; 
                         }
                         default{
                             write-warning " : (invalid return)" ; 
@@ -4053,7 +4097,7 @@ $(
                 } else {
                     write-host @whFAIL ; Write-Host " " ;
                     # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
-                    $smsg = "Fail on prior TXT qry" ; 
+                    $smsg = "Fail on prior CNAME qry" ; 
                     $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
                     $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($DomainName)"  ;
                     write-verbose $smsg ; 
@@ -4463,8 +4507,120 @@ $(
 
         } # loop-E Name
     } END {
-        
+        # 11:35 AM 3/9/2026 add default looping output report (default dummp of obj to pipeline is too inscrutable
+        foreach($result in $objReturn){
+            $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+            $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+            $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
+$(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
+$(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
+$(
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
     } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
+$(
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
+$(   ($result.dmarc.policytag|out-string).trim()
+)
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
+$(
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
+)
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+            write-host $hsReport ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+        } ;
+    }  # END-E;
 }
 
 #*------^ Resolve-DnsSenderIDRecords.ps1 ^------
