@@ -1,11 +1,11 @@
-﻿# verb-network.psm1
+﻿# VERB-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.4.1.0
+Version     : 5.7.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2078,7 +2078,7 @@ function Get-RestartInfo {
 
                     $sfltr = @{ LogName = "Setup"; StartTime = $start; EndTime = $end ; };
             
-                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
                     $SetupEvts = Get-WinEvent -ComputerName $computer -FilterHashtable $sfltr | 
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
@@ -2132,7 +2132,7 @@ function Get-RestartInfo {
                 } else { 
                     $sBnrS="`n#*------v `$bootevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
+                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
                             $EventData.Date = $_.TimeCreated
@@ -2592,6 +2592,482 @@ function get-whoami {
 #*------^ get-whoami.ps1 ^------
 
 
+#*------v import-CertCERLegacy.ps1 v------
+if (-not (get-command import-CertCERLegacy -ea 0)) {
+        function import-CertCERLegacy {
+            <#
+            .SYNOPSIS
+            import-CertCERLegacy.ps1 - Imports Cert/CER (non-key CA) files into specified Store & location (fall back use for when PKI\Import-Certificate() is not available - Psv2 etc)
+            .NOTES
+            Version     : 0.0.
+            Author      : Todd Kadrie
+            Website     : http://www.toddomation.com
+            Twitter     : @tostka / http://twitter.com/tostka
+            CreatedDate : 2025-
+            FileName    : import-CertCERLegacy.ps1
+            License     : MIT License
+            Copyright   : (c) 2025 Todd Kadrie
+            Github      : https://github.com/tostka/verb-XXX
+            Tags        : Powershell,Certificate,TrustChain,Import,Maintenance
+            AddedCredit : REFERENCE
+            AddedWebsite: URL
+            AddedTwitter: URL
+            REVISIONS
+            * 4:18 PM 11/4/2025 debugged to function - wasn't working in lab, had to recode the import to function, revised return
+            * 11:30 AM 7/11/2025 init
+            .DESCRIPTION
+            import-CertCERLegacy.ps1 - Imports Cert/CER (non-key CA) files into specified Store & location (fall back use for when PKI\Import-Certificate() is not available - Psv2 etc)
+            .PARAMETER Computername
+            Target Computer name[-Computername 'servername']
+            .PARAMETER CertStoreLocation
+            Destination Certificate Hive (CurrentUser|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']
+            .PARAMETER TargetCertStore
+            Destination Certificate Store name ('My':Certificates|'CA':IA's|'Root':Root CAs|'REQUEST':Pending CSRs)[-TargetCertStore 'CA']
+            .PARAMETER Path
+            Path to a target Certificate .cer/.crt file [-Path \\machine\share\]
+            .PARAMETER whatIf
+            Whatif Flag  [-whatIf]")]
+            .INPUTS
+            None. Does not accepted piped input.
+            .OUTPUTS
+            System.Security.Cryptography.X509Certificates.X509Certificate
+            .EXAMPLE
+            PS> $pltLegCER=@{
+            PS>     computername = $env:computername ;
+            PS>     CertStoreLocation = 'LocalMachine' ;
+            PS>     TargetCertStore = 'Root' ;
+            PS>     Path = 'c:\path-to\cert.cer' ;
+            PS>     whatIf = $($whatif)
+            PS> } ;
+            PS> $smsg += "`nusing import-CertCERLegacy`n$(($pltLegCER|out-string).trim())" ;
+            PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+            PS> $ret = import-CertCERLegacy @pltLegCER ;
+            Typical splatted call to import a Root CA cert (vs IA, which would go to the CA TargetCertStore
+            .EXAMPLE
+            PS> $result = import-CertCERLegacy -computername $env:computername -CertStoreLocation 'LocalMachine' -TargetCertStore Root -Path d:\cab\new_entrust_bundle 8-20241010-0931AM.crt -whatIf:$true ;
+            Parameter call            
+            .LINK
+            https://github.com/tostka/verb-Network
+            #>
+            [CmdletBinding()]
+            PARAM(
+                [Parameter(Mandatory = $true, HelpMessage = "Target Computer name[-Computername 'servername']")]
+                    [ValidateNotNullOrEmpty()]
+                    [string]$Computername,
+                [Parameter(Mandatory = $true, HelpMessage = "Destination Certificate Hive (CurrentUser|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']")]
+                    [ValidateSet('CurrentUser', 'LocalMachine', 'Both')]
+                    [string]$CertStoreLocation,
+                [Parameter(Mandatory = $true, HelpMessage = "Destination Certificate Store name ('My':Certificates|'CA':IA's|'Root':Root CAs|'REQUEST':Pending CSRs)[-TargetCertStore 'CA']")]
+                    [ValidateSet('My', 'CA', 'Root', 'REQUEST')]
+                    [string]$TargetCertStore = 'CA',
+                [Parameter(Mandatory = $true, HelpMessage = "Path to a target Certificate .cer/.crt file [-Path \\machine\share\]")]
+                    [ValidateScript({ Test-Path $_ })]
+                    #[system.io.fileinfo[]] # psv2 doesn't like use of fileinfo (blank fullname prop), better to use string, and gci result
+                    [string]$Path,
+                [Parameter(HelpMessage = "Whatif Flag  [-whatIf]")]
+                    [switch] $whatIf
+            ) ;
+            $prpCert = 'Issuer','Subject','NotBefore','NotAfter','HasPrivateKey','Thumbprint',@{Name='PsPath';Expression={$_.pspath.replace('Microsoft.PowerShell.Security\Certificate::','') }} 
+            # no return the entire 509 cert object, match the return of an import-certificate command
+            TRY{
+                Add-Type -AssemblyName System.Security ;
+                #$CertStore = New-Object System.Security.Cryptography.X509Certificates.X509Store -ArgumentList  "\\$($Computername)\$($TargetCertStore)", $CertStoreLocation ;                
+                $CertStore = New-Object System.Security.Cryptography.X509Certificates.X509Store($TargetCertStore, $CertStoreLocation)
+                $CertStore.Open('ReadWrite');
+                #$smsg = "Once it's open ReadWrite, you can dump certs with: $certstore.certificates" ;
+                #if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                #    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                #    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                #} ;
+                # tried to use [fileinfo], but fullname is blank, so do remedial gci to get there.
+                if($rvPath = get-childitem -path $Path -ea STOP){
+                    #$cert = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate($Path.FullName) ;
+                    $cert = New-Object -TypeName System.Security.Cryptography.X509Certificates.X509Certificate($rvPath.FullName) ;
+                } ; 
+                if (-not $whatif) {
+                    $CertStore.Add($cert) ;
+                } ;
+                $CertStore.Close() ;
+                $smsg = "Checking for installed Cert:" ;
+                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                } ;
+                # get-childitem -path "cert:\$($CertStoreLocation)\$($TargetCertStore)\$($results.Thumbprint)"
+                $result = get-childitem -path "cert:\$($CertStoreLocation)\$($TargetCertStore)\" | ?{ $_.subject -eq $cert.subject }
+                #if (-not $whatif -AND (Get-ChildItem -Path cert: -Recurse | ? { $_.subject -eq $cert.subject })) {
+                #if (-not $whatif -AND ($hitCert = Get-ChildItem -Path cert: -Recurse | ? { $_.subject -eq $cert.subject })) {
+                    #$hitCert | select $prpCert | write-output ;
+                if($result){
+                    $result | write-output ; 
+                } elseif (-not $whatif) {
+                    $smsg = "UNABLE TO LOCATE ADDD CERT!"
+                    if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    } ;
+                    $false | write-output ;
+                } else {
+                    $smsg = "-whatif:$($whatif): skipped import/confirmation" ;                    
+                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                    } ;
+                } ;                
+            } CATCH {
+                $ErrTrapd=$Error[0] ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+            } ; 
+        } ;
+    }
+
+#*------^ import-CertCERLegacy.ps1 ^------
+
+
+#*------v Import-CertificateTrustFileTDO.ps1 v------
+Function Import-CertificateTrustFileTDO {
+        <#
+        .SYNOPSIS
+        Import-CertificateTrustFileTDO - Imports Root or Intermediate/Sub-CA non-key CER/CRT type certs into the proper rgx hive. Dynamically determines cert type (CA/IA) and imports as appropriate)
+        .NOTES
+        Version     : 0.0.
+        Author      : Todd Kadrie
+        Website     : http://www.toddomation.com
+        Twitter     : @tostka / http://twitter.com/tostka
+        CreatedDate : 2025-
+        FileName    : Import-CertificateTrustFileTDO.ps1
+        License     : MIT License
+        Copyright   : (c) 2025 Todd Kadrie
+        Github      : https://github.com/tostka/verb-XXX
+        Tags        : Powershell,Certificate,TrustChain,Import,Maintenance
+        AddedCredit : REFERENCE
+        AddedWebsite: URL
+        AddedTwitter: URL
+        REVISIONS
+        * 4:28 PM 11/4/2025 debugging fixes, added coverage for psv2 lack of pki\import-certificate (via vnet\import-certCERLegacy())
+        * 4:40 PM 8/11/2025 FIXED MISSING $certStringLenMax
+        * 9:38 AM 7/24/2025 ren Import-CertificateTrustFile -> Import-CertificateTrustFileTDO, alias orig
+        * 11:30 AM 7/11/2025 init
+        .DESCRIPTION
+        Import-CertificateTrustFileTDO - Imports Root or Intermediate/Sub-CA certs into the proper rgx hive
+        
+        Type discovery does the following:
+        1) Checks for $basicConstraintsData.CertificateAuthority, which indicates a CA/IA cert
+        2) Then compares Issuer & Subject on the cert: 
+            - CA's are self-signed, and have matching Issuer & Subject values (and are installed into the Root hive)
+            - IA's are signed by a CA, and have non-matching Issuer & Subject  (and are installed into the CA hive)
+        
+        .PARAMETER FilePath
+        Path to target Chain of Trust file (or folder containing discoverable files)
+        .PARAMETER .PARAMETER CertStoreLocation
+        Destination Certificate Hive (CurrentUser|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']
+        .INPUTS
+        None. Does not accepted piped input.
+        .OUTPUTS
+        System.Security.Cryptography.X509Certificates.X509Certificate
+        .EXAMPLE
+        PS> Import-CertificateTrustFileTDO -whatif -verbose
+        EXSAMPLEOUTPUT
+        Run with whatif & verbose
+        .EXAMPLE
+        PS> $pltLegCER=@{
+        PS>     computername = $env:computername ;
+        PS>     CertStoreLocation = 'LocalMachine' ;
+        PS>     TargetCertStore = 'Root' ;
+        PS>     Path = 'c:\path-to\cert.cer' ;
+        PS>     whatIf = $($whatif)
+        PS> } ;
+        PS> $smsg += "`nusing Import-CertificateTrustFileTDO`n$(($pltLegCER|out-string).trim())" ;
+        PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+        PS> $ret = Import-CertificateTrustFileTDO @pltLegCER ;
+        Typical splatted call
+        .EXAMPLE
+        PS> $result = Import-CertificateTrustFileTDO -computername $env:computername -CertStoreLocation 'LocalMachine' -TargetCertStore Root -Path d:\cab\new_entrust_bundle 8-20241010-0931AM.crt -whatIf:$true ;
+        PS> $result ; 
+
+                SubjectName  : System.Security.Cryptography.X509Certificates.X500DistinguishedName
+                NotAfter     : 12/31/2039 5:59:59 PM
+                NotBefore    : 12/29/2014 11:07:33 AM
+                Thumbprint   : 5x8x454x477x2x4539296x5x4xxx71xxx94xx5x5
+                FriendlyName : xxxxxxxxxx-(12-31-2039)
+
+        Typical call and fields returned
+        .EXAMPLE
+        PS> $result = Import-CertificateTrustFileTDO -FilePath "C:\Path\To\RootCA.cer"
+        PS> $result ; 
+
+                SubjectName  : System.Security.Cryptography.X509Certificates.X500DistinguishedName
+                NotAfter     : 12/31/2039 5:59:59 PM
+                NotBefore    : 12/29/2014 11:07:33 AM
+                Thumbprint   : 5x8x454x477x2x4539296x5x4xxx71xxx94xx5x5
+                FriendlyName : xxxxxxxxxx-(12-31-2039)
+
+        Demo import of a Root CA cert 
+        PS> $results = Import-CertificateTrustFileTDO -FilePath "C:\Path\To\IntermediateCA.crt"
+        Demo import of an Intermediate/Sub-CA cert 
+        .EXAMPLE
+            PS> $results = Import-CertificateTrustFileTDO -FilepATH "C:\Scripts\certs" -VERBOSE 
+            Call specifying a folder to be searched for known CA certs 
+        .LINK
+        https://github.com/tostka/verb-Network
+        #>
+        [CmdletBinding()]
+        [Alias('Import-CertificateTrustFile')]
+        Param (
+            [Parameter(Mandatory = $false, HelpMessage = "Destination Certificate Hive (CurrentUser|LocalMachine|Both)[-CertStoreLocation 'LocalMachine']")]
+                [ValidateNotNullOrEmpty()]
+                [ValidateSet('CurrentUser', 'LocalMachine', 'Both')]
+                [string]$CertStoreLocation = 'LocalMachine',
+            [Parameter(Mandatory=$false,HelpMessage="Path to target Chain of Trust file (or folder containing discoverable files)")]
+                [string]$FilePath
+        ) ; 
+        BEGIN{
+            $certStringLenMax = 30 ; # MAX STRING TO DISPLAY IN ECHOS 4:40 PM 8/11/2025 MISSING
+            if(-not (get-command -name import-Certificate)){
+                TRY {Add-Type -AssemblyName System.Security }CATCH{} ; 
+            } ; 
+            if(test-path $FilePath -PathType Container -ea 0){
+                # fed a folder it tries to discover for the domain in the folder
+                # gci -include requires a wildcard on the path spec
+                $FilePath = join-path -path $FilePath -childpath '*' ; 
+                switch ($env:USERDOMAIN){
+                    'TORO'{
+                        #$TrustChainFile = (join-path -path $FilePath -childpath 'new_entrust_bundle 8-20241010-0931AM.crt')
+                        #Default discoverable CA FileNames (array of files that discovery will attempt to locate, within specified FilePath)[-CAFileNames @('file1.crt','file2.cer')]")]
+                        [string[]]$CAFileNames = @("DigiCert Global G2 TLS RSA SHA256 2020 CA1-IA-(*).crt","Entrust Certification Authority - L1K-IA-(*).crt","Entrust Root Certification Authority - G2-CA-(*).crt")      
+                        #$TrustChainFile = (join-path -path $FilePath -childpath 'new_entrust_bundle 8-20241010-0931AM.crt')
+                        $TrustChainFile = get-childitem -path $FilePath -include $CAFileNames ; 
+                    }
+                    'TORO-LAB'{
+                        [string[]]$CAFileNames = @("DigiCert Global G2 TLS RSA SHA256 2020 CA1-IA-(*).crt","Entrust Certification Authority - L1K-IA-(*).crt","Entrust Root Certification Authority - G2-CA-(*).crt")      
+                        #$TrustChainFile = (join-path -path $FilePath -childpath 'new_entrust_bundle 8-20241010-0931AM.crt')
+                        $TrustChainFile = get-childitem -path $FilePath -include $CAFileNames ; 
+                    }
+                    DEFAULT{
+                       $smsg = "UNCONFIGURED/UNRECOGNIZED `$ENV:USERDOMAIN: $($env:USERDOMAIN)`nSKIPPING CERT CHAIN OF TRUST IMPORT" ; 
+                       if(gcm Write-MyError -ea 0){Write-MyError $smsg } else {
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error}
+                            else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ;
+                    }
+                }
+                if(test-path $TrustChainFile -PathType Leaf){
+                    $smsg = "Using $($env:USERDOMAIN) -discovered trust chain file(s):$($TrustChainFile)" ;
+                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                    } ;
+                    $FilePath = $TrustChainFile ; 
+                }
+            } ; 
+        }
+        PROCESS{
+            foreach($certFName in $FilePath){
+                $certExt = [regex]::match($certFname,'(\.\w+)$').groups[0].value.tostring().tolower() ; 
+                switch -Regex ($certExt) {
+                    '\.(cer|crt|cert)' { # CA/IA certs
+                        $smsg = "isolated `$COT CER|CRT: $($certFName )" ; 
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                        $CotFilePath = $certFname         
+                        $smsg = "resolved `$CotFilePath: $($CotFilePath )" ; 
+                        if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                        } ;
+                        if(test-path $CotFilePath -PathType Leaf){
+                            $smsg = "confirmed $($CotFilePath) exists"
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            # root cert .cer install (un-encrypted)
+                            $pltImpCert=@{
+                                FilePath = $CotFilePath ;
+                                CertStoreLocation= $null  ;
+                                #whatif=$($whatif) ;
+                            } ; 
+                        } else{
+                            $smsg = "Unable to locate local copy of $($CotFilePath) IN SPECIFIED -sourcepath $$($SourcePath)!" ; 
+                            if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            } ;
+                            Break ; 
+                        } ; 
+                                        
+                        $smsg = "Resolving 'cert' type to determine suitable TargetCertStore..." ; 
+                        if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                        } ;
+                        $certificate = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($pltImpCert.FilePath) ;
+                        $basicConstraints = $certificate.Extensions | Where-Object {$_.Oid.FriendlyName -eq "Basic Constraints"} ; 
+                        if($basicConstraints){
+                            $basicConstraintsData = [System.Security.Cryptography.X509Certificates.X509BasicConstraintsExtension]$basicConstraints ;
+                            if ($basicConstraintsData.CertificateAuthority) {
+                                $smsg = "$($pltImpCert.FilePath) certificate is a Certificate Authority (CA) (basicConstraintsData.CertificateAuthority populated)."
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                                # Root CA certs are self-signed: have matching Issuer & Subject
+                                if ($certificate.Issuer -eq $certificate.Subject) {
+                                    $smsg = "$($pltImpCert.FilePath) has matching Issuer & Subject: Self-signed: likely a Root CA" ; 
+                                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                    } ;
+                                    $smsg = "ISSUER:`n$($certificate.Issuer.substring(0,[math]::min($certificate.Issuer.tostring().length,$certStringLenMax)))..." ;
+                                    $smsg += "`n-EQ" ;
+                                    $smsg += "`nSUBJECT:`n$($certificate.Subject.substring(0,[math]::min($certificate.Issuer.tostring().length,$certStringLenMax)))..."
+                                    if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                    } ;
+                                    $pltImpCert.CertStoreLocation = "Cert:\$($CertStoreLocation)\Root\" 
+                                } else {
+                                    $smsg = "$($pltImpCert.FilePath) has NON-MATCHING Issuer & Subject: *NON*-Self-signed: likely an Intermediate or 'sub' CA" ;
+                                    if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                    } ;
+                                    $smsg = "ISSUER:`n$($certificate.Issuer.substring(0,[math]::min($certificate.Issuer.tostring().length,$certStringLenMax)))..." ;
+                                    $smsg += "`n-NE" ;
+                                    $smsg += "`nSUBJECT:`n$($certificate.Subject.substring(0,[math]::min($certificate.Issuer.tostring().length,$certStringLenMax)))..."
+                                    if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                    } ;
+                                    $pltImpCert.CertStoreLocation = "Cert:\$($CertStoreLocation)\CA\" 
+                                } ;                          
+                            } else {
+                                $smsg = "$($pltImpCert.FilePath) is *not* a Certificate Authority certificate (has *no* basicConstraintsData.CertificateAuthority populated)."
+                                if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                    if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                    else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                                } ;
+                            }
+                        } else {
+                            $smsg = "$($pltImpCert.FilePath) has *no* basicConstraintsData populated: Non-CA, Standard certificate (un-encrypted, in cert format)."
+                            if(gcm Write-MyVerbose -ea 0){Write-MyVerbose $smsg } else {
+                                if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                            } ;
+                            $pltImpCert.CertStoreLocation = "Cert:\$($CertStoreLocation)\My\" 
+                        } ; 
+                        
+                        if((get-command -name import-Certificate -ea 0)){
+                            $smsg = "Import-Certificate w`n$(($pltImpCert|out-string).trim())" ; 
+                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ;
+                            #Import-Certificate @pltImpCert; 
+                            # Outputs  X509Certificate2[]  The output is an array of X509Certificate2[] objects.
+                            <#
+                                -FilePath: Specifies the path to a certificate file to be imported. Acceptable formats 
+                                include .sst, .p7b, and .cert files. If the file contains multiple 
+                                certificates, then each certificate will be imported to the destination store. 
+                                The file must be in .sst format to import multiple certificates; otherwise, 
+                                only the first certificate in the file will be imported. 
+                            #>             
+                            $results = Import-Certificate @pltImpCert -Verbose:($PSBoundParameters['Verbose'] -eq $true)              
+                            if(-not $whatif){
+                                #$results | select SubjectName,not*,thumb*,friend* | write-output ;
+                                $smsg = "Results`n$(($results | select SubjectName,not*,thumb*,friend*|out-string).trim())" ; 
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                                # return the x509cert objects, not the summary fields, we need it for followup verific
+                                $results | write-output ; 
+                            } elseif(-not $whatif){
+                                $false | write-output ; 
+                            }else {
+                                $smsg = "-whatif:$($whatif): skipped import/confirmation" ; 
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                            } ;
+                        }else{
+                            <#$pltImpCert=@{
+                                FilePath = $CotFilePath ;
+                                CertStoreLocation= $null  ;
+                                #whatif=$($whatif) ;
+                            } ; 
+                            #>
+                            # $CertStoreLocation: LocalMachine
+                            # $pltImpCert.CertStoreLocation = "Cert:\$($CertStoreLocation)\CA\" 
+                            $pltLegCER=@{
+                                computername = $env:computername ;
+                                CertStoreLocation = $CertStoreLocation ;
+                                TargetCertStore = ($pltImpCert.CertStoreLocation.split('\') | ?{$_})[-1] ;
+                                Path = $pltImpCert.FilePath ;
+                                #whatIf = $($whatif)
+                            } ;
+                            $smsg += "`nusing import-CertCERLegacy`n$(($pltLegCER|out-string).trim())`n(PS$($host.version.major): missing import-certificate cmdlet)" ;
+                            if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level H1 } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            } ;
+                            $results = import-CertCERLegacy @pltLegCER ;                            
+                            if(-not $whatif){
+                                #$results | select SubjectName,not*,thumb*,friend* | write-output ;
+                                if($results.Thumbprint -AND $results.subject -eq $null){
+                                    # re-lookup on the thumbprint
+                                    $results = get-childitem -path "cert:\$($CertStoreLocation)\$($TargetCertStore)\$($results.Thumbprint)"
+                                } ; 
+                                $prpResults = 'Issuer','Subject','NotBefore','NotAfter','HasPrivateKey','Thumbprint','psPath' ; 
+                                #$smsg = "Results`n$(($results | select SubjectName,not*,thumb*,friend*|out-string).trim())" ; 
+                                $smsg = "Results`n$(($results | fl $prpResults |out-string).trim())" ; 
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                                # return the x509cert objects, not the summary fields, we need it for followup verific
+                                $results | write-output ; 
+                            } elseif(-not $whatif){
+                                $false | write-output ; 
+                            }else {
+                                $smsg = "-whatif:$($whatif): skipped import/confirmation" ; 
+                                if(gcm Write-MyOutput -ea 0){Write-MyOutput $smsg } else {
+                                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                                } ;
+                            } ;
+                        } ; 
+                    }
+                    default {
+                        $smsg = "$($certFName) is not a crt|cer file (and pfx should be imported via import-ExchangeCertificate" ; 
+                        if(gcm Write-MyWarning -ea 0){Write-MyWarning $smsg } else {
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        } ;
+                    }
+                }  # swtch-E
+             } ; # loop-E
+         } ;  # PROC-E
+    }
+
+#*------^ Import-CertificateTrustFileTDO.ps1 ^------
+
+
 #*------v Invoke-BypassPaywall.ps1 v------
 function Invoke-BypassPaywall{
     <#
@@ -3024,7 +3500,8 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
-    * 2:22 PM 8/1/2025 updated whpassfail block to curr
+    # 12:34 PM 3/9/2026 added re-qry of TXT dkim's in output report (output didn't include the full record);  fixed DKIM CNAME->TXT type retry (was missing when initial is a key-TXT record) ; add o365/SER selector echo tagging (duped in last demo) ; 
+        add default looping output report (default dummp of obj to pipeline is too inscrutable); add: alias Domainname for Name, added TOL default selectors dkim1 & added dkim2 for paired alt support; 
     * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
     * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
@@ -3180,57 +3657,118 @@ function Resolve-DnsSenderIDRecords {
 
     Example processing the returned TXT DKIM record and outputing the public key tag.
     .EXAMPLE
-    PS> $results = Resolve-DnsSenderIDRecords -name somedomain.tld -TestSPFEgress -verbose ;
-    PS> foreach($result in $results){
-    PS>     $sBnrS="`n#*------v DOMAIN: $($result.mx.name) v------" ; 
-    PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-    PS>     $hsReport = @"
-  
-    ==DomainName: 
-$(($result.mx.name|out-string).trim()) 
-    
-    ==MX Record: 
+PS> foreach($result in $objReturn){
+PS>     $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+PS>     $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
 $(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
-    
-    ==SPF Record: 
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
 $(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
-    
-    ==DKIM Record: 
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
 $(
-      
-      $smsg = "`n`n" ; 
-      foreach($rec in $result.dkim){
-      
-          $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ; 
-          $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ; 
-          
-      } ; 
-      $smsg |out-string
-) 
-    
-    ==DMARC Record: 
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
+    } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
 $(
-    ($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
- )   
-        --PolicyTag:
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
 $(   ($result.dmarc.policytag|out-string).trim()
 )
-      
-        --SubDomainPolicyTag:
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
 $(
-  ($result.dmarc.SubDomainPolicyTag|out-string).trim()
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
 )
-     
-        --PolicyInheritance:
-$(   
-  ($result.dmarc.PolicyInheritance|out-string).trim()
-) 
-     
-"@ ; 
-    PS>     write-host $hsReport ; 
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
-    PS> } ; 
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+PS>     write-host $hsReport ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+PS> }
     Demos a pass with trailing looped reporting
     .LINK
     https://github.com/T13nn3s/Invoke-SpfDkimDmarc/blob/main/public/Get-DMARCRecord.ps1
@@ -3246,10 +3784,11 @@ $(
     PARAM(
         [Parameter(Mandatory = $True, ValueFromPipeline = $True, 
             HelpMessage = "Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]")]
-        [string]$Name,
+            [ALIAS('DomainName')]
+            [string]$Name,
         [Parameter(Mandatory = $False,
             HelpMessage = "An array of custom DKIM selector strings.[-DkimSelector myselector")]
-        [Alias('Selector')]
+            [Alias('Selector')]
             [string[]]$DkimSelector,
         [Parameter(Mandatory = $false,
             HelpMessage = "DNS Server to use.[-Server 8.8.8.8]")]
@@ -3289,13 +3828,17 @@ $(
         # https://help.sendmarc.com/email-provider-commonly-used-dkim-selectors
         # https://www.reddit.com/r/DMARC/comments/1bffol7/list_of_most_common_dkim_selectors/
         # https://github.com/ryancdotorg/dkimscan/blob/master/dkimscan.pl#L313-L451
-        $DKSelArray = 'selector1','selector2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
+        # 11:31 AM 3/9/2026 add TOR SER default dkim1 (and dkim2, to cover switchables)
+        # selector1 & 2 are o365 defaults
+        $DKSelArray = 'selector1','selector2','dkim1','dkim2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
             'kl','kl2','K1','K2','Default','smtpapi','dkim','domk','dk','smtpout','authsmtp','dkrnt','dkimrnt','private',
             'selector','publickey','proddkim','mail-in','key','ed-dkim','smtpauth','smtp','sl','primary','mdaemon',
             'mailrelay','mail-dkim','mailo','global','dksel','dkimmail','allselector','email' ;
         <#$DKSelArray = @(
             'selector1' # Microsoft
             'selector2' # Microsoft
+            'dkim1', # TOR SER default
+            'dkim2', # TOR SER (add 2nd, to support alt selectors)
             'google', # Google
             'everlytickey1', # Everlytic
             'everlytickey2', # Everlytic
@@ -3308,62 +3851,29 @@ $(
         ) ; 
         #>
 
-        #region WHPASSFAIL ; #*======v WHPASSFAIL v======
-        $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
-        if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
-        if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
-        # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-        if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
-        if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
-        <# WHPASSFAIL:SAMPLE TESTS:
-        #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
-        $tFormat = 'NTFS' ; 
-        $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
-        #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
-        #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
-        # Test: Capacity match, threshold vs %:
-        $tSpaceThresh = 10 * 1GB ; # .9 (for %)
-        if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
-        elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
-        else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-        if($tSpaceThresh -lt 1){
-            $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
-                $rptDrive.DriveIssues += @($smsg)
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        }else{
-            $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining -lt $tSpaceThresh){
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        } ; 
-        #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
+        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
+        $whPASS = @{
+        Object = "$([Char]8730) PASS" ;
+        ForegroundColor = 'Green' ;
+        NoNewLine = $true ;
+        } ;
+        $whFAIL = @{
+            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
+            ForegroundColor = 'RED' ;
+            NoNewLine = $true ;
+        } ;
+        <#
+        # inline pass/fail color-coded w char
+        $smsg = "Testing:THING" ; 
+        $Passed = $true ; 
+        Write-Host "$($smsg)... " -NoNewline ; 
+        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
+        Write-Host " (Done)" ;
+        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
         #>
-        #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
-        
+        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
+
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
@@ -3550,6 +4060,9 @@ $(
             $foundSelector = $false ; 
 
             foreach ($DSel in $DkimSelector) {
+                if($Dsel -match 'dkim1'){
+                    write-host 'dkim1!'
+                } ; 
                 $pltRvDN.Name = "$($DSel)._domainkey.$($DomainName )" ;
                 $smsg = "Resolve-DNSName DKIM $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
                 write-host -foregroundcolor yellow $smsg ; 
@@ -3569,6 +4082,13 @@ $(
                         }
                         'SOA'{
                             write-warning " : (invalid lookup)" ; 
+                             write-host @whFAIL ; Write-Host " " ;
+                            # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
+                            $smsg = "Fail on prior $($pltRvDN.Type) qry" ; 
+                            $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
+                            $smsg += "`nResolve-DnsName -Type TXT -Name $($PLTRVDN.NAME)"  ;
+                            write-verbose $smsg ; 
+                            $DKIM = Resolve-DnsName -Type TXT -Name $PLTRVDN.NAME @SplatParameters ; 
                         }
                         default{
                             write-warning " : (invalid return)" ; 
@@ -3577,7 +4097,7 @@ $(
                 } else {
                     write-host @whFAIL ; Write-Host " " ;
                     # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
-                    $smsg = "Fail on prior TXT qry" ; 
+                    $smsg = "Fail on prior CNAME qry" ; 
                     $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
                     $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($DomainName)"  ;
                     write-verbose $smsg ; 
@@ -3987,8 +4507,120 @@ $(
 
         } # loop-E Name
     } END {
-        
+        # 11:35 AM 3/9/2026 add default looping output report (default dummp of obj to pipeline is too inscrutable
+        foreach($result in $objReturn){
+            $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+            $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+            $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
+$(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
+$(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
+$(
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
     } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
+$(
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
+$(   ($result.dmarc.policytag|out-string).trim()
+)
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
+$(
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
+)
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+            write-host $hsReport ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+        } ;
+    }  # END-E;
 }
 
 #*------^ Resolve-DnsSenderIDRecords.ps1 ^------
@@ -11708,6 +12340,7 @@ function Test-LocalCredentialTDO {
         AddedWebsite: https://gallery.technet.microsoft.com/scriptcenter/Verify-the-Local-User-1e365545
         AddedTwitter: URL
         REVISIONS
+        * 2:35 PM 2/17/2026 add missing base alias
         * 1:04 PM 9/17/2025 remove write-my*() calls (write-log has native defer support now)
         * 2:27 PM 8/8/2025 ren Test-LocalCredential821 -> Test-LocalCredentialTDO (alias orig name)
         * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
@@ -11735,7 +12368,7 @@ function Test-LocalCredentialTDO {
         https://github.org/tostka/verb-ex2010/
         #>
         [CmdletBinding()]
-        [alias('Test-LocalCredential821','Test-LocalCredentials')]
+        [alias('Test-LocalCredential821','Test-LocalCredentials','Test-LocalCredential')]
         Param( 
             [Parameter(HelpMessage = "Account to be tested")]
                 [Alias('Account','logon')]
@@ -12546,7 +13179,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -12554,8 +13187,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUS7xEruoW9Jww+7vEirIfrQWU
-# SiOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvD3YyoVqrRu2MX810Eq/M3/8
+# p06gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -12570,9 +13203,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRGUe1j
-# EP5OwXXFxt6c2FUNkChkxjANBgkqhkiG9w0BAQEFAASBgCO/+9ap6TSr5p79O5V8
-# I8WKpsTMghgCpLzOEA9taJ7969QzZwcxbiXV+LJA4rRhWztKEFQIsycbBGTkATwI
-# PSaYUxf70xoNbE+VRDvHWcyjNSNscW9UX6/AoCo9YIS4n+7IPMxP2h3Mt1yADNLA
-# y+70BGt1WVj+frICFTjBxl1e
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRELodw
+# cFrSYhmDE9xTxSbHObX5mzANBgkqhkiG9w0BAQEFAASBgKQvB75DUezpmpMfmCuW
+# zvQP+fohXM8qn1pHL82Mrkqf28dSqMl1JGDZWbvtAu+RQW9GvCqu4iIAPht8TTA+
+# h2qLZK5G+/5V9YbRsmpiweh/Whh1wi9RtsZHFr+U8WWBkoWh9p94DxbF5o9CU+ib
+# eKmkS16b2N12xuORDY/DjYFi
 # SIG # End signature block

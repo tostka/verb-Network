@@ -1332,7 +1332,6 @@ Resolve-DNSLegacy.ps1:ob
 Resolve-DNSLegacy.ps1:PipelineVariable
 Resolve-DNSLegacy.ps1:pv
 Resolve-DnsSenderIDRecords:Name
-Resolve-DnsSenderIDRecords:DomainName
 Resolve-DnsSenderIDRecords:DkimSelector
 Resolve-DnsSenderIDRecords:Selector
 Resolve-DnsSenderIDRecords:Server

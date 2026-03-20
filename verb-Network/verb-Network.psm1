@@ -1,11 +1,11 @@
-﻿# VERB-Network.psm1
+﻿# VERB-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.7.0.0
+Version     : 5.8.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -2078,7 +2078,7 @@ function Get-RestartInfo {
 
                     $sfltr = @{ LogName = "Setup"; StartTime = $start; EndTime = $end ; };
             
-                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
+                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
                     $SetupEvts = Get-WinEvent -ComputerName $computer -FilterHashtable $sfltr | 
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
@@ -2132,7 +2132,7 @@ function Get-RestartInfo {
                 } else { 
                     $sBnrS="`n#*------v `$bootevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
+                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
                             $EventData.Date = $_.TimeCreated
@@ -3278,6 +3278,218 @@ function Invoke-SecurityDialog {
 }
 
 #*------^ Invoke-SecurityDialog.ps1 ^------
+
+
+#*------v New-SelfSignedCertificateTDO.ps1 v------
+function New-SelfSignedCertificateTDO {
+    <#
+    .SYNOPSIS
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2022-
+    FileName    : New-SelfSignedCertificateTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/powershell
+    Tags        : Powershell,AzureAD,Authentication,Certificate,CertificateAuthentication
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
+    * 3:45 PM 6/23/2023 pulled req: verb-AAD 
+    * 2:54 PM 6/13/2022 debugged, functional
+    .DESCRIPTION
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    
+    => renamed copy of prior New-AADAppAuthCertificate
+    
+    .PARAMETER DnsName
+    Certificate DNSName (AppFQDN)[-DnsName server.domain.com]
+    .PARAMETER CertStoreLocation
+    Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']
+    .PARAMETER StartDate
+    New certificate StartDate
+    .PARAMETER EndDate
+    New certificate EndDate
+    .PARAMETER Whatif
+    Parameter to run a Test no-change pass [-Whatif switch]
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    System.Boolean
+    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    .EXAMPLE
+    PS> $pltNAAC=[ordered]@{
+    PS>     DnsName=$AppFqDN ;
+    PS>     CertStoreLocation = $certStore ;
+    PS>     EndDate=(get-date ).addyears(3) ;
+    PS>     StartDate = (get-date ) ; 
+    PS>     verbose = $($verbose) ; 
+    PS>     whatif = $($whatif) ;
+    PS> } ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> if($bREt.Valid){
+    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS> } else { 
+    PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
+    PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+    PS>     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>     throw $smsg ; 
+    PS>     break ; 
+    PS> } ;     
+    Splatted demo with whatif & verbose, gens cert, exports pfx, provides raw content of cert (for mounting on appreg), and runs cmd to add cert to existing AAD Registered App.
+    .LINK
+    https://github.com/tostka/verb-XXX
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    [ name related topic(one keyword per topic), or http://|https:// to help, or add the name of 'paired' funcs in the same niche (enable/disable-xxx)]
+    #>
+    #Requires -Modules PKI, verb-IO, verb-logging
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(Mandatory=$True,HelpMessage="Certificate DNSName (AppFQDN)[-DnsName server.domain.com]")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$DnsName,
+        [Parameter(Mandatory=$True,HelpMessage="Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$CertStoreLocation,
+        [Parameter(Mandatory=$True,HelpMessage="New certificate StartDate[-StartDate '6/9/2022']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$startDate, 
+        [Parameter(Mandatory=$True,HelpMessage="New certificate EndDate[-EndDate '6/9/2024']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$endDate,
+        [Parameter(HelpMessage="Whatif Flag  [-whatIf]")]
+            [switch] $whatIf=$true
+    ) ;
+    #region CONSTANTS-AND-ENVIRO #*======v CONSTANTS-AND-ENVIRO v======
+    # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
+    ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+    $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+    write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    
+    $objReturn = @{
+        Certificate = $null ; 
+        CertRaw = $null ; 
+        PFXPath = $null ; 
+        Valid = $false ; 
+    } ; 
+    
+    $smsg = "---1)ENTER CERTIFICATE PFX Password: (use 'dummy' for UserName)" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    $pfxcred=(Get-Credential -credential dummy) ;
+
+    $pltNSSCert=[ordered]@{
+        DnsName=$DnsName ;
+        CertStoreLocation = $CertStoreLocation ;
+        KeyExportPolicy='Exportable' ;
+        Provider="Microsoft Enhanced RSA and AES Cryptographic Provider" ;
+        NotAfter=$endDate ;
+        KeySpec='KeyExchange' ;
+        erroraction='STOP';
+        whatif = $($whatif) ;
+    } ;
+    $smsg = "---2)New-SelfSignedCertificate w`n$(($pltNSSCert|out-string).trim())" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+    # precheck for conflicting existing on same dnsname
+    if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
+        if ($bRet.ToUpper() -eq "YYY") {
+            $smsg = "Moving on" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else {
+            $smsg = "Invalid response. Exiting"
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break ;# exit <asserted exit error #>
+            #exit 1
+        } # if-block end
+    } ; 
+    
+    $newcert = (New-SelfSignedCertificate @pltNSSCert); 
+    $objReturn.Certificate = $newcert ; 
+    
+    if(-not $whatif -AND $newcert){
+        $smsg = "(new cert:$($newcert.thumbprint) created)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+        #$newcert.thumbprint | set-Content -Path "$(split-path $transcript)\cert-$($DnsName)-thumb-$(get-date -format 'yyyyMMdd-HHmmtt').txt" ; 
+
+        $pltExPfx=[ordered]@{
+            Cert= "$($CertStoreLocation)\$($newcert.thumbprint)"
+            FilePath="$(split-path $profile)\keys\$($DnsName)-NOTAFTER-$(get-date $pltNSSCert.notafter -format 'yyyyMMdd-HHmmtt').pfx" ;
+            Password=$pfxcred.password ;
+            erroraction='STOP';
+        } ;
+        $smsg = "---3)Export-PfxCertificate  w`n$(($pltExPfx|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $newpfx = Export-PfxCertificate @pltExPfx ;
+        $objReturn.PFXPath = $pltExPfx.FilePath ; 
+
+        $smsg = "`n$(($newpfx|out-string).trim())" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+    
+        $smsg = "(create cert object)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate($pltExPfx.FilePath, $pfxcred.password) ;
+        $smsg = "`ncert obj created:w`n$(($cert | ft -a handle,issuer,subject |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green $($smsg) } ;
+
+        $certRaw = [System.Convert]::ToBase64String($cert.GetRawCertData()) ;
+        $objReturn.CertRaw = $certRaw ; 
+        
+        if($objReturn.Certificate -AND $objReturn.CertRaw -AND $objReturn.PFXPath){ 
+            $smsg = "Valid Certificate, CertRaw, and PFX values: Setting Valid:`$true" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            $objReturn.Valid = $true ; 
+        } else { 
+            $smsg = "INVALID CERTIFICATE, CERTRAW, or PFX: Setting Valid:`$FALSE" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $objReturn.Valid = $false 
+        } ; 
+        
+        New-Object -TypeName PSObject -Property $objReturn | write-output ; 
+        
+    } else { 
+        $smsg = "`n(-whatif, skipping post-creation cert-handling code)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } ; 
+}
+
+#*------^ New-SelfSignedCertificateTDO.ps1 ^------
 
 
 #*------v push-TLSLatest.ps1 v------
@@ -9961,6 +10173,235 @@ function Set-CertificatesInCAHierarchyTDO {
 #*------^ Set-CertificatesInCAHierarchyTDO.ps1 ^------
 
 
+#*------v show-SerFilterLogFormattedOutput.ps1 v------
+function show-SerFilterLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerFilterLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+	[2026-03-18 07:52:30.007522 -0500] rprt s=4cwtbdrj71 mod=session cmd=disconnect module= rule= action= helo=SERVER.DOMAIN
+.com msgs=1 rcpts=1 routes=allow_relay duration=0.096 elapsed=0.524
+...[TRIMMED]...
+[2026-03-18 07:52:29.487175 -0500] rprt s=4cwtbdrj71 mod=session cmd=connect ip=123.456.789.012 country=us lip=123.456.789.013 prot
+=smtp:smtp hops_active=f routes= notroutes=default_inbound,firewallsafe,internalnet,outbound,pp_spoofsafe,spfsafe,tls,xclient
+_trusted perlwait=0.003    
+"@ ; 
+    PS> show-SerFilterLogFormattedOutput -LogText $hsLogOutput
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerFilterLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText,
+        [Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $serlines = $logtext ; 
+        } ; ;         
+        #$serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serlines = $serlines -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serverIP = [regex]::match(($serlines |?{$_ -match 'lip='}).split(' '),'lip=(\d+\.\d+\.\d+\.\d+)').groups[1].value ; 
+        switch($serverIP){            
+            $masterServer[1]  {$server = $masterServer[0]}
+            $agentserver[1] {$server = $agentserver[0]}
+            default{
+                throw "Unrecogized, or unconfigured Server IP Address!" ; 
+            } ; 
+        } ; 
+        $sendline = $serlines |?{$_ -match 'cmd=send'} ;
+        if($sendQID = [regex]::match(($serlines |?{$_ -match 'cmd=send'}).split(' '),'qid=([\w]{14})').groups[1].value){
+            $smsg = "cmd=send QID resolved: $($sendQID)" ;
+            $smsg += "`nRun MTA Search:`nLogs & reports > Log Viewer`nServer:$($server)`nLog Type Filter: MTA`nFind: $($sendQID)`n, click SEARCH" ;
+            write-host -foregroundcolor yellow $smsg ;
+            $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+            write-host "(report copied to clipboard)" ; 
+        } else {write-warning "No line with both 'cmd=send' & 'qid=([\w]{14})' found: Unable to resolve QID for MTA search" } ; 
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerFilterLogFormattedOutput.ps1 ^------
+
+
+#*------v show-SerMtaLogFormattedOutput.ps1 v------
+function show-SerMtaLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerMtaLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+		2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>, size=21724, class
+=0, nrcpts=1, msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@LYNMS651.aaaaaa.aa.aaaa.aaa>, proto=ESMTP, daemon=MTA, tls_verify=N
+ONE, tls_version=NONE, cipher=NONE, auth=NONE, relay=SIT-PPAGENT-01.toro.com [127.0.0.1]
+2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaaaa9@AaAaaa.aaa>, delay=00:00:01,
+xdelay=00:00:01, mailer=esmtp, tls_verify=OK, tls_version=TLSv1.2, cipher=ECDHE-RSA-AES256-GCM, pri=141724, relay=smtp-us.se
+r.proofpoint.com. [99.999.999.999], dsn=2.0.0, stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+"@ ; 
+    PS> show-SerMtaLogFormattedOutput -LogText $hsLogOutput
+    
+        2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>
+         size=21724
+         class=0
+         nrcpts=1
+         msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@AAAAA999.aaaaaa.aa.aaaa.aaa>
+         proto=ESMTP
+         daemon=MTA
+         tls_verify=NONE
+         tls_version=NONE
+         cipher=NONE
+         auth=NONE
+         relay=SIT-PPAGENT-01.aaaa.aaa [127.0.0.1]
+
+        2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaa.aa.aaaa.aaa>
+         delay=00:00:01
+        xdelay=00:00:01
+         mailer=esmtp
+         tls_verify=OK
+         tls_version=TLSv1.2
+         cipher=ECDHE-RSA-AES256-GCM
+         pri=141724
+         relay=smtp-us.ser.proofpoint.com. [99.999.999.999]
+         dsn=2.0.0
+         stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+             
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerMtaLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText
+            #,
+        <#[Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+        #>
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $sermta = $logtext ; 
+        } ; ;         
+        #$sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        #$sermta = $sermta  -replace ([Environment]::NewLine),"" -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1' -replace "\|","`r`n").Split([Environment]::NewLine) |  ?{$_} ;
+        $sermta = $sermta -replace ([Environment]::NewLine),"" ; 
+        $sermta = $sermta -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1'  ; 
+        $sermta = $sermta -replace "\|","`r`n" ; 
+        $sermta = $sermta.Split([Environment]::NewLine) |  ?{$_} ;
+        $smsg = $null ;
+        $sermta | %{ $smsg += "`n`n" ; $smsg+= ($_ -replace ",","`r`n")} ;
+        $smsg | write-output ;
+        $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+        write-host "`n(report copied to clipboard)" ;
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerMtaLogFormattedOutput.ps1 ^------
+
+
 #*------v split-DnsTXTRecord.ps1 v------
 function split-DnsTXTRecord{
     <#
@@ -13179,7 +13620,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -13187,8 +13628,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvD3YyoVqrRu2MX810Eq/M3/8
-# p06gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU48DN72DpuKZUbUWFzeHfjpyw
+# rpWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13203,9 +13644,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRELodw
-# cFrSYhmDE9xTxSbHObX5mzANBgkqhkiG9w0BAQEFAASBgKQvB75DUezpmpMfmCuW
-# zvQP+fohXM8qn1pHL82Mrkqf28dSqMl1JGDZWbvtAu+RQW9GvCqu4iIAPht8TTA+
-# h2qLZK5G+/5V9YbRsmpiweh/Whh1wi9RtsZHFr+U8WWBkoWh9p94DxbF5o9CU+ib
-# eKmkS16b2N12xuORDY/DjYFi
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS2JaFt
+# FI/xoReorqx64CKPWQIeWTANBgkqhkiG9w0BAQEFAASBgKX5ZX5Z0+VUyCk2nYMG
+# 1QIIadN+Ecax6Oo3WHY/kgO81khqAAAPF0Rh5PiWM20BIRb1jmH1pU0efFRc4o35
+# dVmeq6HrsNdcqrWSVkGU0rPW9rn89xg6dYRo8x+g9aWIBIu/rmyapB/5WkYFKfdo
+# GefSL2TtoFwgPq637B2Qn8FN
 # SIG # End signature block
