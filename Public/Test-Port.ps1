@@ -1,4 +1,4 @@
-﻿#*------v Function Test-Port v------
+﻿#region FUNCTION TEST_PORT ; #*------v Function Test-Port v------
 function Test-Port {
     <#
     .SYNOPSIS
@@ -15,6 +15,8 @@ function Test-Port {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell
     REVISIONS
+    # 9:50 AM 3/24/2026 psv2 doesn't like dbl quoted regex in ValidatePattern (Parameter attributes need to be a constant or a script block.): 
+        flipped to singles.
     # 9:11 AM 1/24/2025 added -ea 0 to the gcm's; expanded gcms; added try/catch to the Net.Sockets.TcpClient code (output friendly error fail); added CBH demo rdp users poll
         ; removed aliases 's' & 'p' (they're already usable as abbrev $server & $port, no other conflicting params ); flip 1st expl to commonly used 3389 (rdp) port; added cmdletbinding (full adv func/verbose support); added alias test-portTDO
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
@@ -60,7 +62,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern('^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$')]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -99,4 +101,4 @@ function Test-Port {
         throw "Unsupported OS/Missing depedancy! (missing PSCore6+, NetTCPIP, or even .net.sockets.tcpClient)! Aborting!" ;
     } ; 
 } ;
-#*------^ END Function Test-Port ^------
+#endregion FUNCTION TEST_PORT ; #*------^ END Function Test-Port ^------
