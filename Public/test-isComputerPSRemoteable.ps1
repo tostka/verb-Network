@@ -19,6 +19,7 @@ Function test-isComputerSMBCapable{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:14 PM 3/26/2026 flip req from ad -> NetTCPIP
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -43,7 +44,7 @@ Function test-isComputerSMBCapable{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules NetTCPIP
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({(Test-NetConnection -ComputerName $PSItem -CommonTCPPort 'SMB').TcpTestSucceeded})]
