@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.8.0.0
+Version     : 5.9.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -584,95 +584,6 @@ Function get-CertificateChainOfTrust {
 #*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
-#*------v get-CredentialsTDO.ps1 v------
-function get-CredentialsTDO{
-    <#
-    .SYNOPSIS
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory, returns a Credential object
-    .NOTES
-    Version     : 0.0.1
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 20250711-0423PM
-    FileName    : get-CredentialsTDO.ps1
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-io
-    Tags        : Powershell,ActiveDirectory,Account,Credential
-    AddedCredit : Michel de Rooij / michel@eightwone.com
-    AddedWebsite: http://eightwone.com
-    AddedTwitter: URL        
-    REVISIONS
-    * 9:02 AM 10/17/2025 pulled pw systemstring conv: test-CredentialsTDO natively accomodatese as ss; add mising wlt for return msg
-    * 1:06 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-    * 3:15 PM 8/8/2025 rejiggered to return a credential object, (orig updated a global vari in host script);  ren get-Credentials821 -> get-821, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-    11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-    .DESCRIPTION
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory
-                
-    .INPUTS
-    None, no piped input.
-    .OUTPUTS
-    System.Object summary of Exchange server descriptors, and service statuses.
-    .EXAMPLE ; 
-    PS> if($Credentials = get-CredentialsTDO){
-    PS>     write-host -foregroundcolor green "Obtained Credential:$($Credentials.Username) (validated against AD)" ; 
-    PS> } else {
-    PS>     write-warning "INVALID CREDENTIALS SPECIFIED!" ; 
-    PS> }; 
-    .LINK
-    https://github.org/tostka/verb-ex2010/
-    #>
-    [CmdletBinding()]
-    [alias('get-Credentials')]
-    PARAM(
-        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
-            [Alias('AdminAccount','logon')]
-            [string]$UserName,
-        [Parameter(HelpMessage = "Account password (securestring)")]
-            [Alias('AdminPassword')]
-            [System.Security.SecureString]$Password
-    ) ;
-    If( -not( $UserName -and $Password)) {
-        TRY {
-		    $Script:Credentials= Get-Credential -UserName ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -Message 'Enter credentials to use'
-            $UserName= $Credentials.UserName
-            #$Password= ($Credentials.Password | ConvertFrom-SecureString)
-            # test-CredentialsTDO() can natively handle securestring pw
-            $Password= $Credentials.Password 
-        }CATCH {
-            $ErrTrapd=$Error[0] ;
-            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-            $smsg += 'No or improper credentials provided'
-            $smsg = "" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            throw $smsg ; 
-        }
-	}
-    $smsg = 'Checking provided credentials'
-    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-    If( test-CredentialsTDO -UserName:$UserName -Password:$Password) {
-        $smsg = 'Credential test-CredentialsTDO:PASS`n(returning Credential object to pipeline)'
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        [System.Management.Automation.PSCredential]$Credentials = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $UserName, $Password
-        $Credentials | write-output ; 
-    } Else {
-        $smsg = 'Credential test-CredentialsTDO:FAIL/INVALID'
-        $smsg = "" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        $false | write-output ; 
-    }
-}
-
-#*------^ get-CredentialsTDO.ps1 ^------
-
-
 #*------v Get-CurrentUserNameTDO.ps1 v------
 function Get-CurrentUserNameTDO{
     <#
@@ -1217,53 +1128,6 @@ function get-DNSServers{
 }
 
 #*------^ get-DNSServers.ps1 ^------
-
-
-#*------v Get-ForestRootNCTDO.ps1 v------
-function Get-ForestRootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-ForestRootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 10:42 AM 10/17/2025 updated CBH to indicate format of the DN returned.
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $FRNC= Get-ForestRootNCTDO
-        PS> $FRNC ; 
-
-            DC=sub,DC=dom,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-ForestRootNC')]
-        PARAM() ;
-        return ([ADSI]'LDAP://RootDSE').rootDomainNamingContext.toString()
-    }
-
-#*------^ Get-ForestRootNCTDO.ps1 ^------
 
 
 #*------v get-FullDomainAccountTDO.ps1 v------
@@ -2162,53 +2026,6 @@ function Get-RestartInfo {
 }
 
 #*------^ Get-RestartInfo.ps1 ^------
-
-
-#*------v Get-RootNCTDO.ps1 v------
-function Get-RootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-RootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 11:50 AM 10/17/2025 updated CBH, incl output DN example
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $NC= Get-RootNC
-        PS> $NC; 
-
-            DC=sub,DC=sub,DC=domain,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-RootNC')]
-        PARAM() ;
-        return ([ADSI]'').distinguishedName.toString()
-    }
-
-#*------^ Get-RootNCTDO.ps1 ^------
 
 
 #*------v get-tsusers.ps1 v------
@@ -10933,59 +10750,6 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 #*------^ summarize-PassStatusHtml.ps1 ^------
 
 
-#*------v test-ADComputerName.ps1 v------
-Function test-ADComputerName{
-    <#
-    .SYNOPSIS
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-ADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-ADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-ADComputerName.ps1 ^------
-
-
 #*------v test-CertificateTDO.ps1 v------
 function test-CertificateTDO {
     <#
@@ -11287,132 +11051,6 @@ function test-Connection-T {
 }
 
 #*------^ test-Connection-T.ps1 ^------
-
-
-#*------v test-CredentialsTDO.ps1 v------
-function test-CredentialsTDO{
-        <#
-        .SYNOPSIS
-        test-CredentialsTDO - tests provided uid+pw cred combo
-        .NOTES
-        Version     : 0.0.
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250711-0423PM
-        FileName    : test-CredentialsTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Account,Credential
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 4:33 PM 10/16/2025 logic fix, self-contained, brought in alt deps; CBH demo1 fix
-        * 12:59 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-        * 1:44 PM 8/8/2025 ren test-Credentials821 -> test-CredentialsTDO, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-        11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-        .DESCRIPTION
-        test-CredentialsTDO - tests provided uid+pw cred combo
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.Object summary of Exchange server descriptors, and service statuses.
-        .EXAMPLE
-        PS> $tcred = get-credential ; 
-        PS> if(test-CredentialsTDO -UserName $tcred.username -Password $tcred.GetNetworkCredential().Password){
-        PS>     write-host -foregroundcolor green "Credential validated" ; 
-        PS> } ; 
-        .LINK
-        https://github.org/tostka/verb-ex2010/
-        #>
-        [CmdletBinding()]
-        [alias('test-Credentials')]
-        PARAM(            
-            [Parameter(HelpMessage = "Account to be tested")]
-                [Alias('Account','logon')]
-                [string]$UserName,
-            [Parameter(Mandatory=$true,HelpMessage = "Account password to be tested (securestring or plain text)")]
-                [Alias('AdminPassword')]
-                #[string]
-                $Password                       
-        ) ;
-        switch ($Password.gettype().fullname){
-            'System.String' {
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-                $PlainTextPassword= $Password ; 
-            }
-            'System.Security.SecureString'{
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( $Password ))
-                $tmpCred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("None",$Password ) ;                
-                #$PlainTextPassword = $Password.GetNetworkCredential().Password 
-                $PlainTextPassword = $tmpcred.GetNetworkCredential().Password ; 
-                remove-variable tmpCred
-            }
-            default{
-                $smsg = "Unrecognized -Password type:$($Password.gettype().fullname)" ; 
-                $smsg += "`nSpecify as either plain text or SecureSTring" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                throw $smsg ; 
-            }
-        }
-        #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-        if(get-command FullPlainTextAccount -ea SilentlyContinue){
-            $FullPlainTextAccount= get-FullDomainAccountTDO -Account $UserName ;
-        }else{
-            #write-warning "missing:FullPlainTextAccount(), skipping account format specification" ; 
-            switch -regex ($username){
-                '(.*)\\(.*)' {
-                    $Parts = $UserName.split('\') ; 
-                    $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "UserName is in Legacy format" ; 
-                    break ; 
-                } ; 
-                '(.*)@(.*)' {
-                    write-host  "Username is in UPN format"  ; 
-                    $FullPlainTextAccount = $UserName ; 
-                    break ; 
-                }
-                default{
-                    if($env:USERDOMAIN){
-                        $FullPlainTextAccount = "$($env:USERDOMAIN)\$($UserName)" ; 
-                        write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
-                    } else{
-                        throw "Unrecognized -Username format:$($Username)" ; 
-                    };
-                    break ;  
-                } ; 
-            } ; 
-        }
-        TRY {
-            if($env:USERDOMAIN -eq $env:COMPUTERNAME){
-                write-host "`$env:USERDOMAIN -eq `$env:COMPUTERNAME: => non-domain-joined, checking Test-LocalCredentialTDO()" ; 
-                $Username = $FullPlainTextAccount.split("\")[-1]
-                if(get-command Test-LocalCredentialTDO){
-                    Return $( Test-LocalCredentialTDO -UserName $Username -Password $PlainTextPassword)
-                }else{
-                    #throw "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  
-                    $smsg = "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  write-host -foregroundcolor yellow $smsg ; 
-                    TRY {Add-Type -AssemblyName System.DirectoryServices.AccountManagement} CATCH {} ; 
-                    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
-                    Return $($DS.ValidateCredentials($UserName, $Password))
-                } ; 
-            }else{
-                $dc= New-Object DirectoryServices.DirectoryEntry( $Null, $FullPlainTextAccount, $PlainTextPassword)
-                If($dc.Name) {
-                    return $true
-                }Else {
-                    Return $false
-                }
-            }
-        }CATCH {
-            Return $false
-        }
-        Return $false        
-    }
-
-#*------^ test-CredentialsTDO.ps1 ^------
 
 
 #*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
@@ -12430,59 +12068,6 @@ function Test-IPAddressInRangeIp6 {
 #*------^ Test-IPAddressInRangeIp6.ps1 ^------
 
 
-#*------v test-isADComputerName.ps1 v------
-Function test-isADComputerName{
-    <#
-    .SYNOPSIS
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-isADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-isADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-isADComputerName.ps1 ^------
-
-
 #*------v test-isComputerDNSRegistered.ps1 v------
 Function test-isComputerDNSRegistered{
     <#
@@ -12503,6 +12088,7 @@ Function test-isComputerDNSRegistered{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:07 PM 3/26/2026 change req to DnsClient (not ad)
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12524,7 +12110,7 @@ Function test-isComputerDNSRegistered{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules DnsClient
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({Resolve-DnsName -Name $PSItem})]
@@ -12557,6 +12143,7 @@ Function test-isComputerNameFQDN{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:10 PM 3/26/2026 rem'd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12578,7 +12165,6 @@ Function test-isComputerNameFQDN{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
         [ValidateLength(6, 253)]
@@ -12612,6 +12198,7 @@ Function test-isComputerNameNetBios{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:12 PM 3/26/2026 remd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12633,7 +12220,6 @@ Function test-isComputerNameNetBios{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateLength(1, 15)]
@@ -12667,6 +12253,7 @@ Function test-isComputerSMBCapable{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:14 PM 3/26/2026 flip req from ad -> NetTCPIP
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12691,7 +12278,7 @@ Function test-isComputerSMBCapable{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules NetTCPIP
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({(Test-NetConnection -ComputerName $PSItem -CommonTCPPort 'SMB').TcpTestSucceeded})]
@@ -13064,6 +12651,8 @@ function Test-Port {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell
     REVISIONS
+    # 9:50 AM 3/24/2026 psv2 doesn't like dbl quoted regex in ValidatePattern (Parameter attributes need to be a constant or a script block.): 
+        flipped to singles.
     # 9:11 AM 1/24/2025 added -ea 0 to the gcm's; expanded gcms; added try/catch to the Net.Sockets.TcpClient code (output friendly error fail); added CBH demo rdp users poll
         ; removed aliases 's' & 'p' (they're already usable as abbrev $server & $port, no other conflicting params ); flip 1st expl to commonly used 3389 (rdp) port; added cmdletbinding (full adv func/verbose support); added alias test-portTDO
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
@@ -13109,7 +12698,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern('^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$')]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -13620,7 +13209,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -13628,8 +13217,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU48DN72DpuKZUbUWFzeHfjpyw
-# rpWgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU36K+xvgDQZc4LA3UVNP2LZet
+# 8zegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13644,9 +13233,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBS2JaFt
-# FI/xoReorqx64CKPWQIeWTANBgkqhkiG9w0BAQEFAASBgKX5ZX5Z0+VUyCk2nYMG
-# 1QIIadN+Ecax6Oo3WHY/kgO81khqAAAPF0Rh5PiWM20BIRb1jmH1pU0efFRc4o35
-# dVmeq6HrsNdcqrWSVkGU0rPW9rn89xg6dYRo8x+g9aWIBIu/rmyapB/5WkYFKfdo
-# GefSL2TtoFwgPq637B2Qn8FN
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSoKFML
+# CumK4sxO3zUS8bbyk4MmeTANBgkqhkiG9w0BAQEFAASBgLU90kE5jGb+ehoDezgt
+# jiAoymAGpfVCpGpSt5FdntuWY/YgqeySDEoEM/cYVgf5fQ/8QD4vtg23drWmdbS1
+# SU9+kuR0wklWJQX0Op0GT9DBhC6ZUlYroM+9Fd6uEiBn30vbr+Ol6c1kTlhT5Orf
+# T2FLlxNmz/IOP3eIz3Ta1WSZ
 # SIG # End signature block

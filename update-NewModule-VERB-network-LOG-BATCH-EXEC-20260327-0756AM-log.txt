@@ -1,0 +1,627 @@
+﻿2026-03-27 07:56:32 INFO:  : #*======v VERB-dev.psm1:VERB-network v======
+2026-03-27 07:56:34 INFO:  : Run: reset-ModulePublishingDirectory -ModuleName VERB-network
+2026-03-27 07:56:34 ##  : 
+#*------v PROCESSING : VERB-network v------
+2026-03-27 07:56:34 INFO:  : Pre-purge (CHANGELOG|README)\.md$ Root dir matches from :
+2026-03-27 07:56:35 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Resource\
+2026-03-27 07:56:35 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Licenses\
+2026-03-27 07:56:36 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Docs\
+2026-03-27 07:56:36 INFO:  : ==C:\sc\VERB-network\CHANGELOG.md:
+2026-03-27 07:56:37 INFO:  : ==C:\sc\VERB-network\README.md:
+2026-03-27 07:56:37 INFO:  : ==C:\sc\VERB-network\Docs\Quick-Start-Installation-and-Example.md:
+2026-03-27 07:56:37 ##  : 
+#*------^ PROCESSING : VERB-network ^------
+2026-03-27 07:56:38 INFO:  : Run: populate-ModulePublishingDirectory -ModuleName VERB-network
+2026-03-27 07:56:38 ##  : 
+#*------v PROCESSING : VERB-network v------
+2026-03-27 07:56:38 INFO:  : Locating (CHANGELOG|README)\.md$ Root dir matches from :
+2026-03-27 07:56:39 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Resource\
+2026-03-27 07:56:39 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Licenses\
+2026-03-27 07:56:40 INFO:  : VERB-network resolved $ModPubPath:C:\sc\VERB-network\VERB-network\
+$ModResPath:C:\sc\VERB-network\Docs\
+2026-03-27 07:56:40 INFO:  : copy-item w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+path                           {C:\sc\VERB-network\CHANGELOG.md, C:\sc\VERB-network\README.md, C:\sc\VERB-network\Docs\Quick-Start-Installation-and-Example.md}                                                                                                               
+destination                    C:\sc\VERB-network\VERB-network\                                                                                                                                                                                                               
+force                          True                                                                                                                                                                                                                                           
+erroraction                    STOP                                                                                                                                                                                                                                           
+verbose                        False                                                                                                                                                                                                                                          
+whatif                         False
+--$pltCI.path:
+C:\sc\VERB-network\CHANGELOG.md
+C:\sc\VERB-network\README.md
+C:\sc\VERB-network\Docs\Quick-Start-Installation-and-Example.md
+2026-03-27 07:56:41 ##  : 
+#*------^ PROCESSING : VERB-network ^------
+2026-03-27 07:56:41 INFO:  : Run: Remove any non-pub garbage cp'd into c:\sc\VERB-network\VERB-network -ModuleName VERB-network
+2026-03-27 07:56:41 INFO:  : Validate updated VERB-network\VERB-network dir contents against Manifest:
+Run: test-modulemanifest -Path C:\sc\VERB-network\VERB-network\VERB-network.psd1
+2026-03-27 07:56:42 INFO:  : NON-Republish pass detected:
+MERGE parm specified as well:`n-Merge Public|Internal|Classes include subdirs module content into updated .psm1
+-Sign updated files.
+-Uninstall/Remove existing profile module
+-Copy new module to profile
+-Confirm: Get-Module -ListAvailable
+-Check/Update existing Psd1 Version
+-Publish-Module
+-Remove existing installed profile module
+-Test Install-Module
+-Test Import-Module
+2026-03-27 07:56:42 INFO:  : -Merge specified...
+2026-03-27 07:56:43 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     VERB-network                                                                                                                                                                                                                                   
+ModuleSourcePath               {c:\sc\VERB-network\Public, c:\sc\VERB-network\Internal}                                                                                                                                                                                       
+ModuleDestinationPath          c:\sc\VERB-network\VERB-network                                                                                                                                                                                                                
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+LogSpec                        {logging, logfile, transcript}                                                                                                                                                                                                                 
+NoAliasExport                                                                                                                                                                                                                                                                 
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+showdebug                      False                                                                                                                                                                                                                                          
+whatif                         False
+2026-03-27 07:56:43 INFO:  : ConvertTo-ModuleMergedTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     VERB-network                                                                                                                                                                                                                                   
+ModuleSourcePath               {c:\sc\VERB-network\Public, c:\sc\VERB-network\Internal}                                                                                                                                                                                       
+ModuleDestinationPath          c:\sc\VERB-network\VERB-network                                                                                                                                                                                                                
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+LogSpec                        {logging, logfile, transcript}                                                                                                                                                                                                                 
+NoAliasExport                                                                                                                                                                                                                                                                 
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+showdebug                      False                                                                                                                                                                                                                                          
+whatif                         False
+2026-03-27 07:56:44 INFO:  : (NON-dyn psm1 detected - purging existing non-CBH content...)
+2026-03-27 07:56:45 INFO:  : Initialize-PSModuleDirectories w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleSourcePath               {c:\sc\VERB-network\Public, c:\sc\VERB-network\Internal}                                                                                                                                                                                       
+ModuleDestinationPath          c:\sc\VERB-network\VERB-network                                                                                                                                                                                                                
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-03-27 07:56:46 INFO:  : 
+#*------v (1/2):C:\sc\VERB-network\Public v------
+2026-03-27 07:56:46 INFO:  : Processing 62 $ComponentScripts files through Remove-AuthenticodeSignature...
+2026-03-27 07:56:47 INFO:  : Processing (1/62):C:\sc\VERB-network\Public\Add-IntToIPv4Address.ps1...
+2026-03-27 07:56:47 INFO:  : Processing (2/62):C:\sc\VERB-network\Public\Connect-PSR.ps1...
+2026-03-27 07:56:48 INFO:  : Processing (3/62):C:\sc\VERB-network\Public\convert-IPAddressToReverseTDO.ps1...
+2026-03-27 07:56:48 INFO:  : Processing (4/62):C:\sc\VERB-network\Public\Disconnect-PSR.ps1...
+2026-03-27 07:56:49 INFO:  : Processing (5/62):C:\sc\VERB-network\Public\get-CertificateChainOfTrust.ps1...
+2026-03-27 07:56:49 INFO:  : Processing (6/62):C:\sc\VERB-network\Public\Get-CurrentUserNameTDO.ps1...
+2026-03-27 07:56:50 INFO:  : Processing (7/62):C:\sc\VERB-network\Public\Get-DnsDkimRecord.ps1...
+2026-03-27 07:56:50 INFO:  : Processing (8/62):C:\sc\VERB-network\Public\get-DNSServers.ps1...
+2026-03-27 07:56:51 INFO:  : Processing (9/62):C:\sc\VERB-network\Public\get-FullDomainAccountTDO.ps1...
+2026-03-27 07:56:51 INFO:  : Processing (10/62):C:\sc\VERB-network\Public\get-IPSettings.ps1...
+2026-03-27 07:56:52 INFO:  : Processing (11/62):C:\sc\VERB-network\Public\Get-NetIPConfigurationLegacy.ps1...
+2026-03-27 07:56:52 INFO:  : Processing (12/62):C:\sc\VERB-network\Public\get-NetworkClass.ps1...
+2026-03-27 07:56:52 INFO:  : Processing (13/62):C:\sc\VERB-network\Public\get-NetworkSubnet.ps1...
+2026-03-27 07:56:53 INFO:  : Processing (14/62):C:\sc\VERB-network\Public\Get-RestartInfo.ps1...
+2026-03-27 07:56:53 INFO:  : Processing (15/62):C:\sc\VERB-network\Public\get-tsusers.ps1...
+2026-03-27 07:56:54 INFO:  : Processing (16/62):C:\sc\VERB-network\Public\get-WebTableTDO.ps1...
+2026-03-27 07:56:54 INFO:  : Processing (17/62):C:\sc\VERB-network\Public\get-whoami.ps1...
+2026-03-27 07:56:55 INFO:  : Processing (18/62):C:\sc\VERB-network\Public\import-CertCERLegacy.ps1...
+2026-03-27 07:56:55 INFO:  : Processing (19/62):C:\sc\VERB-network\Public\Import-CertificateTrustFileTDO.ps1...
+2026-03-27 07:56:56 INFO:  : Processing (20/62):C:\sc\VERB-network\Public\Invoke-BypassPaywall.ps1...
+2026-03-27 07:56:56 INFO:  : Processing (21/62):C:\sc\VERB-network\Public\Invoke-SecurityDialog.ps1...
+2026-03-27 07:56:57 INFO:  : Processing (22/62):C:\sc\VERB-network\Public\New-SelfSignedCertificateTDO.ps1...
+2026-03-27 07:56:57 INFO:  : Processing (23/62):C:\sc\VERB-network\Public\push-TLSLatest.ps1...
+2026-03-27 07:56:58 INFO:  : Processing (24/62):C:\sc\VERB-network\Public\Reconnect-PSR.ps1...
+2026-03-27 07:56:58 INFO:  : Processing (25/62):C:\sc\VERB-network\Public\Resolve-DNSLegacy.ps1...
+2026-03-27 07:56:58 INFO:  : Processing (26/62):C:\sc\VERB-network\Public\Resolve-DnsSenderIDRecords.ps1...
+2026-03-27 07:56:59 INFO:  : Processing (27/62):C:\sc\VERB-network\Public\resolve-networkLocalTDO.ps1...
+2026-03-27 07:56:59 INFO:  : Processing (28/62):C:\sc\VERB-network\Public\resolve-SMTPHeader.ps1...
+2026-03-27 07:57:00 INFO:  : Processing (29/62):C:\sc\VERB-network\Public\resolve-SPFMacros.ps1...
+2026-03-27 07:57:00 INFO:  : Processing (30/62):C:\sc\VERB-network\Public\resolve-SPFMacrosTDO.ps1...
+2026-03-27 07:57:01 INFO:  : Processing (31/62):C:\sc\VERB-network\Public\Resolve-SPFRecord.ps1...
+2026-03-27 07:57:01 INFO:  : Processing (32/62):C:\sc\VERB-network\Public\save-WebDownload.ps1...
+2026-03-27 07:57:02 INFO:  : Processing (33/62):C:\sc\VERB-network\Public\save-WebDownloadCurl.ps1...
+2026-03-27 07:57:02 INFO:  : Processing (34/62):C:\sc\VERB-network\Public\save-WebDownloadDotNet.ps1...
+2026-03-27 07:57:03 INFO:  : Processing (35/62):C:\sc\VERB-network\Public\save-WebFaveIcon.ps1...
+2026-03-27 07:57:03 INFO:  : Processing (36/62):C:\sc\VERB-network\Public\Send-EmailNotif.ps1...
+2026-03-27 07:57:04 INFO:  : Processing (37/62):C:\sc\VERB-network\Public\Set-CertificatesInCAHierarchyTDO.ps1...
+2026-03-27 07:57:04 INFO:  : Processing (38/62):C:\sc\VERB-network\Public\show-SerFilterLogFormattedOutput.ps1...
+2026-03-27 07:57:05 INFO:  : Processing (39/62):C:\sc\VERB-network\Public\show-SerMtaLogFormattedOutput.ps1...
+2026-03-27 07:57:05 INFO:  : Processing (40/62):C:\sc\VERB-network\Public\split-DnsTXTRecord.ps1...
+2026-03-27 07:57:06 INFO:  : Processing (41/62):C:\sc\VERB-network\Public\summarize-PassStatus.ps1...
+2026-03-27 07:57:06 INFO:  : Processing (42/62):C:\sc\VERB-network\Public\summarize-PassStatusHtml.ps1...
+2026-03-27 07:57:07 INFO:  : Processing (43/62):C:\sc\VERB-network\Public\test-CertificateTDO.ps1...
+2026-03-27 07:57:07 INFO:  : Processing (44/62):C:\sc\VERB-network\Public\test-Connection-T.ps1...
+2026-03-27 07:57:08 INFO:  : Processing (45/62):C:\sc\VERB-network\Public\Test-DnsDkimCnameToTxtKeyTDO.ps1...
+2026-03-27 07:57:08 INFO:  : Processing (46/62):C:\sc\VERB-network\Public\test-IpAddressCidrRange.ps1...
+2026-03-27 07:57:09 INFO:  : Processing (47/62):C:\sc\VERB-network\Public\Test-IPAddressInRange.ps1...
+2026-03-27 07:57:09 INFO:  : Processing (48/62):C:\sc\VERB-network\Public\Test-IPAddressInRangeIp6.ps1...
+2026-03-27 07:57:10 INFO:  : Processing (49/62):C:\sc\VERB-network\Public\test-isComputerDNSRegistered.ps1...
+2026-03-27 07:57:10 INFO:  : Processing (50/62):C:\sc\VERB-network\Public\test-isComputerNameFQDN.ps1...
+2026-03-27 07:57:11 INFO:  : Processing (51/62):C:\sc\VERB-network\Public\test-isComputerNameNetBios.ps1...
+2026-03-27 07:57:11 INFO:  : Processing (52/62):C:\sc\VERB-network\Public\test-isComputerPSRemoteable.ps1...
+2026-03-27 07:57:12 INFO:  : Processing (53/62):C:\sc\VERB-network\Public\test-isRDPSession.ps1...
+2026-03-27 07:57:12 INFO:  : Processing (54/62):C:\sc\VERB-network\Public\Test-LocalCredentialTDO.ps1...
+2026-03-27 07:57:13 INFO:  : Processing (55/62):C:\sc\VERB-network\Public\test-LocalDrivePathTDO.ps1...
+2026-03-27 07:57:13 INFO:  : Processing (56/62):C:\sc\VERB-network\Public\Test-NetAddressIpv4TDO.ps1...
+2026-03-27 07:57:13 INFO:  : Processing (57/62):C:\sc\VERB-network\Public\Test-NetAddressIpv6TDO.ps1...
+2026-03-27 07:57:14 INFO:  : Processing (58/62):C:\sc\VERB-network\Public\Test-Port.ps1...
+2026-03-27 07:57:14 INFO:  : Processing (59/62):C:\sc\VERB-network\Public\test-PrivateIP.ps1...
+2026-03-27 07:57:15 INFO:  : Processing (60/62):C:\sc\VERB-network\Public\Test-RDP.ps1...
+2026-03-27 07:57:15 INFO:  : Processing (61/62):C:\sc\VERB-network\Public\test-RDPDriveRedirectionTDO.ps1...
+2026-03-27 07:57:16 INFO:  : Processing (62/62):C:\sc\VERB-network\Public\update-SecurityProtocolTDO.ps1...
+2026-03-27 07:57:16 INFO:  : 
+#*------v (2/2):C:\sc\VERB-network\Internal v------
+2026-03-27 07:57:17 INFO:  : Processing 2 $ComponentScripts files through Remove-AuthenticodeSignature...
+2026-03-27 07:57:17 INFO:  : Processing (1/2):C:\sc\VERB-network\Internal\Convert-Int64toIP.ps1...
+2026-03-27 07:57:18 INFO:  : Processing (2/2):C:\sc\VERB-network\Internal\convert-IPtoInt64.ps1...
+2026-03-27 07:57:18 INFO:  : (Updating Psm1 Export-ModuleMember -Function to reflect Public modules)
+2026-03-27 07:57:19 INFO:  : Adding:FooterBlock...
+2026-03-27 07:57:19 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModPsdPath                     c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP                                                                                                                                                                                          
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+NoTest                         True                                                                                                                                                                                                                                           
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:20 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2026-03-27 07:57:20 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP                                                                                                                                                                                          
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+verbose                        False
+2026-03-27 07:57:21 INFO:  : (resolved Module attributes:
+$ModuleName:	VERB-network
+$ModRoot:	c:\sc\VERB-network
+$ModPsd1:	c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP
+$ModPsm1:	c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP
+$ModTestPs1:	c:\sc\VERB-network\Tests\VERB-network.tests.ps1
+$psd1Vers:	5.9.0
+$psd1guid:	e4ae475a-9185-49d3-a3b5-50c06a4f323a)
+2026-03-27 07:57:21 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP                                                                                                                                                                                          
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:22 INFO:  : (Version already updated to match)
+2026-03-27 07:57:22 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:23 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:23 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:24 INFO:  : #*======^ confirm-ModulePsd1Version: c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP ^======
+2026-03-27 07:57:24 INFO:  : (confirm-ModulePsd1Version:Success)
+2026-03-27 07:57:24 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP                                                                                                                                                                                          
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:25 WARNING:  : In:c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP
+Version present:(5.8.0)
+*does not* properly match:5.9.0
+FORCING MATCHING UPDATE!
+2026-03-27 07:57:26 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:27 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:27 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:27 INFO:  : #*======^ confirm-ModulePsm1Version: c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP ^======
+2026-03-27 07:57:28 INFO:  : (confirm-ModulePsm1Version:Success)
+2026-03-27 07:57:28 INFO:  : (-NoTest: skipping confirm-ModuleTestPs1Guid)
+2026-03-27 07:57:29 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP                                                                                                                                                                                          
+Module                         c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP                                                                                                                                                                                          
+Pester                         (SKIPPED)                                                                                                                                                                                                                                      
+Guid                           (SKIPPED)                                                                                                                                                                                                                                      
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:29 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:30 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP                                                                                                                                                                                          
+Module                         c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP                                                                                                                                                                                          
+Pester                         (SKIPPED)                                                                                                                                                                                                                                      
+Guid                           (SKIPPED)                                                                                                                                                                                                                                      
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:30 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2026-03-27 07:57:31 INFO:  : (confirm-ModuleBuildSync:Success)
+2026-03-27 07:57:31 INFO:  : Test-ModuleTMPFiles w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleNamePSM1Path             c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:31 INFO:  : #*======v Test-ModuleTMPFiles: c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP v======
+2026-03-27 07:57:32 INFO:  : 
+Psm1:c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP
+Psd1:c:\sc\VERB-network\VERB-network\VERB-network.psd1_TMP
+2026-03-27 07:57:32 INFO:  : Test-ModuleManifest:PASSED
+2026-03-27 07:57:33 INFO:  : Creating Testable c:\sc\VERB-network\VERB-network\58bdb9bd-2dba-47d4-80c2-5392e49f50c9.psm1
+ to validate c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP will Import-Module
+2026-03-27 07:57:33 INFO:  : Ipmo: PASSED
+2026-03-27 07:57:34 INFO:  : (remove-module -name c:\sc\VERB-network\VERB-network\58bdb9bd-2dba-47d4-80c2-5392e49f50c9.psm1 -force)
+2026-03-27 07:57:34 INFO:  : (remove-item -path c:\sc\VERB-network\VERB-network\58bdb9bd-2dba-47d4-80c2-5392e49f50c9.psm1 -ErrorAction SilentlyContinue ; 
+2026-03-27 07:57:35 INFO:  : (remove-item -path c:\sc\VERB-network\VERB-network\58bdb9bd-2dba-47d4-80c2-5392e49f50c9.psd1 -ErrorAction SilentlyContinue ; 
+2026-03-27 07:57:35 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       58bdb9bd-2dba-47d4-80c2-5392e49f50c9                                                                                                                                                                                                           
+Module                         58bdb9bd-2dba-47d4-80c2-5392e49f50c9                                                                                                                                                                                                           
+Valid                          False
+2026-03-27 07:57:35 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:36 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       58bdb9bd-2dba-47d4-80c2-5392e49f50c9                                                                                                                                                                                                           
+Module                         58bdb9bd-2dba-47d4-80c2-5392e49f50c9                                                                                                                                                                                                           
+Valid                          True
+2026-03-27 07:57:36 INFO:  : #*======^ Test-ModuleTMPFiles: c:\sc\VERB-network\VERB-network\VERB-network.psm1_TMP ^======
+2026-03-27 07:57:37 INFO:  : #*======^ ConvertTo-ModuleMergedTDO: ^======
+2026-03-27 07:57:37 INFO:  : (Test-ModuleManifest:PASSED)
+2026-03-27 07:57:38 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\VERB-network\Tests\VERB-network.tests.ps1
+2026-03-27 07:57:38 INFO:  : confirm-ModuleBuildSync w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModPsdPath                     C:\sc\VERB-network\VERB-network\VERB-network.psd1                                                                                                                                                                                              
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:39 INFO:  : (test-path confirms $ModPsm1 & $ModTestPs1)
+2026-03-27 07:57:39 INFO:  : Import-PowerShellDataFile w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\VERB-network\VERB-network\VERB-network.psd1                                                                                                                                                                                              
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+verbose                        False
+2026-03-27 07:57:40 INFO:  : (resolved Module attributes:
+$ModuleName:	VERB-network
+$ModRoot:	c:\sc\VERB-network
+$ModPsd1:	C:\sc\VERB-network\VERB-network\VERB-network.psd1
+$ModPsm1:	C:\sc\VERB-network\VERB-network\VERB-network.psm1
+$ModTestPs1:	c:\sc\VERB-network\Tests\VERB-network.tests.ps1
+$psd1Vers:	5.9.0
+$psd1guid:	e4ae475a-9185-49d3-a3b5-50c06a4f323a)
+2026-03-27 07:57:40 INFO:  : confirm-ModulePsd1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\VERB-network\VERB-network\VERB-network.psd1                                                                                                                                                                                              
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:40 INFO:  : (Version already updated to match)
+2026-03-27 07:57:41 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:41 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:42 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:42 INFO:  : #*======^ confirm-ModulePsd1Version: C:\sc\VERB-network\VERB-network\VERB-network.psd1 ^======
+2026-03-27 07:57:43 INFO:  : (confirm-ModulePsd1Version:Success)
+2026-03-27 07:57:43 INFO:  : confirm-ModulePsm1Version w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           C:\sc\VERB-network\VERB-network\VERB-network.psm1                                                                                                                                                                                              
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:44 INFO:  : (Version already updated to match)
+2026-03-27 07:57:44 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:44 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:45 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:45 INFO:  : #*======^ confirm-ModulePsm1Version: C:\sc\VERB-network\VERB-network\VERB-network.psm1 ^======
+2026-03-27 07:57:46 INFO:  : (confirm-ModulePsm1Version:Success)
+2026-03-27 07:57:46 INFO:  : Checking sync of Psd1 module guid to the Pester Test Script: c:\sc\VERB-network\Tests\VERB-network.tests.ps1
+2026-03-27 07:57:47 INFO:  : confirm-ModuleTestPs1Guid w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\Tests\VERB-network.tests.ps1                                                                                                                                                                                                
+RequiredGuid                   e4ae475a-9185-49d3-a3b5-50c06a4f323a                                                                                                                                                                                                           
+whatif                         False                                                                                                                                                                                                                                          
+verbose                        False
+2026-03-27 07:57:47 INFO:  : (Guid  already updated to match)
+2026-03-27 07:57:48 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Guid                           e4ae475a-9185-49d3-a3b5-50c06a4f323a                                                                                                                                                                                                           
+Valid                          False
+2026-03-27 07:57:48 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:48 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Guid                           e4ae475a-9185-49d3-a3b5-50c06a4f323a                                                                                                                                                                                                           
+Valid                          True
+2026-03-27 07:57:49 INFO:  : (confirm-ModuleTestPs1Guid:Success)
+2026-03-27 07:57:49 INFO:  : $objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       C:\sc\VERB-network\VERB-network\VERB-network.psd1                                                                                                                                                                                              
+Module                         C:\sc\VERB-network\VERB-network\VERB-network.psm1                                                                                                                                                                                              
+Pester                         c:\sc\VERB-network\Tests\VERB-network.tests.ps1                                                                                                                                                                                                
+Guid                           e4ae475a-9185-49d3-a3b5-50c06a4f323a                                                                                                                                                                                                           
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          False
+2026-03-27 07:57:50 INFO:  : (SET:$objReport.Valid = $true ;)
+2026-03-27 07:57:50 INFO:  : (PIPELINE:New-Object PSObject -Property $objReport | write-output)
+$objReport
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Manifest                       C:\sc\VERB-network\VERB-network\VERB-network.psd1                                                                                                                                                                                              
+Module                         C:\sc\VERB-network\VERB-network\VERB-network.psm1                                                                                                                                                                                              
+Pester                         c:\sc\VERB-network\Tests\VERB-network.tests.ps1                                                                                                                                                                                                
+Guid                           e4ae475a-9185-49d3-a3b5-50c06a4f323a                                                                                                                                                                                                           
+Version                        5.9.0                                                                                                                                                                                                                                          
+Valid                          True
+2026-03-27 07:57:51 INFO:  : #*======^ confirm-ModuleBuildSync:  ^======
+2026-03-27 07:57:51 INFO:  : (confirm-ModuleBuildSync:Success)
+2026-03-27 07:57:52 INFO:  : Signing appropriate files...
+2026-03-27 07:57:52 INFO:  : set-AuthenticodeSignatureTDO w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+file                           {C:\sc\VERB-network\rebuild-module.ps1, C:\sc\VERB-network\requirements.psd1, C:\sc\VERB-network\Tests\PPoShScriptingStyle.psd1, C:\sc\VERB-network\Tests\ToddomationScriptingStyle-medium.psd1...}                                            
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-03-27 07:57:53 INFO:  : Removing existing profile VERB-network content...
+2026-03-27 07:57:53 INFO:  : Uninstall-ModuleForce w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+ModuleName                     VERB-network                                                                                                                                                                                                                                   
+Verbose                        False                                                                                                                                                                                                                                          
+whatif                         False
+2026-03-27 07:57:57 INFO:  : 
+#*------v Uninstall PSGet Mod:verb-Network:v5.8.0 v------
+2026-03-27 07:58:21 INFO:  : 
+#*------^ Uninstall PSGet Mod:verb-Network:v5.8.0 ^------
+2026-03-27 07:58:21 INFO:  : (Processing $env:PSModulePath paths, for surviving locked copies of VERB-network to *manually* purge...)
+2026-03-27 07:58:22 INFO:  : Checking: VERB-network below: C:\Users\kadritss\Documents\WindowsPowerShell\Modules...
+2026-03-27 07:58:22 INFO:  : Checking: VERB-network below: C:\ProgramData\Boxstarter...
+2026-03-27 07:58:23 INFO:  : Checking: VERB-network below: C:\Program Files\WindowsPowerShell\Modules...
+2026-03-27 07:58:23 INFO:  : Checking: VERB-network below: C:\WINDOWS\system32\WindowsPowerShell\v1.0\Modules...
+2026-03-27 07:58:23 INFO:  : Checking: VERB-network below: C:\Program Files (x86)\AutoIt3\AutoItX...
+2026-03-27 07:58:24 INFO:  : Copying module to profile (net of .git & .vscode dirs, and backed up content)...
+2026-03-27 07:58:24 INFO:  : $srcFiles:post-filter out:
+\\(Package|Tests|logs)\\|(\.ps[dm]1_(\d+-\d+[AP]M|TMP)|-LOG-BATCH-EXEC-\d+-\d+[AP]M-log\.txt|\\(fingerprint|Psd1filelist))$
+2026-03-27 07:58:25 INFO:  : Discovered mod-copy files ($srcFiles.fullname):w
+C:\sc\VERB-network\verb-Network\CHANGELOG.md
+C:\sc\VERB-network\verb-Network\LICENSE.txt
+C:\sc\VERB-network\verb-Network\Quick-Start-Installation-and-Example.md
+C:\sc\VERB-network\verb-Network\README.md
+C:\sc\VERB-network\verb-Network\verb-Network.psd1
+C:\sc\VERB-network\verb-Network\verb-Network.psm1
+2026-03-27 07:58:25 INFO:  : Non-Pre-existing:$to:C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network
+Pre-creating before copy...
+2026-03-27 07:58:26 INFO:  : Mode   LastWriteTime        Length Name        
+----   -------------        ------ ----        
+d----- 3/27/2026 7:58:26 AM        VERB-network
+2026-03-27 07:58:26 INFO:  : -Merge:exclude $MergeBuildExcl \\(Public|Internal|External|Private)\\.*.ps1$ files from temp build copy
+2026-03-27 07:58:27 INFO:  : Recursively remove empty subdirs below C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network...
+2026-03-27 07:58:27 INFO:  : Move/Flatten Resource etc files into root of temp Build dir...
+2026-03-27 07:58:28 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network COPY of Quick-Start-Installation-and-Example.md
+2026-03-27 07:58:28 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network COPY of CHANGELOG.md
+2026-03-27 07:58:29 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network COPY of LICENSE.txt
+2026-03-27 07:58:29 INFO:  : Unable to locate a problematic temp mod dir C:\Users\kadritss\Documents\WindowsPowerShell\Modules\VERB-network\VERB-network COPY of README.md
+2026-03-27 07:58:30 INFO:  : copy/Flatten Resource etc files into source root c:\sc\VERB-network\VERB-network dir...
+2026-03-27 07:58:30 INFO:  : Resolved $ModPsdPath:
+C:\sc\VERB-network\VERB-network\VERB-network.psd1
+2026-03-27 07:58:31 INFO:  : 
+==Verifying CU:Mods\VERB-network\VERB-network\Quick-Start-Installation-and-Example.md:
+2026-03-27 07:58:31 INFO:  : 
+==Verifying CU:Mods\VERB-network\VERB-network\CHANGELOG.md:
+2026-03-27 07:58:31 INFO:  : 
+==Verifying CU:Mods\VERB-network\VERB-network\LICENSE.txt:
+2026-03-27 07:58:32 INFO:  : 
+==Verifying CU:Mods\VERB-network\VERB-network\README.md:
+2026-03-27 07:58:32 INFO:  : Running pre-Publish-Module .psd1 test:
+Test-ModuleManifest -path C:\sc\VERB-network\VERB-network\VERB-network.psd1
+2026-03-27 07:58:33 INFO:  : (Test-ModuleManifest:PASSED)
+2026-03-27 07:58:33 INFO:  : (Profiling Repo: get-PSRepository -name lyncRepo...)
+2026-03-27 07:58:34 INFO:  : 
+Publish-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           VERB-network                                                                                                                                                                                                                                   
+Repository                     lyncRepo                                                                                                                                                                                                                                       
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+Verbose                        True                                                                                                                                                                                                                                           
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+errorVariable                  pbmo_Err                                                                                                                                                                                                                                       
+whatif                         False
+2026-03-27 07:58:48 WARNING:  :  FOUND $pbmo_Err: import-module HAD ERRORS! (no action, could be non-impacting)
+2026-03-27 07:58:49 WARNING:  :  Publish-Module PBMO UNDEFINED ERROR! System.Management.Automation.StopUpstreamCommandsException: System error.     at Microsoft.PowerShell.Commands.SelectObjectCommand.ProcessRecord()     at System.Management.Automation.CommandProcessor.ProcessRecord() (But PublishModule doesn't bother to return a functional Error object with an Exception, so we can't trust/parse or act on it. Just echo)
+2026-03-27 07:58:50 INFO:  : Waiting for:find-module -name VERB-network -Repository lyncRepo ...
+2026-03-27 07:58:52 INFO:  : Install-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           VERB-network                                                                                                                                                                                                                                   
+Repository                     lyncRepo                                                                                                                                                                                                                                       
+RequiredVersion                5.9.0                                                                                                                                                                                                                                          
+scope                          CurrentUser                                                                                                                                                                                                                                    
+force                          True                                                                                                                                                                                                                                           
+AllowClobber                   True                                                                                                                                                                                                                                           
+errorVariable                  ismo_Err                                                                                                                                                                                                                                       
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+whatif                         False
+2026-03-27 07:58:57 INFO:  : Testing Module:Import-Module w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Name                           VERB-network                                                                                                                                                                                                                                   
+ErrorAction                    Stop                                                                                                                                                                                                                                           
+errorVariable                  ipmo_Err                                                                                                                                                                                                                                       
+force                          True                                                                                                                                                                                                                                           
+verbose                        True
+2026-03-27 07:58:58 INFO:  : Retrieving matching Repo .nupkg file:
+gci \\lynmsv10\lync_fs\scripts\sc\VERB-network.5.9.0.nupkgl..
+2026-03-27 07:58:59 INFO:  : Proper updated .nupkg file found:VERB-network.5.9.0.nupkg, copying to local Pkg directory.
+2026-03-27 07:59:00 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\Package                                                                                                                                                                                                                     
+Include                        VERB-network*.nupkg                                                                                                                                                                                                                            
+Pattern                                                                                                                                                                                                                                                                       
+FilterOn                       CreationTime                                                                                                                                                                                                                                   
+Keep                           2                                                                                                                                                                                                                                              
+KeepToday                      True                                                                                                                                                                                                                                           
+verbose                        True                                                                                                                                                                                                                                           
+whatif                         False
+2026-03-27 07:59:00 INFO:  : remove-UnneededFileVariants w
+Name                           Value                                                                                                                                                                                                                                          
+----                           -----                                                                                                                                                                                                                                          
+Path                           c:\sc\VERB-network\Tests                                                                                                                                                                                                                       
+Include                        ScriptAnalyzer-Results-*.xml                                                                                                                                                                                                                   
+Pattern                                                                                                                                                                                                                                                                       
+FilterOn                       CreationTime                                                                                                                                                                                                                                   
+Keep                           4                                                                                                                                                                                                                                              
+KeepToday                      True                                                                                                                                                                                                                                           
+verbose                        True                                                                                                                                                                                                                                           
+whatif                         False
+2026-03-27 07:59:01 INFO:  : 
+---------------------------------------------------------------------------------
+Processing completed: VERB-network :: c:\sc\VERB-network
+- Script is currently installed (from PsRep: with scope:CurrentUser, under TORO\kadritss profile
+
+- To update other scopes/accounts on same machine, or install on other machines:
+    1. Uninstall current module copies:
+
+        Uninstall-Module -Name VERB-network) -AllVersion -whatif ;
+
+    2. Install the current version (or higher) from the Repo:lyncRepo:
+
+        install-Module -name VERB-network -Repository lyncRepo -RequiredVersion 5.9.0 -scope currentuser -whatif ;
+
+    3. Reimport the module with -force, to ensure the current installed verison is loaded:
+
+        import-Module -name VERB-network -force -verbose ;
+
+#-=-=-Stacked list for the above: CURRENTUSER=-=-=-=-=-=
+$whatif=$false ;  $tScop = 'CurrentUser' ; $tMod = 'VERB-network' ; $tVer = '5.9.0' ;
+if($IsCoreCLR){
+    write-warning "WARNING YOU'RE INSTALLING INTO POWERSHELLCORE (7+)!
+THE MODULE WILL GO INTO \DOCS\POWERSHELL\MODULES
+(vs \DOCS\WINDOWSPOWERSHELL\MODULES)!" ; 
+    $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+    if ($bRet.ToUpper() -eq "YYY") {} else {WRITE-WARNING "HALTING!" ; BREAK} ; 
+} ; 
+TRY {
+    switch($tScop){
+        'CurrentUser'{$ModPath = "$(split-path $profile)\Modules\$($tmod)" }
+        'AllUsers' {$ModPath = "$($env:ProgramFiles)\WindowsPowerShell\Modules)\$($tmod)"} 
+    } ;
+    if($Repository = (Get-PSRepository -Name $localPSRepo -ea 'STOP').name){
+        rmo -Name $tmod -ea 0 ;
+        Uninstall-Module -Name $tmod -AllVersion -force -ea 0 -whatif:$($whatif);
+        gi -path $ModPath -ea 0 |ri -Recurse -force -verbose  -whatif:$($whatif) ;
+        if($thisVers = find-module -name $tmod -Repository $Repository -RequiredVersion $tVer){
+            $thisvers  | ft -a Name,Version,Repository ; 
+            $thisVers | install-Module -scope $tScop -Force -AllowClobber -ea 'STOP' -whatif:$($whatif) ;
+        }else {
+            throw "Unable to:find-module -name $($tmod) -Repository $($Repository) -RequiredVersion $($tVer)" ; 
+            break ; 
+        } ; 
+        rmo -Name $tmod -force -ea 0 ;
+        ipmo -name $tmod -force -verbose -ea 'STOP'  ;
+        gmo -name $tmod | ? version -ne $tVer | rmo -Force -Verbose ; 
+        gmo -name $tmod -list ;
+    } else {
+        throw "Unable to resolve `lyncRepo to a configured local PSRepository" ;
+    } ;
+} CATCH {
+    $ErrTrapd=$Error[0] ;
+    $smsg = "
+$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+} ;
+#-=-=-=-=-=-=-=-=
+#-=-=-Stacked list for the above: ALLUSERS=-=-=-=-=-=
+$whatif=$false ; $tScop = 'AllUsers' ; $tMod = 'VERB-network' ; $tVer = '5.9.0' ;  
+if($IsCoreCLR){
+    write-warning "WARNING YOU'RE INSTALLING INTO POWERSHELLCORE (7+)!
+THE MODULE WILL GO INTO \DOCS\POWERSHELL\MODULES
+(vs \DOCS\WINDOWSPOWERSHELL\MODULES)!" ; 
+    $bRet=Read-Host "Enter YYY to continue. Anything else will exit"  ; 
+    if ($bRet.ToUpper() -eq "YYY") {} else {WRITE-WARNING "HALTING!" ; BREAK} ; 
+} ; 
+TRY {
+    switch($tScop){
+        'CurrentUser'{$ModPath = "$(split-path $profile)\Modules\$($tmod)" }
+        'AllUsers' {$ModPath = "$($env:ProgramFiles)\WindowsPowerShell\Modules)\$($tmod)"} 
+    } ;
+    if($Repository = (Get-PSRepository -Name $localPSRepo -ea 'STOP').name){
+        rmo -Name $tmod -ea 0 ;
+        Uninstall-Module -Name $tmod -AllVersion -force -ea 0 -whatif:$($whatif);
+        gi -path $ModPath -ea 0 |ri -Recurse -force -verbose  -whatif:$($whatif) ;
+        if($thisVers = find-module -name $tmod -Repository $Repository -RequiredVersion $tVer){
+            $thisvers  | ft -a Name,Version,Repository ; 
+            $thisVers | install-Module -scope $tScop -Force -AllowClobber -ea 'STOP' -whatif:$($whatif) ;
+        }else {
+            throw "Unable to:find-module -name $($tmod) -Repository $($Repository) -RequiredVersion $($tVer)" ; 
+            break ; 
+        } ; 
+        rmo -Name $tmod -force -ea 0 ;
+        ipmo -name $tmod -force -verbose -ea 'STOP'  ;
+        gmo -name $tmod | ? version -ne $tVer | rmo -Force -Verbose ; 
+        gmo -name $tmod -list ;
+    } else {
+        throw "Unable to resolve `lyncRepo to a configured local PSRepository" ;
+    } ;
+} CATCH {
+    $ErrTrapd=$Error[0] ;
+    $smsg = "
+$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+} ;
+#-=-=-=-=-=-=-=-=
+
+- You may also want to run the configured Pester Tests of the new script:
+
+        . c:\sc\VERB-network\Tests\VERB-network.tests.ps1
+
+Full Processing Details can be found in:
+
+c:\scripts\logs\update-NewModule-VERB-network-LOG-BATCH-EXEC-20260327-0756AM-log.txt
+
+---------------------------------------------------------------------------------
+
+2026-03-27 07:59:01 INFO:  : 
+(Most recent processing log can be found at:c:\sc\VERB-network\update-NewModule-VERB-network-LOG-BATCH-EXEC-20260327-0756AM-log.txt)
+(perm copy stored at:c:\scripts\logs\update-NewModule-VERB-network-LOG-BATCH-EXEC-20260327-0756AM-log.txt
