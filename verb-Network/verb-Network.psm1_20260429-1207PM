@@ -1,11 +1,11 @@
-﻿# verb-Network.psm1
+﻿# VERB-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.6.0.0
+Version     : 5.9.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -584,95 +584,6 @@ Function get-CertificateChainOfTrust {
 #*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
-#*------v get-CredentialsTDO.ps1 v------
-function get-CredentialsTDO{
-    <#
-    .SYNOPSIS
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory, returns a Credential object
-    .NOTES
-    Version     : 0.0.1
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 20250711-0423PM
-    FileName    : get-CredentialsTDO.ps1
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-io
-    Tags        : Powershell,ActiveDirectory,Account,Credential
-    AddedCredit : Michel de Rooij / michel@eightwone.com
-    AddedWebsite: http://eightwone.com
-    AddedTwitter: URL        
-    REVISIONS
-    * 9:02 AM 10/17/2025 pulled pw systemstring conv: test-CredentialsTDO natively accomodatese as ss; add mising wlt for return msg
-    * 1:06 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-    * 3:15 PM 8/8/2025 rejiggered to return a credential object, (orig updated a global vari in host script);  ren get-Credentials821 -> get-821, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-    11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-    .DESCRIPTION
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory
-                
-    .INPUTS
-    None, no piped input.
-    .OUTPUTS
-    System.Object summary of Exchange server descriptors, and service statuses.
-    .EXAMPLE ; 
-    PS> if($Credentials = get-CredentialsTDO){
-    PS>     write-host -foregroundcolor green "Obtained Credential:$($Credentials.Username) (validated against AD)" ; 
-    PS> } else {
-    PS>     write-warning "INVALID CREDENTIALS SPECIFIED!" ; 
-    PS> }; 
-    .LINK
-    https://github.org/tostka/verb-ex2010/
-    #>
-    [CmdletBinding()]
-    [alias('get-Credentials')]
-    PARAM(
-        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
-            [Alias('AdminAccount','logon')]
-            [string]$UserName,
-        [Parameter(HelpMessage = "Account password (securestring)")]
-            [Alias('AdminPassword')]
-            [System.Security.SecureString]$Password
-    ) ;
-    If( -not( $UserName -and $Password)) {
-        TRY {
-		    $Script:Credentials= Get-Credential -UserName ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -Message 'Enter credentials to use'
-            $UserName= $Credentials.UserName
-            #$Password= ($Credentials.Password | ConvertFrom-SecureString)
-            # test-CredentialsTDO() can natively handle securestring pw
-            $Password= $Credentials.Password 
-        }CATCH {
-            $ErrTrapd=$Error[0] ;
-            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-            $smsg += 'No or improper credentials provided'
-            $smsg = "" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            throw $smsg ; 
-        }
-	}
-    $smsg = 'Checking provided credentials'
-    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-    If( test-CredentialsTDO -UserName:$UserName -Password:$Password) {
-        $smsg = 'Credential test-CredentialsTDO:PASS`n(returning Credential object to pipeline)'
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        [System.Management.Automation.PSCredential]$Credentials = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $UserName, $Password
-        $Credentials | write-output ; 
-    } Else {
-        $smsg = 'Credential test-CredentialsTDO:FAIL/INVALID'
-        $smsg = "" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        $false | write-output ; 
-    }
-}
-
-#*------^ get-CredentialsTDO.ps1 ^------
-
-
 #*------v Get-CurrentUserNameTDO.ps1 v------
 function Get-CurrentUserNameTDO{
     <#
@@ -1217,53 +1128,6 @@ function get-DNSServers{
 }
 
 #*------^ get-DNSServers.ps1 ^------
-
-
-#*------v Get-ForestRootNCTDO.ps1 v------
-function Get-ForestRootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-ForestRootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 10:42 AM 10/17/2025 updated CBH to indicate format of the DN returned.
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $FRNC= Get-ForestRootNCTDO
-        PS> $FRNC ; 
-
-            DC=sub,DC=dom,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-ForestRootNC')]
-        PARAM() ;
-        return ([ADSI]'LDAP://RootDSE').rootDomainNamingContext.toString()
-    }
-
-#*------^ Get-ForestRootNCTDO.ps1 ^------
 
 
 #*------v get-FullDomainAccountTDO.ps1 v------
@@ -2162,53 +2026,6 @@ function Get-RestartInfo {
 }
 
 #*------^ Get-RestartInfo.ps1 ^------
-
-
-#*------v Get-RootNCTDO.ps1 v------
-function Get-RootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-RootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 11:50 AM 10/17/2025 updated CBH, incl output DN example
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $NC= Get-RootNC
-        PS> $NC; 
-
-            DC=sub,DC=sub,DC=domain,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-RootNC')]
-        PARAM() ;
-        return ([ADSI]'').distinguishedName.toString()
-    }
-
-#*------^ Get-RootNCTDO.ps1 ^------
 
 
 #*------v get-tsusers.ps1 v------
@@ -3280,6 +3097,218 @@ function Invoke-SecurityDialog {
 #*------^ Invoke-SecurityDialog.ps1 ^------
 
 
+#*------v New-SelfSignedCertificateTDO.ps1 v------
+function New-SelfSignedCertificateTDO {
+    <#
+    .SYNOPSIS
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2022-
+    FileName    : New-SelfSignedCertificateTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/powershell
+    Tags        : Powershell,AzureAD,Authentication,Certificate,CertificateAuthentication
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
+    * 3:45 PM 6/23/2023 pulled req: verb-AAD 
+    * 2:54 PM 6/13/2022 debugged, functional
+    .DESCRIPTION
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    
+    => renamed copy of prior New-AADAppAuthCertificate
+    
+    .PARAMETER DnsName
+    Certificate DNSName (AppFQDN)[-DnsName server.domain.com]
+    .PARAMETER CertStoreLocation
+    Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']
+    .PARAMETER StartDate
+    New certificate StartDate
+    .PARAMETER EndDate
+    New certificate EndDate
+    .PARAMETER Whatif
+    Parameter to run a Test no-change pass [-Whatif switch]
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    System.Boolean
+    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    .EXAMPLE
+    PS> $pltNAAC=[ordered]@{
+    PS>     DnsName=$AppFqDN ;
+    PS>     CertStoreLocation = $certStore ;
+    PS>     EndDate=(get-date ).addyears(3) ;
+    PS>     StartDate = (get-date ) ; 
+    PS>     verbose = $($verbose) ; 
+    PS>     whatif = $($whatif) ;
+    PS> } ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> if($bREt.Valid){
+    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS> } else { 
+    PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
+    PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+    PS>     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>     throw $smsg ; 
+    PS>     break ; 
+    PS> } ;     
+    Splatted demo with whatif & verbose, gens cert, exports pfx, provides raw content of cert (for mounting on appreg), and runs cmd to add cert to existing AAD Registered App.
+    .LINK
+    https://github.com/tostka/verb-XXX
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    [ name related topic(one keyword per topic), or http://|https:// to help, or add the name of 'paired' funcs in the same niche (enable/disable-xxx)]
+    #>
+    #Requires -Modules PKI, verb-IO, verb-logging
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(Mandatory=$True,HelpMessage="Certificate DNSName (AppFQDN)[-DnsName server.domain.com]")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$DnsName,
+        [Parameter(Mandatory=$True,HelpMessage="Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$CertStoreLocation,
+        [Parameter(Mandatory=$True,HelpMessage="New certificate StartDate[-StartDate '6/9/2022']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$startDate, 
+        [Parameter(Mandatory=$True,HelpMessage="New certificate EndDate[-EndDate '6/9/2024']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$endDate,
+        [Parameter(HelpMessage="Whatif Flag  [-whatIf]")]
+            [switch] $whatIf=$true
+    ) ;
+    #region CONSTANTS-AND-ENVIRO #*======v CONSTANTS-AND-ENVIRO v======
+    # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
+    ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+    $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+    write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    
+    $objReturn = @{
+        Certificate = $null ; 
+        CertRaw = $null ; 
+        PFXPath = $null ; 
+        Valid = $false ; 
+    } ; 
+    
+    $smsg = "---1)ENTER CERTIFICATE PFX Password: (use 'dummy' for UserName)" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    $pfxcred=(Get-Credential -credential dummy) ;
+
+    $pltNSSCert=[ordered]@{
+        DnsName=$DnsName ;
+        CertStoreLocation = $CertStoreLocation ;
+        KeyExportPolicy='Exportable' ;
+        Provider="Microsoft Enhanced RSA and AES Cryptographic Provider" ;
+        NotAfter=$endDate ;
+        KeySpec='KeyExchange' ;
+        erroraction='STOP';
+        whatif = $($whatif) ;
+    } ;
+    $smsg = "---2)New-SelfSignedCertificate w`n$(($pltNSSCert|out-string).trim())" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+    # precheck for conflicting existing on same dnsname
+    if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
+        if ($bRet.ToUpper() -eq "YYY") {
+            $smsg = "Moving on" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else {
+            $smsg = "Invalid response. Exiting"
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break ;# exit <asserted exit error #>
+            #exit 1
+        } # if-block end
+    } ; 
+    
+    $newcert = (New-SelfSignedCertificate @pltNSSCert); 
+    $objReturn.Certificate = $newcert ; 
+    
+    if(-not $whatif -AND $newcert){
+        $smsg = "(new cert:$($newcert.thumbprint) created)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+        #$newcert.thumbprint | set-Content -Path "$(split-path $transcript)\cert-$($DnsName)-thumb-$(get-date -format 'yyyyMMdd-HHmmtt').txt" ; 
+
+        $pltExPfx=[ordered]@{
+            Cert= "$($CertStoreLocation)\$($newcert.thumbprint)"
+            FilePath="$(split-path $profile)\keys\$($DnsName)-NOTAFTER-$(get-date $pltNSSCert.notafter -format 'yyyyMMdd-HHmmtt').pfx" ;
+            Password=$pfxcred.password ;
+            erroraction='STOP';
+        } ;
+        $smsg = "---3)Export-PfxCertificate  w`n$(($pltExPfx|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $newpfx = Export-PfxCertificate @pltExPfx ;
+        $objReturn.PFXPath = $pltExPfx.FilePath ; 
+
+        $smsg = "`n$(($newpfx|out-string).trim())" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+    
+        $smsg = "(create cert object)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate($pltExPfx.FilePath, $pfxcred.password) ;
+        $smsg = "`ncert obj created:w`n$(($cert | ft -a handle,issuer,subject |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green $($smsg) } ;
+
+        $certRaw = [System.Convert]::ToBase64String($cert.GetRawCertData()) ;
+        $objReturn.CertRaw = $certRaw ; 
+        
+        if($objReturn.Certificate -AND $objReturn.CertRaw -AND $objReturn.PFXPath){ 
+            $smsg = "Valid Certificate, CertRaw, and PFX values: Setting Valid:`$true" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            $objReturn.Valid = $true ; 
+        } else { 
+            $smsg = "INVALID CERTIFICATE, CERTRAW, or PFX: Setting Valid:`$FALSE" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $objReturn.Valid = $false 
+        } ; 
+        
+        New-Object -TypeName PSObject -Property $objReturn | write-output ; 
+        
+    } else { 
+        $smsg = "`n(-whatif, skipping post-creation cert-handling code)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } ; 
+}
+
+#*------^ New-SelfSignedCertificateTDO.ps1 ^------
+
+
 #*------v push-TLSLatest.ps1 v------
 function push-TLSLatest {
             <#
@@ -3500,7 +3529,8 @@ function Resolve-DnsSenderIDRecords {
     AddedWebsite: toddomation.com
     AddedTwitter: @tostka/https://twitter.com/tostka
     REVISIONS
-    * 2:22 PM 8/1/2025 updated whpassfail block to curr
+    # 12:34 PM 3/9/2026 added re-qry of TXT dkim's in output report (output didn't include the full record);  fixed DKIM CNAME->TXT type retry (was missing when initial is a key-TXT record) ; add o365/SER selector echo tagging (duped in last demo) ; 
+        add default looping output report (default dummp of obj to pipeline is too inscrutable); add: alias Domainname for Name, added TOL default selectors dkim1 & added dkim2 for paired alt support; 
     * 12:44 PM 6/28/2024 rejiggered dkim series post testing (wasn't really reporting on the hits, and fibbed were no hits). Worked fine for checking toro.com against a ticket.
     * 9:09 AM 6/27/2024 WIP, got the WHPASSFail block updated with winterm test
     * 5:34 PM 6/19/2024 spliced over code to do SPF egress testing, and ensure all spf clauses match into the core ip4, ip6 etc of a specified 
@@ -3656,57 +3686,118 @@ function Resolve-DnsSenderIDRecords {
 
     Example processing the returned TXT DKIM record and outputing the public key tag.
     .EXAMPLE
-    PS> $results = Resolve-DnsSenderIDRecords -name somedomain.tld -TestSPFEgress -verbose ;
-    PS> foreach($result in $results){
-    PS>     $sBnrS="`n#*------v DOMAIN: $($result.mx.name) v------" ; 
-    PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-    PS>     $hsReport = @"
-  
-    ==DomainName: 
-$(($result.mx.name|out-string).trim()) 
-    
-    ==MX Record: 
+PS> foreach($result in $objReturn){
+PS>     $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+PS>     $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+PS>     $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
 $(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
-    
-    ==SPF Record: 
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
 $(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
-    
-    ==DKIM Record: 
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
 $(
-      
-      $smsg = "`n`n" ; 
-      foreach($rec in $result.dkim){
-      
-          $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ; 
-          $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ; 
-          
-      } ; 
-      $smsg |out-string
-) 
-    
-    ==DMARC Record: 
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
+    } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
 $(
-    ($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
- )   
-        --PolicyTag:
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
 $(   ($result.dmarc.policytag|out-string).trim()
 )
-      
-        --SubDomainPolicyTag:
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
 $(
-  ($result.dmarc.SubDomainPolicyTag|out-string).trim()
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
 )
-     
-        --PolicyInheritance:
-$(   
-  ($result.dmarc.PolicyInheritance|out-string).trim()
-) 
-     
-"@ ; 
-    PS>     write-host $hsReport ; 
-    PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
-    PS> } ; 
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+PS>     write-host $hsReport ;
+PS>     write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+PS> }
     Demos a pass with trailing looped reporting
     .LINK
     https://github.com/T13nn3s/Invoke-SpfDkimDmarc/blob/main/public/Get-DMARCRecord.ps1
@@ -3722,10 +3813,11 @@ $(
     PARAM(
         [Parameter(Mandatory = $True, ValueFromPipeline = $True, 
             HelpMessage = "Specifies the domain for resolving the DKIM-record.[-Name Domain.tld]")]
-        [string]$Name,
+            [ALIAS('DomainName')]
+            [string]$Name,
         [Parameter(Mandatory = $False,
             HelpMessage = "An array of custom DKIM selector strings.[-DkimSelector myselector")]
-        [Alias('Selector')]
+            [Alias('Selector')]
             [string[]]$DkimSelector,
         [Parameter(Mandatory = $false,
             HelpMessage = "DNS Server to use.[-Server 8.8.8.8]")]
@@ -3765,13 +3857,17 @@ $(
         # https://help.sendmarc.com/email-provider-commonly-used-dkim-selectors
         # https://www.reddit.com/r/DMARC/comments/1bffol7/list_of_most_common_dkim_selectors/
         # https://github.com/ryancdotorg/dkimscan/blob/master/dkimscan.pl#L313-L451
-        $DKSelArray = 'selector1','selector2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
+        # 11:31 AM 3/9/2026 add TOR SER default dkim1 (and dkim2, to cover switchables)
+        # selector1 & 2 are o365 defaults
+        $DKSelArray = 'selector1','selector2','dkim1','dkim2','s1','s2','k1','k2','sig1','smtp','default','mail','a1','a2','key1','key2',
             'kl','kl2','K1','K2','Default','smtpapi','dkim','domk','dk','smtpout','authsmtp','dkrnt','dkimrnt','private',
             'selector','publickey','proddkim','mail-in','key','ed-dkim','smtpauth','smtp','sl','primary','mdaemon',
             'mailrelay','mail-dkim','mailo','global','dksel','dkimmail','allselector','email' ;
         <#$DKSelArray = @(
             'selector1' # Microsoft
             'selector2' # Microsoft
+            'dkim1', # TOR SER default
+            'dkim2', # TOR SER (add 2nd, to support alt selectors)
             'google', # Google
             'everlytickey1', # Everlytic
             'everlytickey2', # Everlytic
@@ -3784,62 +3880,29 @@ $(
         ) ; 
         #>
 
-        #region WHPASSFAIL ; #*======v WHPASSFAIL v======
-        $whTPad = 72  ; $whTChar = '.' ; # scale $whTPad to longest Testing:xxx line you use in the test array
-        if(-not $whPASS){$whPASS = @{ Object = "$([Char]8730) PASS`n" ; ForegroundColor = 'Green' ; NoNewLine = $true  } }
-        if(-not $whFAIL){$whFAIL = @{'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"}; ForegroundColor = 'RED' ; NoNewLine = $true } } ;
-        # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
-        if(-not $psPASS){$psPASS = "$([Char]8730) PASS`n" } # $smsg = $pspass + " :Tested Drives" ; write-host $smsg ;
-        if(-not $psFAIL){$psFAIL = if ($env:WT_SESSION) { "$([Char]8730) FAIL`n"} else {" !X! FAIL`n"} } ; # $smsg = $psfail + " :Tested Drives" ; write-warning $smsg ;    
-        <# WHPASSFAIL:SAMPLE TESTS:
-        #region WHPASSFAILSimpleTest ; #*------v WHPASSFAILSimpleTest v------
-        $tFormat = 'NTFS' ; 
-        $smsg = "Testing: Volume.FileSystem against: $($tFormat)" ; #Write-Host "$($smsg)... " -NoNewline ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if ($VOL.FileSystem -eq $tFormat) {Write-Host @whPASS} else {write-host @whFAIL };
-        #endregion WHPASSFAILSimpleTest ; #*------^ END WHPASSFAILSimpleTest ^------    
-        #region WHPASSFAILCapacityTest ; #*------v WHPASSFAILCapacityTest v------
-        # Test: Capacity match, threshold vs %:
-        $tSpaceThresh = 10 * 1GB ; # .9 (for %)
-        if($tSpaceThresh -gt 1000){ $smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh/1GB))GB" }
-        elseif($tSpaceThresh -lt 1){$smsg = "Testing: Volume.SizeRemainingStatus against: $(RndTo3($tSpaceThresh * 100))%" }
-        else {$smsg = "Testing: Volume.SizeRemainingStatus against: $($tSpaceThresh)" } ;
-        $smsg += " $($whTChar * ($whTPad - $smsg.length))" ; Write-Host "$($smsg) " -NoNewline ;
-        if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-        if($tSpaceThresh -lt 1){
-            $smsg = "Detected $($tSpaceThresh) is a percentage free test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining / $tv.Size -lt $tSpaceThresh) {
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $($tv.Size/1GB * $tSpaceThresh) GB" ;
-                $rptDrive.DriveIssues += @($smsg)
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "DB drive: $($tv.DriveLetter): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        }else{
-            $smsg = "Detected $($tSpaceThresh) is a free space floor test" ;
-            if($VerbosePreference -eq 'Continue'){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
-            if ($tv.SizeRemaining -lt $tSpaceThresh){
-                $rptDrive.SizeRemainingStatus = $false ;
-                write-host @whFAIL ;
-                $smsg = "Insufficient free space on $($rptDrive.DriveRole -join ',') drive: $(RndTo2($tv.SizeRemaining/1GB)) GB, needs at least $(RndTo2($tSpaceThresh/1GB)) GB" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } else {
-                $rptDrive.SizeRemainingStatus = $true ;
-                Write-Host @whPASS ;   ;
-                $smsg = "$($rptDrive.DriveRole -join ','): $(RndTo2($tv.SizeRemaining/1GB)) GB free, sufficient for install" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-            } ;
-        } ; 
-        #endregion WHPASSFAILCapacityTest ; #*------^ END WHPASSFAILCapacityTest ^------
+        #region WHPASSFAIL ; #*------v WHPASSFAIL v------
+        $whPASS = @{
+        Object = "$([Char]8730) PASS" ;
+        ForegroundColor = 'Green' ;
+        NoNewLine = $true ;
+        } ;
+        $whFAIL = @{
+            # light diagonal cross: ╳ U+2573 DOESN'T RENDER IN PS, use it if WinTerm
+            'Object'= if ($env:WT_SESSION) { "$([Char]8730) FAIL"} else {' X FAIL'};
+            ForegroundColor = 'RED' ;
+            NoNewLine = $true ;
+        } ;
+        <#
+        # inline pass/fail color-coded w char
+        $smsg = "Testing:THING" ; 
+        $Passed = $true ; 
+        Write-Host "$($smsg)... " -NoNewline ; 
+        if($Passed){Write-Host @whPASS} else {write-host @whFAIL} ; 
+        Write-Host " (Done)" ;
+        # out: Test:Thing... √ PASS (Done) | Test:Thing...  X FAIL (Done)
         #>
-        #endregion WHPASSFAIL ; #*======^ END WHPASSFAIL ^======
-        
+        #endregion WHPASSFAIL ; #*------^ END WHPASSFAIL ^------
+
         if ($PSCmdlet.MyInvocation.ExpectingInput) {
             write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
         } else {
@@ -4026,6 +4089,9 @@ $(
             $foundSelector = $false ; 
 
             foreach ($DSel in $DkimSelector) {
+                if($Dsel -match 'dkim1'){
+                    write-host 'dkim1!'
+                } ; 
                 $pltRvDN.Name = "$($DSel)._domainkey.$($DomainName )" ;
                 $smsg = "Resolve-DNSName DKIM $($pltRvDN.Type) type w`n$(($pltRvDN|out-string).trim())" ;
                 write-host -foregroundcolor yellow $smsg ; 
@@ -4045,6 +4111,13 @@ $(
                         }
                         'SOA'{
                             write-warning " : (invalid lookup)" ; 
+                             write-host @whFAIL ; Write-Host " " ;
+                            # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
+                            $smsg = "Fail on prior $($pltRvDN.Type) qry" ; 
+                            $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
+                            $smsg += "`nResolve-DnsName -Type TXT -Name $($PLTRVDN.NAME)"  ;
+                            write-verbose $smsg ; 
+                            $DKIM = Resolve-DnsName -Type TXT -Name $PLTRVDN.NAME @SplatParameters ; 
                         }
                         default{
                             write-warning " : (invalid return)" ; 
@@ -4053,7 +4126,7 @@ $(
                 } else {
                     write-host @whFAIL ; Write-Host " " ;
                     # above doesn't accomodate custom SAAS vendor DKIMs and CNAMe pointers, so retry on selector.name
-                    $smsg = "Fail on prior TXT qry" ; 
+                    $smsg = "Fail on prior CNAME qry" ; 
                     $smsg += "`nRetrying TXT qry:-Name $($DSel).$($DomainName)"
                     $smsg += "`nResolve-DnsName -Type TXT -Name $($DSel).$($DomainName)"  ;
                     write-verbose $smsg ; 
@@ -4463,8 +4536,120 @@ $(
 
         } # loop-E Name
     } END {
-        
+        # 11:35 AM 3/9/2026 add default looping output report (default dummp of obj to pipeline is too inscrutable
+        foreach($result in $objReturn){
+            $sBnrS="`n#*------v SENDER AUTHENTICATION ENFORCEMENT FOR DOMAIN: $($result.mx.name) v------" ;
+            $whBnrS =@{BackgroundColor = 'Blue' ; ForegroundColor = 'Cyan' } ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
+            $hsReport = @"
+
+##==DomainName: $(($result.mx.name|out-string).trim())
+
+##==MX Record: 
+--->(identifies official mail-delivery host for domain: $(($result.mx.name|out-string).trim()))
+
+$(($result.mx.MXRecord | ft -AutoSize|out-string).trim())
+
+##==SPF Record: 
+--->(identifies servers approved to send mail addressed FROM: $(($result.mx.name|out-string).trim()) email addresses.
+
+$(($result.spf.SPFRecord | ft -AutoSize|out-string).trim())
+
+##==DKIM Record(s): 
+--->(Used by recipient server to validate digital signature written on every message sent by approved $(($result.mx.name|out-string).trim()) servers. 
+Certifies the message hasn't been tampered with while traveling across the internet)
+
+$(
+
+    $smsg = "`n`n" ;
+    $dkimN = 0 ;
+    $dkimTtl = $result.dkim |  measure | select -expand count 
+    foreach($rec in $result.dkim){
+        $dkimN++
+        $sBnr3="`n#*~~~~~~v DKIM Record $($dkimN)/$($dkimTtl) : v~~~~~~" ; 
+        $smsg += $sBnr3 ; 
+        if($rec.DkimSelector -match 'selector(1|2)'){
+            $smsg += "`n(selector matches a default Microsoft O365 selector)" ;
+        }elseif($rec.DkimSelector -match 'dkim(1|2)'){
+            $smsg += "`n(selector matches a default Toroco ProofPoint SER selector - OnPrem/non-MS Cloud hosted)" ;
+        }
+        $prpRptTxt = 'Name','Type','TTL','Section' 
+        if($rec.ReturnedType -eq 'TXT'){
+           # rec.DkimRecord doesn't have the raw record on TXT, so reqry it for the rpt     
+            $smsg += "`n$((resolve-dnsname -name "$($rec.DkimSelector)._domainkey.$($rec.name)" -type $rec.ReturnedType -server 1.1.1.1 | ft -a $prpRptTxt|out-string).trim())" ; 
+        } 
+        $smsg += "`n`n$(($rec.dkimrecord | ft -AutoSize|out-string).trim())" ;
+        $smsg += "`n`n$(($rec.DKIMAdvisory |out-string).trim())" ;
+        $smsg += $sBnr3.replace('~v','~^').replace('v~','^~')
+
     } ;
+    $smsg |out-string
+)
+
+##==DMARC Record: 
+--->('The Security Policy": Tells the receiving server what to do if the message fails to pass *EITHER* the SPF check *OR* the DKIM signature check  (e.g., should they throw it away or put it in spam?)).    
+
+$(
+($result.dmarc.dmarcrecord | ft -AutoSize|out-string).trim()
+)
+    --PolicyTag:
+$(   ($result.dmarc.policytag|out-string).trim()
+)
+
+    (PolicyTag 'p=xxx' : Security Team configured Policy to apply to email that fails the DMARC test (SPF OR DKIM w Sender Alignment). Valid values can be 'none', 'quarantine', or 'reject'.)
+    
+    --SubDomainPolicyTag:
+$(
+($result.dmarc.SubDomainPolicyTag|out-string).trim()
+)
+
+    --PolicyInheritance:
+$(
+($result.dmarc.PolicyInheritance|out-string).trim()
+)
+
+    DMARC Summary:
+$(
+$PolTag = $result.dmarc.policytag  
+$SubdomPol= $result.dmarc.SubDomainPolicyTag
+$smsg = "Policy tag:$($PolTag)" ;
+$smsg += "`np=$($poltag.split('=')[1]): all traffic that doesn't pass either:"
+$smsg += "`n  -- SPF (egressed from an SPF IP)" ;
+$smsg += "`n  -- OR DKIM signing (stamped in message header with DKIM key)" ;
+switch($poltag.split('=')[1]){ 
+    'none'{
+        $smsg +="`np=none: => No action is taken/messages remain unexamined." ; 
+    } 
+    'quarantine'{
+        $smsg +="`np=quarantine: => Further examination (Quarantine/Junk folder)." ;  
+    }
+    'reject'{
+        $smsg +="`np=reject: => Reject those messages that fail DMARC authentication"
+    }
+    default {
+        $smsg +="`nUNCRECOGNIZED $($poltag.split('=')[1])! MISCONFIGURED DMARC?" ; 
+    }                
+}
+if($PolTag -AND -not $SubdomPol){
+    $smsg += "`n`nSUBDOMAINS:Policy p=xxx with NO sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy" ;
+    $DmarcReturnValues | Add-Member NoteProperty "PolicyInheritance" "SUBDOMAINS:Policy p=xxx with no sp=xxx subdomain pol: Subdomains inherit the p=xxx Policy"  ;
+} elseif($PolTag -AND $SubdomPol){
+    if($SubdomPol -like '*=reject'){
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=reject subdomain pol: Subdomains inherit the sp=reject Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;
+    } else { 
+        $smsg += "`n`nSUBDOMAINS:Policy p=xxx AND sp=xxx subdomain pol: Subdomains inherit the sp=xxx Policy" ;
+        $smsg += "`n(unless subdomain has it's _own_ DMARC record with it's own p=xxx effective local policy)" ;                        
+    } ; 
+} ;
+$smsg |out-string
+)
+
+"@ ;
+            write-host $hsReport ;
+            write-host @whBnrS -obj "$((get-date).ToString('HH:mm:ss')):$($sBnrS.replace('-v','-^').replace('v-','^-'))" ;
+        } ;
+    }  # END-E;
 }
 
 #*------^ Resolve-DnsSenderIDRecords.ps1 ^------
@@ -9805,6 +9990,235 @@ function Set-CertificatesInCAHierarchyTDO {
 #*------^ Set-CertificatesInCAHierarchyTDO.ps1 ^------
 
 
+#*------v show-SerFilterLogFormattedOutput.ps1 v------
+function show-SerFilterLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerFilterLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+	[2026-03-18 07:52:30.007522 -0500] rprt s=4cwtbdrj71 mod=session cmd=disconnect module= rule= action= helo=SERVER.DOMAIN
+.com msgs=1 rcpts=1 routes=allow_relay duration=0.096 elapsed=0.524
+...[TRIMMED]...
+[2026-03-18 07:52:29.487175 -0500] rprt s=4cwtbdrj71 mod=session cmd=connect ip=123.456.789.012 country=us lip=123.456.789.013 prot
+=smtp:smtp hops_active=f routes= notroutes=default_inbound,firewallsafe,internalnet,outbound,pp_spoofsafe,spfsafe,tls,xclient
+_trusted perlwait=0.003    
+"@ ; 
+    PS> show-SerFilterLogFormattedOutput -LogText $hsLogOutput
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerFilterLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText,
+        [Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $serlines = $logtext ; 
+        } ; ;         
+        #$serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serlines = $serlines -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serverIP = [regex]::match(($serlines |?{$_ -match 'lip='}).split(' '),'lip=(\d+\.\d+\.\d+\.\d+)').groups[1].value ; 
+        switch($serverIP){            
+            $masterServer[1]  {$server = $masterServer[0]}
+            $agentserver[1] {$server = $agentserver[0]}
+            default{
+                throw "Unrecogized, or unconfigured Server IP Address!" ; 
+            } ; 
+        } ; 
+        $sendline = $serlines |?{$_ -match 'cmd=send'} ;
+        if($sendQID = [regex]::match(($serlines |?{$_ -match 'cmd=send'}).split(' '),'qid=([\w]{14})').groups[1].value){
+            $smsg = "cmd=send QID resolved: $($sendQID)" ;
+            $smsg += "`nRun MTA Search:`nLogs & reports > Log Viewer`nServer:$($server)`nLog Type Filter: MTA`nFind: $($sendQID)`n, click SEARCH" ;
+            write-host -foregroundcolor yellow $smsg ;
+            $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+            write-host "(report copied to clipboard)" ; 
+        } else {write-warning "No line with both 'cmd=send' & 'qid=([\w]{14})' found: Unable to resolve QID for MTA search" } ; 
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerFilterLogFormattedOutput.ps1 ^------
+
+
+#*------v show-SerMtaLogFormattedOutput.ps1 v------
+function show-SerMtaLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerMtaLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+		2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>, size=21724, class
+=0, nrcpts=1, msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@LYNMS651.aaaaaa.aa.aaaa.aaa>, proto=ESMTP, daemon=MTA, tls_verify=N
+ONE, tls_version=NONE, cipher=NONE, auth=NONE, relay=SIT-PPAGENT-01.toro.com [127.0.0.1]
+2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaaaa9@AaAaaa.aaa>, delay=00:00:01,
+xdelay=00:00:01, mailer=esmtp, tls_verify=OK, tls_version=TLSv1.2, cipher=ECDHE-RSA-AES256-GCM, pri=141724, relay=smtp-us.se
+r.proofpoint.com. [99.999.999.999], dsn=2.0.0, stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+"@ ; 
+    PS> show-SerMtaLogFormattedOutput -LogText $hsLogOutput
+    
+        2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>
+         size=21724
+         class=0
+         nrcpts=1
+         msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@AAAAA999.aaaaaa.aa.aaaa.aaa>
+         proto=ESMTP
+         daemon=MTA
+         tls_verify=NONE
+         tls_version=NONE
+         cipher=NONE
+         auth=NONE
+         relay=SIT-PPAGENT-01.aaaa.aaa [127.0.0.1]
+
+        2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaa.aa.aaaa.aaa>
+         delay=00:00:01
+        xdelay=00:00:01
+         mailer=esmtp
+         tls_verify=OK
+         tls_version=TLSv1.2
+         cipher=ECDHE-RSA-AES256-GCM
+         pri=141724
+         relay=smtp-us.ser.proofpoint.com. [99.999.999.999]
+         dsn=2.0.0
+         stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+             
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerMtaLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText
+            #,
+        <#[Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+        #>
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $sermta = $logtext ; 
+        } ; ;         
+        #$sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        #$sermta = $sermta  -replace ([Environment]::NewLine),"" -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1' -replace "\|","`r`n").Split([Environment]::NewLine) |  ?{$_} ;
+        $sermta = $sermta -replace ([Environment]::NewLine),"" ; 
+        $sermta = $sermta -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1'  ; 
+        $sermta = $sermta -replace "\|","`r`n" ; 
+        $sermta = $sermta.Split([Environment]::NewLine) |  ?{$_} ;
+        $smsg = $null ;
+        $sermta | %{ $smsg += "`n`n" ; $smsg+= ($_ -replace ",","`r`n")} ;
+        $smsg | write-output ;
+        $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+        write-host "`n(report copied to clipboard)" ;
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerMtaLogFormattedOutput.ps1 ^------
+
+
 #*------v split-DnsTXTRecord.ps1 v------
 function split-DnsTXTRecord{
     <#
@@ -10336,59 +10750,6 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 #*------^ summarize-PassStatusHtml.ps1 ^------
 
 
-#*------v test-ADComputerName.ps1 v------
-Function test-ADComputerName{
-    <#
-    .SYNOPSIS
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-ADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-ADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-ADComputerName.ps1 ^------
-
-
 #*------v test-CertificateTDO.ps1 v------
 function test-CertificateTDO {
     <#
@@ -10690,132 +11051,6 @@ function test-Connection-T {
 }
 
 #*------^ test-Connection-T.ps1 ^------
-
-
-#*------v test-CredentialsTDO.ps1 v------
-function test-CredentialsTDO{
-        <#
-        .SYNOPSIS
-        test-CredentialsTDO - tests provided uid+pw cred combo
-        .NOTES
-        Version     : 0.0.
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250711-0423PM
-        FileName    : test-CredentialsTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Account,Credential
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 4:33 PM 10/16/2025 logic fix, self-contained, brought in alt deps; CBH demo1 fix
-        * 12:59 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-        * 1:44 PM 8/8/2025 ren test-Credentials821 -> test-CredentialsTDO, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-        11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-        .DESCRIPTION
-        test-CredentialsTDO - tests provided uid+pw cred combo
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.Object summary of Exchange server descriptors, and service statuses.
-        .EXAMPLE
-        PS> $tcred = get-credential ; 
-        PS> if(test-CredentialsTDO -UserName $tcred.username -Password $tcred.GetNetworkCredential().Password){
-        PS>     write-host -foregroundcolor green "Credential validated" ; 
-        PS> } ; 
-        .LINK
-        https://github.org/tostka/verb-ex2010/
-        #>
-        [CmdletBinding()]
-        [alias('test-Credentials')]
-        PARAM(            
-            [Parameter(HelpMessage = "Account to be tested")]
-                [Alias('Account','logon')]
-                [string]$UserName,
-            [Parameter(Mandatory=$true,HelpMessage = "Account password to be tested (securestring or plain text)")]
-                [Alias('AdminPassword')]
-                #[string]
-                $Password                       
-        ) ;
-        switch ($Password.gettype().fullname){
-            'System.String' {
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-                $PlainTextPassword= $Password ; 
-            }
-            'System.Security.SecureString'{
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( $Password ))
-                $tmpCred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("None",$Password ) ;                
-                #$PlainTextPassword = $Password.GetNetworkCredential().Password 
-                $PlainTextPassword = $tmpcred.GetNetworkCredential().Password ; 
-                remove-variable tmpCred
-            }
-            default{
-                $smsg = "Unrecognized -Password type:$($Password.gettype().fullname)" ; 
-                $smsg += "`nSpecify as either plain text or SecureSTring" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                throw $smsg ; 
-            }
-        }
-        #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-        if(get-command FullPlainTextAccount -ea SilentlyContinue){
-            $FullPlainTextAccount= get-FullDomainAccountTDO -Account $UserName ;
-        }else{
-            #write-warning "missing:FullPlainTextAccount(), skipping account format specification" ; 
-            switch -regex ($username){
-                '(.*)\\(.*)' {
-                    $Parts = $UserName.split('\') ; 
-                    $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "UserName is in Legacy format" ; 
-                    break ; 
-                } ; 
-                '(.*)@(.*)' {
-                    write-host  "Username is in UPN format"  ; 
-                    $FullPlainTextAccount = $UserName ; 
-                    break ; 
-                }
-                default{
-                    if($env:USERDOMAIN){
-                        $FullPlainTextAccount = "$($env:USERDOMAIN)\$($UserName)" ; 
-                        write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
-                    } else{
-                        throw "Unrecognized -Username format:$($Username)" ; 
-                    };
-                    break ;  
-                } ; 
-            } ; 
-        }
-        TRY {
-            if($env:USERDOMAIN -eq $env:COMPUTERNAME){
-                write-host "`$env:USERDOMAIN -eq `$env:COMPUTERNAME: => non-domain-joined, checking Test-LocalCredentialTDO()" ; 
-                $Username = $FullPlainTextAccount.split("\")[-1]
-                if(get-command Test-LocalCredentialTDO){
-                    Return $( Test-LocalCredentialTDO -UserName $Username -Password $PlainTextPassword)
-                }else{
-                    #throw "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  
-                    $smsg = "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  write-host -foregroundcolor yellow $smsg ; 
-                    TRY {Add-Type -AssemblyName System.DirectoryServices.AccountManagement} CATCH {} ; 
-                    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
-                    Return $($DS.ValidateCredentials($UserName, $Password))
-                } ; 
-            }else{
-                $dc= New-Object DirectoryServices.DirectoryEntry( $Null, $FullPlainTextAccount, $PlainTextPassword)
-                If($dc.Name) {
-                    return $true
-                }Else {
-                    Return $false
-                }
-            }
-        }CATCH {
-            Return $false
-        }
-        Return $false        
-    }
-
-#*------^ test-CredentialsTDO.ps1 ^------
 
 
 #*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
@@ -11833,59 +12068,6 @@ function Test-IPAddressInRangeIp6 {
 #*------^ Test-IPAddressInRangeIp6.ps1 ^------
 
 
-#*------v test-isADComputerName.ps1 v------
-Function test-isADComputerName{
-    <#
-    .SYNOPSIS
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-isADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-isADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-isADComputerName.ps1 ^------
-
-
 #*------v test-isComputerDNSRegistered.ps1 v------
 Function test-isComputerDNSRegistered{
     <#
@@ -11906,6 +12088,7 @@ Function test-isComputerDNSRegistered{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:07 PM 3/26/2026 change req to DnsClient (not ad)
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -11927,7 +12110,7 @@ Function test-isComputerDNSRegistered{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules DnsClient
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({Resolve-DnsName -Name $PSItem})]
@@ -11960,6 +12143,7 @@ Function test-isComputerNameFQDN{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:10 PM 3/26/2026 rem'd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -11981,7 +12165,6 @@ Function test-isComputerNameFQDN{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
         [ValidateLength(6, 253)]
@@ -12015,6 +12198,7 @@ Function test-isComputerNameNetBios{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:12 PM 3/26/2026 remd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12036,7 +12220,6 @@ Function test-isComputerNameNetBios{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateLength(1, 15)]
@@ -12070,6 +12253,7 @@ Function test-isComputerSMBCapable{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:14 PM 3/26/2026 flip req from ad -> NetTCPIP
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12094,7 +12278,7 @@ Function test-isComputerSMBCapable{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules NetTCPIP
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({(Test-NetConnection -ComputerName $PSItem -CommonTCPPort 'SMB').TcpTestSucceeded})]
@@ -12467,6 +12651,8 @@ function Test-Port {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell
     REVISIONS
+    # 9:50 AM 3/24/2026 psv2 doesn't like dbl quoted regex in ValidatePattern (Parameter attributes need to be a constant or a script block.): 
+        flipped to singles.
     # 9:11 AM 1/24/2025 added -ea 0 to the gcm's; expanded gcms; added try/catch to the Net.Sockets.TcpClient code (output friendly error fail); added CBH demo rdp users poll
         ; removed aliases 's' & 'p' (they're already usable as abbrev $server & $port, no other conflicting params ); flip 1st expl to commonly used 3389 (rdp) port; added cmdletbinding (full adv func/verbose support); added alias test-portTDO
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
@@ -12512,7 +12698,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern('^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$')]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -13023,7 +13209,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -13031,8 +13217,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU3s01MXUsUiXvnIQTESar/pt7
-# e96gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQU36K+xvgDQZc4LA3UVNP2LZet
+# 8zegggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13047,9 +13233,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQ7D+/s
-# EsNFbDgeAO8e3PGnVFHSkzANBgkqhkiG9w0BAQEFAASBgKtK2IboWzIR1P1uI5bo
-# xN2hYvd/NVLmxtrho49qpyBkgz/l1DxeRov2UdYX07AD8Gy6RTwiVqaQ0n6rBDQu
-# 1ClLWb4DAYtFSmHoyNyzhlVQ2LvZESOBGLhZnEeNJaELLVLY5hjHoXfcCBb6Qgox
-# qg0XB0rI2To8rjypOUMTXHdH
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBSoKFML
+# CumK4sxO3zUS8bbyk4MmeTANBgkqhkiG9w0BAQEFAASBgLU90kE5jGb+ehoDezgt
+# jiAoymAGpfVCpGpSt5FdntuWY/YgqeySDEoEM/cYVgf5fQ/8QD4vtg23drWmdbS1
+# SU9+kuR0wklWJQX0Op0GT9DBhC6ZUlYroM+9Fd6uEiBn30vbr+Ol6c1kTlhT5Orf
+# T2FLlxNmz/IOP3eIz3Ta1WSZ
 # SIG # End signature block
