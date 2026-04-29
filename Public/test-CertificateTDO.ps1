@@ -20,6 +20,7 @@ function test-CertificateTDO {
     AddedWebsite: http://www.toddomation.com
     AddedTwitter: @tostka / http://twitter.com/tostka
     REVISIONS
+    * 9:18 AM 4/29/2026 Removed rem'd param lines, minor capitalization tweaks 
     * 9:55 AM 7/9/2025 updated CBH, corrected link vio -> vnet mod; updated CBH to explicitly note it supports testing _installed_ certs as well (VP's original didn't and relied on filesystem .ext for logic handling pfx pw etc). Shifted copies of the pki\test-certificate examples down into actual CBH expl entries, for broad reference
     * 8:20 AM 8/30/2024 pulled errant alias (rol, restart-outlook)
     * 2:29 PM 8/22/2024 fixed process looping (lacked foreach); added to verb-Network; retoololed to return a testable summary report object (summarizes Subject,Issuer,Not* dates,thumbprint,Usage (FriendlyName),isSelfSigned,Status,isValid,and the full TrustChain); 
@@ -94,7 +95,7 @@ function test-CertificateTDO {
     - IgnoreRootRevocationUnknown - Ignore that the root revocation is unknown when determining certificate verification.
     - AllFlags - All flags pertaining to verification are included.   
     .INPUTS
-    None. Does not accepted piped input.
+    Accepts piped input Certificate
     .OUTPUTS
     This script return general info about certificate chain status 
     .EXAMPLE
@@ -130,9 +131,7 @@ function test-CertificateTDO {
     #requires -Version 2.0
     [CmdletBinding()]
     #[Alias('','')]
-    PARAM(
-        #[Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Path to file[-path 'c:\pathto\file.txt']")]
-        #[Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0,HelpMessage="Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accept pipeline input)"]
+    PARAM(        
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accepts pipeline input")]
             $Certificate,
         [Parameter(HelpMessage="Specifies PFX|P12 file password. Password must be passed as SecureString.")]
@@ -197,16 +196,17 @@ function test-CertificateTDO {
             if ($item -is [System.Security.Cryptography.X509Certificates.X509Certificate2]) {
                 $status = $chain.Build($item)   ; 
                 $report = _getstatus_ $status $chain $item   ; 
-                return $report ;
+                write-verbose "return report to pipeline" ; 
+                RETURN $report ;
             } else {
                 if (!(Test-Path $item)) {
                     Write-Warning "Specified path is invalid" #return
                     $valid = $false ; 
-                    return $false ; 
+                    RETURN $false ; 
                 } else {
                     if ((Resolve-Path $item).Provider.Name -ne "FileSystem") {
                         Write-Warning "Spicifed path is not recognized as filesystem path. Try again" ; #return   ; 
-                        return $false ; 
+                        RETURN $false ; 
                     } else {
                         $item = get-item $(Resolve-Path $item)   ; 
                         switch -regex ($item.Extension) {
@@ -221,13 +221,13 @@ function test-CertificateTDO {
                             }  
                             default {
                                 Write-Warning "Looks like your specified file is not a certificate file" #return
-                                return $false ; 
+                                RETURN $false ; 
                             }  
                         }  
                         $cert | foreach-object{
                                 $status = $chain.Build($_)  
                                 $report = _getstatus_ $status $chain $_   ; 
-                                return $report ;
+                                RETURN $report ;
                         }  
                         $cert.Reset()  
                         $chain.Reset()  
