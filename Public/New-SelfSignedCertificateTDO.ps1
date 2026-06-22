@@ -20,6 +20,7 @@ function New-SelfSignedCertificateTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 12:49 PM 6/22/2026 updated CBH demo to include sample AppFqDN value; added Output object definition/properties 
     * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
     * 3:45 PM 6/23/2023 pulled req: verb-AAD 
     * 2:54 PM 6/13/2022 debugged, functional
@@ -41,11 +42,14 @@ function New-SelfSignedCertificateTDO {
     .INPUTS
     None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
-    None. Returns no objects or output (.NET types)
-    System.Boolean
-    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    PSCustomObject containing following properties about new certificate:
+        Certificate = System.Security.Cryptography.X509Certificates.X509Certificate2 - An X509Certificate2 object for the certificate that has been created.; 
+        CertRaw = Base64String representation of the RawCertData
+        PFXPath = Path to exported pfx file for the certificate ; 
+        Valid = set $true if Valid Certificate, CertRaw property, and PFXPath property;     
     .EXAMPLE
-    PS> $pltNAAC=[ordered]@{
+    PS> $AppFqDN = 'DESCRIPTIVETAG-AppReg.TENANT.onmicrosoft.com'
+    PS> $pltNSSC=[ordered]@{
     PS>     DnsName=$AppFqDN ;
     PS>     CertStoreLocation = $certStore ;
     PS>     EndDate=(get-date ).addyears(3) ;
@@ -53,10 +57,10 @@ function New-SelfSignedCertificateTDO {
     PS>     verbose = $($verbose) ; 
     PS>     whatif = $($whatif) ;
     PS> } ;
-    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNSSC|out-string).trim())" ;
     PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
     PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNSSC ; 
     PS> if($bREt.Valid){
     PS>     write-verbose "valid return, insert your post handling here" ; 
     PS> } else { 
