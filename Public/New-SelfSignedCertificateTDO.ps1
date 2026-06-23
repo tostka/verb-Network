@@ -49,6 +49,7 @@ function New-SelfSignedCertificateTDO {
         Valid = set $true if Valid Certificate, CertRaw property, and PFXPath property;     
     .EXAMPLE
     PS> $AppFqDN = 'DESCRIPTIVETAG-AppReg.TENANT.onmicrosoft.com'
+    PS> $certStore = 'Cert:\CurrentUser\My' ; 
     PS> $pltNSSC=[ordered]@{
     PS>     DnsName=$AppFqDN ;
     PS>     CertStoreLocation = $certStore ;
@@ -62,7 +63,11 @@ function New-SelfSignedCertificateTDO {
     PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
     PS> $bRet = New-SelfSignedCertificateTDO @pltNSSC ; 
     PS> if($bREt.Valid){
-    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS>     $smsg = "`n`n==>Valid return:" ; 
+    PS>     $smsg += "`n$(($bREt|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE:$(($bREt.Certificate|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE-RAW:$(($bREt.CertRaw|out-string).trim())`n`n" ; 
+    PS>     write-host -foregroundcolor green $smsg ; 
     PS> } else { 
     PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
     PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
