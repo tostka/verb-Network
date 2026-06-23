@@ -1,11 +1,11 @@
-﻿# VERB-Network.psm1
+﻿# verb-Network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 5.7.0.0
+Version     : 6.0.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -584,95 +584,6 @@ Function get-CertificateChainOfTrust {
 #*------^ get-CertificateChainOfTrust.ps1 ^------
 
 
-#*------v get-CredentialsTDO.ps1 v------
-function get-CredentialsTDO{
-    <#
-    .SYNOPSIS
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory, returns a Credential object
-    .NOTES
-    Version     : 0.0.1
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 20250711-0423PM
-    FileName    : get-CredentialsTDO.ps1
-    License     : (none asserted)
-    Copyright   : (none asserted)
-    Github      : https://github.com/tostka/verb-io
-    Tags        : Powershell,ActiveDirectory,Account,Credential
-    AddedCredit : Michel de Rooij / michel@eightwone.com
-    AddedWebsite: http://eightwone.com
-    AddedTwitter: URL        
-    REVISIONS
-    * 9:02 AM 10/17/2025 pulled pw systemstring conv: test-CredentialsTDO natively accomodatese as ss; add mising wlt for return msg
-    * 1:06 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-    * 3:15 PM 8/8/2025 rejiggered to return a credential object, (orig updated a global vari in host script);  ren get-Credentials821 -> get-821, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-    11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-    .DESCRIPTION
-    get-CredentialsTDO - Prompts for credentials and validates they function against Active Directory
-                
-    .INPUTS
-    None, no piped input.
-    .OUTPUTS
-    System.Object summary of Exchange server descriptors, and service statuses.
-    .EXAMPLE ; 
-    PS> if($Credentials = get-CredentialsTDO){
-    PS>     write-host -foregroundcolor green "Obtained Credential:$($Credentials.Username) (validated against AD)" ; 
-    PS> } else {
-    PS>     write-warning "INVALID CREDENTIALS SPECIFIED!" ; 
-    PS> }; 
-    .LINK
-    https://github.org/tostka/verb-ex2010/
-    #>
-    [CmdletBinding()]
-    [alias('get-Credentials')]
-    PARAM(
-        [Parameter(HelpMessage = "UserName (defaults to current desktop user)")]
-            [Alias('AdminAccount','logon')]
-            [string]$UserName,
-        [Parameter(HelpMessage = "Account password (securestring)")]
-            [Alias('AdminPassword')]
-            [System.Security.SecureString]$Password
-    ) ;
-    If( -not( $UserName -and $Password)) {
-        TRY {
-		    $Script:Credentials= Get-Credential -UserName ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -Message 'Enter credentials to use'
-            $UserName= $Credentials.UserName
-            #$Password= ($Credentials.Password | ConvertFrom-SecureString)
-            # test-CredentialsTDO() can natively handle securestring pw
-            $Password= $Credentials.Password 
-        }CATCH {
-            $ErrTrapd=$Error[0] ;
-            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-            $smsg += 'No or improper credentials provided'
-            $smsg = "" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            throw $smsg ; 
-        }
-	}
-    $smsg = 'Checking provided credentials'
-    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-    If( test-CredentialsTDO -UserName:$UserName -Password:$Password) {
-        $smsg = 'Credential test-CredentialsTDO:PASS`n(returning Credential object to pipeline)'
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
-        [System.Management.Automation.PSCredential]$Credentials = New-Object –TypeName System.Management.Automation.PSCredential –ArgumentList $UserName, $Password
-        $Credentials | write-output ; 
-    } Else {
-        $smsg = 'Credential test-CredentialsTDO:FAIL/INVALID'
-        $smsg = "" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        $false | write-output ; 
-    }
-}
-
-#*------^ get-CredentialsTDO.ps1 ^------
-
-
 #*------v Get-CurrentUserNameTDO.ps1 v------
 function Get-CurrentUserNameTDO{
     <#
@@ -1217,53 +1128,6 @@ function get-DNSServers{
 }
 
 #*------^ get-DNSServers.ps1 ^------
-
-
-#*------v Get-ForestRootNCTDO.ps1 v------
-function Get-ForestRootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-ForestRootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 10:42 AM 10/17/2025 updated CBH to indicate format of the DN returned.
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-ForestRootNCTDO - Returns local machine's ForestRoot DN (DC=sub,DC=dom,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $FRNC= Get-ForestRootNCTDO
-        PS> $FRNC ; 
-
-            DC=sub,DC=dom,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-ForestRootNC')]
-        PARAM() ;
-        return ([ADSI]'LDAP://RootDSE').rootDomainNamingContext.toString()
-    }
-
-#*------^ Get-ForestRootNCTDO.ps1 ^------
 
 
 #*------v get-FullDomainAccountTDO.ps1 v------
@@ -2078,7 +1942,7 @@ function Get-RestartInfo {
 
                     $sfltr = @{ LogName = "Setup"; StartTime = $start; EndTime = $end ; };
             
-                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
+                    #Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
                     $SetupEvts = Get-WinEvent -ComputerName $computer -FilterHashtable $sfltr | 
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
@@ -2132,7 +1996,7 @@ function Get-RestartInfo {
                 } else { 
                     $sBnrS="`n#*------v `$bootevts : v------" ; 
                     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($sBnrS)" ;
-                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005.7.06,6008}  |
+                    $bootEvents = Get-WinEvent -ComputerName $computer -FilterHashtable @{logname = 'System'; id = 1074,6005,6006,6008}  |
                         ForEach-Object {
                             $EventData = New-Object PSObject | Select-Object Date, EventID, User, Action, Reason, ReasonCode, Comment, Computer, Message, Process
                             $EventData.Date = $_.TimeCreated
@@ -2162,53 +2026,6 @@ function Get-RestartInfo {
 }
 
 #*------^ Get-RestartInfo.ps1 ^------
-
-
-#*------v Get-RootNCTDO.ps1 v------
-function Get-RootNCTDO{
-        <#
-        .SYNOPSIS
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-        .NOTES
-        Version     : 0.0.1
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250917-0114PM
-        FileName    : Get-RootNCTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Forest,Domain
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 11:50 AM 10/17/2025 updated CBH, incl output DN example
-        * 1:14 PM 9/17/2025 port to vnet from xopBuildLibrary; add CBH, and Adv Function specs
-        .DESCRIPTION
-        Get-RootNCTDO - Returns local machine's Root Naming Context DN (DC=sub,DC=sub,DC=domain,DC=tld)
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.String local ForestRoot 
-        .EXAMPLE ; 
-        PS> $NC= Get-RootNC
-        PS> $NC; 
-
-            DC=sub,DC=sub,DC=domain,DC=tld
-
-        .LINK
-        https://github.org/tostka/verb-Network/
-        #>
-        [CmdletBinding()]
-        [alias('Get-RootNC')]
-        PARAM() ;
-        return ([ADSI]'').distinguishedName.toString()
-    }
-
-#*------^ Get-RootNCTDO.ps1 ^------
 
 
 #*------v get-tsusers.ps1 v------
@@ -3278,6 +3095,218 @@ function Invoke-SecurityDialog {
 }
 
 #*------^ Invoke-SecurityDialog.ps1 ^------
+
+
+#*------v New-SelfSignedCertificateTDO.ps1 v------
+function New-SelfSignedCertificateTDO {
+    <#
+    .SYNOPSIS
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2022-
+    FileName    : New-SelfSignedCertificateTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2022 Todd Kadrie
+    Github      : https://github.com/tostka/powershell
+    Tags        : Powershell,AzureAD,Authentication,Certificate,CertificateAuthentication
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
+    * 3:45 PM 6/23/2023 pulled req: verb-AAD 
+    * 2:54 PM 6/13/2022 debugged, functional
+    .DESCRIPTION
+    New-SelfSignedCertificateTDO.ps1 - Create SelfSigned certificate (PKI) in specified -CertStoreLocation location, export same to pfx (named for DnsName with dateranges), and return a raw object version of the cert, along with the PFXPath and certificate properties to the pipeline. Objects created are suitable for Certificate-Based-Authentication of EntraID/AzureAD Application objects. 
+    
+    => renamed copy of prior New-AADAppAuthCertificate
+    
+    .PARAMETER DnsName
+    Certificate DNSName (AppFQDN)[-DnsName server.domain.com]
+    .PARAMETER CertStoreLocation
+    Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']
+    .PARAMETER StartDate
+    New certificate StartDate
+    .PARAMETER EndDate
+    New certificate EndDate
+    .PARAMETER Whatif
+    Parameter to run a Test no-change pass [-Whatif switch]
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    System.Boolean
+    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    .EXAMPLE
+    PS> $pltNAAC=[ordered]@{
+    PS>     DnsName=$AppFqDN ;
+    PS>     CertStoreLocation = $certStore ;
+    PS>     EndDate=(get-date ).addyears(3) ;
+    PS>     StartDate = (get-date ) ; 
+    PS>     verbose = $($verbose) ; 
+    PS>     whatif = $($whatif) ;
+    PS> } ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> if($bREt.Valid){
+    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS> } else { 
+    PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
+    PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+    PS>     else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+    PS>     throw $smsg ; 
+    PS>     break ; 
+    PS> } ;     
+    Splatted demo with whatif & verbose, gens cert, exports pfx, provides raw content of cert (for mounting on appreg), and runs cmd to add cert to existing AAD Registered App.
+    .LINK
+    https://github.com/tostka/verb-XXX
+    .LINK
+    https://bitbucket.org/tostka/powershell/
+    .LINK
+    [ name related topic(one keyword per topic), or http://|https:// to help, or add the name of 'paired' funcs in the same niche (enable/disable-xxx)]
+    #>
+    #Requires -Modules PKI, verb-IO, verb-logging
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(Mandatory=$True,HelpMessage="Certificate DNSName (AppFQDN)[-DnsName server.domain.com]")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$DnsName,
+        [Parameter(Mandatory=$True,HelpMessage="Certificate store for storage of new certificate[-CertStoreLocation 'Cert:\CurrentUser\My']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string]$CertStoreLocation,
+        [Parameter(Mandatory=$True,HelpMessage="New certificate StartDate[-StartDate '6/9/2022']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$startDate, 
+        [Parameter(Mandatory=$True,HelpMessage="New certificate EndDate[-EndDate '6/9/2024']")]
+            [ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [datetime]$endDate,
+        [Parameter(HelpMessage="Whatif Flag  [-whatIf]")]
+            [switch] $whatIf=$true
+    ) ;
+    #region CONSTANTS-AND-ENVIRO #*======v CONSTANTS-AND-ENVIRO v======
+    # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
+    ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+    $PSParameters = New-Object -TypeName PSObject -Property $PSBoundParameters ;
+    write-verbose -verbose:$verbose "`$PSBoundParameters:`n$(($PSBoundParameters|out-string).trim())" ;
+    $Verbose = ($VerbosePreference -eq 'Continue') ; 
+    
+    $objReturn = @{
+        Certificate = $null ; 
+        CertRaw = $null ; 
+        PFXPath = $null ; 
+        Valid = $false ; 
+    } ; 
+    
+    $smsg = "---1)ENTER CERTIFICATE PFX Password: (use 'dummy' for UserName)" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    $pfxcred=(Get-Credential -credential dummy) ;
+
+    $pltNSSCert=[ordered]@{
+        DnsName=$DnsName ;
+        CertStoreLocation = $CertStoreLocation ;
+        KeyExportPolicy='Exportable' ;
+        Provider="Microsoft Enhanced RSA and AES Cryptographic Provider" ;
+        NotAfter=$endDate ;
+        KeySpec='KeyExchange' ;
+        erroraction='STOP';
+        whatif = $($whatif) ;
+    } ;
+    $smsg = "---2)New-SelfSignedCertificate w`n$(($pltNSSCert|out-string).trim())" ;
+    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+
+    # precheck for conflicting existing on same dnsname
+    if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+        else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
+        if ($bRet.ToUpper() -eq "YYY") {
+            $smsg = "Moving on" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        } else {
+            $smsg = "Invalid response. Exiting"
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            Break ;# exit <asserted exit error #>
+            #exit 1
+        } # if-block end
+    } ; 
+    
+    $newcert = (New-SelfSignedCertificate @pltNSSCert); 
+    $objReturn.Certificate = $newcert ; 
+    
+    if(-not $whatif -AND $newcert){
+        $smsg = "(new cert:$($newcert.thumbprint) created)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+
+        #$newcert.thumbprint | set-Content -Path "$(split-path $transcript)\cert-$($DnsName)-thumb-$(get-date -format 'yyyyMMdd-HHmmtt').txt" ; 
+
+        $pltExPfx=[ordered]@{
+            Cert= "$($CertStoreLocation)\$($newcert.thumbprint)"
+            FilePath="$(split-path $profile)\keys\$($DnsName)-NOTAFTER-$(get-date $pltNSSCert.notafter -format 'yyyyMMdd-HHmmtt').pfx" ;
+            Password=$pfxcred.password ;
+            erroraction='STOP';
+        } ;
+        $smsg = "---3)Export-PfxCertificate  w`n$(($pltExPfx|out-string).trim())" ;
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+        $newpfx = Export-PfxCertificate @pltExPfx ;
+        $objReturn.PFXPath = $pltExPfx.FilePath ; 
+
+        $smsg = "`n$(($newpfx|out-string).trim())" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+    
+        $smsg = "(create cert object)" ; 
+        if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+        else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+        $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate($pltExPfx.FilePath, $pfxcred.password) ;
+        $smsg = "`ncert obj created:w`n$(($cert | ft -a handle,issuer,subject |out-string).trim())" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green $($smsg) } ;
+
+        $certRaw = [System.Convert]::ToBase64String($cert.GetRawCertData()) ;
+        $objReturn.CertRaw = $certRaw ; 
+        
+        if($objReturn.Certificate -AND $objReturn.CertRaw -AND $objReturn.PFXPath){ 
+            $smsg = "Valid Certificate, CertRaw, and PFX values: Setting Valid:`$true" ; 
+            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+            $objReturn.Valid = $true ; 
+        } else { 
+            $smsg = "INVALID CERTIFICATE, CERTRAW, or PFX: Setting Valid:`$FALSE" ; 
+            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
+            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+            $objReturn.Valid = $false 
+        } ; 
+        
+        New-Object -TypeName PSObject -Property $objReturn | write-output ; 
+        
+    } else { 
+        $smsg = "`n(-whatif, skipping post-creation cert-handling code)" ; 
+        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
+        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+    } ; 
+}
+
+#*------^ New-SelfSignedCertificateTDO.ps1 ^------
 
 
 #*------v push-TLSLatest.ps1 v------
@@ -9961,6 +9990,744 @@ function Set-CertificatesInCAHierarchyTDO {
 #*------^ Set-CertificatesInCAHierarchyTDO.ps1 ^------
 
 
+#*------v set-RDPFileSignatureTDO.ps1 v------
+function set-RDPFileSignatureTDO {
+    <#
+    .SYNOPSIS
+    set-RDPFileSignatureTDO - Digitally sign .rdp TermServ connection files with specified local certificate (wrapper for rdpsign.exe)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-04-29
+    FileName    : set-RDPFileSignatureTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 10:07 AM 4/29/2026 fixed bvorked help parsing: removed leading periods from all RDP file ext refs (confused parser on dotted help keywords) ; 
+         moved vio -> vnet ; add -RegisterCertificate & vnet\Test-CertificateTDO() chain of trust validation
+    * 12:59 PM 4/28/2026 init
+    .DESCRIPTION
+        
+    set-RDPFileSignatureTDO - Digitally sign rdp TermServ connection files with specified local certificate (wrapper for rdpsign.exe)
+
+    [Signing rdp files with Signotaurbr / (and surviving the April - www.finalbuilder.com/](https://www.finalbuilder.com/resources/blogs/signing-rdp-files-with-signotaur-and-surviving-the-april-windows-update)
+
+    ## What Microsoft changed
+
+    The April cumulative addresses [CVE-2026-26151](https://msrc.microsoft.com/update-guide/vulnerability/CVE-2026-26151). Two user-visible things came with it:
+
+    1. The Remote Desktop Connection warning dialog was redesigned. It now 
+        lists every resource the connection can redirect (drives, printers, clipboard, 
+        USB, etc.) with individual checkboxes, and **every box is off by default**. 
+        Users have to opt in to each one on every connection, every time. 
+    2. The trust criteria for signed `rdp` files tightened. Pre-April, a file 
+        signed by an untrusted cert got a yellow "Verify the publisher" banner. 
+        Post-April, the same file gets an orange "Caution: Unknown remote connection" 
+        banner — visually indistinguishable from an unsigned file
+
+ 
+    Here's what the new per-launch dialog looks like. For an unsigned file:
+
+    [The RDP security warning dialog for an unsigned file: an orange 'Caution: Unknown remote connection' banner, 'Unknown publisher', and per-redirection checkboxes all off by default.]
+
+    And for a file signed by a publisher Windows can verify:
+
+    [The RDP security warning dialog for a signed file: a yellow 'Verify the publisher of this remote connection' banner with the publisher name, and the same per-redirection checkboxes.]
+
+    Separately, the first time any user opens an `rdp` file after installing the update, Windows shows a one-time educational dialog explaining what `rdp` files are and why they can be dangerous:
+
+    [The first-launch educational dialog shown once per user account after installing KB5083769, explaining what RDP files are and the associated phishing risks.]
+
+    Once dismissed, it doesn't reappear for that account.
+
+
+    Here's what recipient machines need for a signed `rdp` file to open with no warning dialog at all:
+    
+    [Note: HKCU material below is implmented by the -RegisterCertificate parameter]
+
+    1.  The signing certificate's chain must terminate in a root the client machine trusts.
+        Commercial code-signing certs (DigiCert, Sectigo, etc.) chain to roots Windows already trusts. 
+        For an internal CA or self-signed cert, the root has to be imported into `Cert:\*\Root` on each client. 
+    2.  A Remote Desktop trust policy must be in place that whitelists your 
+        signing certificate's SHA-1 thumbprint. This lives at either 
+        `HKLM\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services` (machine-wide, requires admin) 
+        or `HKCU\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services` (per-user, no admin required), and needs two values: 
+        -   `AllowSignedFiles` — REG\_DWORD, set to `1`
+        -   `TrustedCertThumbprints` — REG\_SZ, the SHA-1 thumbprint of your signing cert, uppercase, no spaces (semicolon-separated if you have more than one)
+
+    A word of warning about one trap we hit: `TrustedCertThumbprints` is a 
+    whitelist on top of normal chain validation, not a replacement for it. Dropping 
+    a self-signed cert's thumbprint into the list without also importing the cert 
+    into a trusted root store does nothing. If you've tried this and wondered why 
+    it didn't work, that's why. 
+
+    .PARAMETER Path
+    rdp File paths[-path c:\pathto\file.rdp]
+    .PARAMETER Thumbprint
+    Signing certificate thumbprint (locally installed)[-Thumbprint 9A9A999A999A9A9999999A9A9AAA99AAA99AA9A9]
+    .PARAMETER DiscoverCertificate
+    Discover a local signing Certificate (-thumbprint) in local HKCU as Trusted for signed RDP files.[-RegisterCertificate]
+    .PARAMETER RegisterCertificate
+    Register specified Certificate (-thumbprint) in local HKCU as Trusted for signed RDP files.
+    .INPUTS
+    Accepts piped input Path.
+    .OUTPUTS
+    Returns a path to signed object on a successful signing
+    .EXAMPLE
+    PS> $results = set-RDPFileSignatureTDO -path 'C:\Users\aaaaaAAA\Desktop\rdp-faves\AAAAAAAAAAA-AAA-Ex16-Mbx1-1024x768-SID.RDP: confirmed' -Thumbprint 9A9A999A999A9A9999999A9A9AAA99AAA99AA9A9 ;
+    PS> $results ; 
+
+    Report on results of signing file   
+    .EXAMPLE
+    PS> gci "$($env:USERPROFILE)\Desktop\rdp-faves*.rdp" | select -first 1  | set-RDPFileSignatureTDO -verbose ;
+    Demo signing all .rdp files in the specified dir, with pipeline input.
+    .EXAMPLE
+    PS> $Thumbprint = "9A9A999A999A9A9999999A9A9AAA99AAA99AA9A9"
+    PS> $RegPath = 'HKCU:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+    PS> write-verbose "Create the key path if it does not exist" ; 
+    PS> if (-not (Test-Path $RegPath)) {New-Item -Path $RegPath -Force | Out-Null} ; 
+    PS> New-ItemProperty  -Path $RegPath  -Name 'AllowSignedFiles'  -PropertyType DWord  -Value 1  -Force | Out-Null ; 
+    PS> New-ItemProperty -Path $RegPath -Name 'TrustedCertThumbprints' -PropertyType String -Value '$($Thumbprint)' -Force | Out-Null ; 
+    Code to configure HKCU required keys and values to register the signing certificate used, to be trusted to load signed .rdp files without prompts (e.g. as implemented via -RegisterCertificate param)
+    .EXAMPLE
+    PS> $results = set-RDPFileSignatureTDO -RegisterCertificate -Thumbprint $TORMeta.SignCertThumb ;
+    PS> $results ;
+    Demo use of -RegisterCErtificate to populate HKCU required keys and values to register the signing certificate specified, to be trusted to load signed .rdp files without prompts
+    .EXAMPLE
+    PS> write-verbose "Create Self-Signed certificate in LocalMachine\My store" ; 
+    PS> $pltNSSC=@{
+    PS>     Type = 'CodeSigningCert' ;
+    PS>     Subject = "CN=RDP PUBLISHER, O=YOUR ORGANISATION, C=US" ;
+    PS>     KeyUsage = 'DigitalSignature' ;
+    PS>     FriendlyName = "RDP Signing Certificate" ;
+    PS>     CertStoreLocation = "Cert:\LocalMachine\My" ;
+    PS>     NotAfter = (Get-Date).AddYears(3); # NOTE: 3 YEAR LIFE
+    PS> } ; 
+    PS> $cert = New-SelfSignedCertificate @pltNSSC ; 
+    PS> $exportBaseFileName = "C:\Certs\rdp-signing" # EXPORTS BUILT ON VARIANTS OF THIS PATH AND FILENAME
+    PS> $PFXPassword = ConvertTo-SecureString -String "YOURSTRONGPASSWORD!" -Force -AsPlainText ; 
+    PS> if($cert = New-SelfSignedCertificate @pltNSSC){
+    PS>     write-verbose "Export cert to .cer file (no key)" ; 
+    PS>     Export-Certificate  -Cert $cert  -FilePath "$($exportBaseFileName)-public.cer" ; 
+    PS>     write-verbose "Export cert to .pfx file (w private key)" ;         
+    PS>     Export-PfxCertificate  -Cert $cert  -FilePath "$($exportBaseFileName).pfx"  -Password $PFXPassword ; 
+    PS>     write-verbose "=>import the cert on a client, to critical-path required trust locations" ; 
+    PS>     write-verbose "-->Import to Trusted Root CA" ; 
+    PS>     Import-Certificate  -FilePath "$($exportBaseFileName)-public.cer"  -CertStoreLocation "Cert:\LocalMachine\Root" ; 
+    PS>     write-verbose "-->Import to Trusted Publishers" ; 
+    PS>     Import-Certificate  -FilePath "$($exportBaseFileName)-public.cer"  -CertStoreLocation "Cert:\LocalMachine\TrustedPublisher"
+    PS> } ; 
+    Demo use of a self-signed cert: 1)Generate a certificate; 2)export to .cer (no key), and pfx (w private key); 3)and on client(s) import to critical-path trust locations.
+    .LINK
+    https://github.com/tostka/verb-io
+#>
+    [CmdletBinding(DefaultParameterSetName='Sign')]
+    [Alias('sign-RdpFile','sign-RdpFileTDO')]
+    PARAM(
+        [Parameter(ParameterSetName="Sign",Mandatory = $False,Position = 0,ValueFromPipeline = $True, HelpMessage = '.Rdp File paths[-path c:\pathto\file.rdp]')]
+            [Alias('PsPath')]
+            [ValidateScript({Test-Path $_.fullname})]
+            [ValidateScript({ if([IO.Path]::GetExtension($_) -ne ".rdp") { throw "Path must point to an .rdp file" } $true })]
+            [system.io.fileinfo[]]$Path,
+        [Parameter(ParameterSetName="Sign",Mandatory = $false,HelpMessage = 'Signing certificate thumbprint (locally installed)[-Thumbprint 9A9A999A999A9A9999999A9A9AAA99AAA99AA9A9]')]
+        [Parameter(ParameterSetName="Register",Mandatory = $false,HelpMessage = 'Signing certificate thumbprint (locally installed)[-Thumbprint 9A9A999A999A9A9999999A9A9AAA99AAA99AA9A9]')]
+            [ValidateNotNullOrEmpty()]
+            [ValidatePattern("[0-9a-fA-F]{40}")]           
+            [string]$Thumbprint = $TORMeta['SignCertThumb'],
+        [Parameter(ParameterSetName="Discover",Mandatory = $false,HelpMessage = 'Discover a local signing Certificate (-thumbprint) in local HKCU as Trusted for signed RDP files.[-RegisterCertificate]')]
+            [switch]$DiscoverCertificate,
+        [Parameter(ParameterSetName="Register",Mandatory = $false,HelpMessage = 'Register specified Certificate (-thumbprint) in local HKCU as Trusted for signed RDP files.[-RegisterCertificate]')]
+            [switch]$RegisterCertificate
+    ) ; 
+    BEGIN {
+        #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
+        $prpCert = 'Thumbprint','Subject','NotAfter','NotBefore' ; 
+        $RegPath = 'HKCU:\SOFTWARE\Policies\Microsoft\Windows NT\Terminal Services'
+        #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------
+        #region FUNCTIONS_INTERNAL ; #*======v  FUNCTIONS_INTERNAL v======
+        
+        if(-not(get-command Test-CertificateTDO)){
+            #*------v Function test-CertificateTDO v------
+            function test-CertificateTDO {
+                <#
+                .SYNOPSIS
+                test-CertificateTDO -  Tests specified certificate for certificate chain and revocation
+                .NOTES
+                Version     : 0.63
+                Author      : Vadims Podans
+                Website     : http://www.sysadmins.lv/
+                Twitter     : 
+                CreatedDate : 2024-08-22
+                FileName    : test-CertificateTDO.ps1
+                License     : (none asserted)
+                Copyright   : Vadims Podans (c) 2009
+                Github      : https://github.com/tostka/verb-network
+                Tags        : Powershell,Certificate,Validation,Authentication,Network
+                AddedCredit : Todd Kadrie
+                AddedWebsite: http://www.toddomation.com
+                AddedTwitter: @tostka / http://twitter.com/tostka
+                REVISIONS
+                * 9:18 AM 4/29/2026 Removed rem'd param lines, minor capitalization tweaks 
+                * 9:55 AM 7/9/2025 updated CBH, corrected link vio -> vnet mod; updated CBH to explicitly note it supports testing _installed_ certs as well (VP's original didn't and relied on filesystem .ext for logic handling pfx pw etc). Shifted copies of the pki\test-certificate examples down into actual CBH expl entries, for broad reference
+                * 8:20 AM 8/30/2024 pulled errant alias (rol, restart-outlook)
+                * 2:29 PM 8/22/2024 fixed process looping (lacked foreach); added to verb-Network; retoololed to return a testable summary report object (summarizes Subject,Issuer,Not* dates,thumbprint,Usage (FriendlyName),isSelfSigned,Status,isValid,and the full TrustChain); 
+                    added param valid on [ValidateSet, CRLMode, CRLFlag, VerificationFlags ; updated CBH; added support for .p12 files (OpenSSL pfx variant ext), rewrite to return a status object
+                * 9:34 AM 8/22/2024 Vadims Podans posted poshcode.org copy from web.archive.org, grabbed 11/2016 (orig dates from 2009, undated beyond copyright line)
+                .DESCRIPTION
+                test-CertificateTDO -  Tests specified certificate for certificate chain and revocation status for each certificate in chain
+                    exluding Root certificates
+    
+                    Based on Vadim Podan's 2009-era Test-Certificate function, expanded/reworked to return a testable summary report object (summarizes Subject,Issuer,NotBefore|After dates,thumbprint,Usage(FriendlyName),isSelfSigned,Status,isValid. 
+        
+                    Also revised to support testing _installed_ certs (original only did filesystem, used .extension to determine pw etc handling)
+
+                    ## Note:Powershell v4+ PKI mod includes a native Test-Certificate cmdlet that returns a boolean, and supports -DNSName to test a given fqdn against the CN/SANs list on the certificate. 
+                    Limitations of that alternate, for non-public certs, include that it lacks the ability to suppress CRL-testing to evaluate *private/internal-CA-issued certs, which lack a publcly resolvable CRL url. 
+                    Those certs, will always fail the bundled Certificate Revocation List checks. 
+
+                    This code does not have that issue: test-CertificateTDO used with -CRLMode NoCheck & -CRLFlag EntireChain validates a given internal Cert is...
+                    - in daterange, 
+                    - and has a locally trusted chain, 
+                    ...where psv4+ test-certificate will always fail a non-CRL-accessible cert.
+
+                    ### Examples of use of that cmdlet:
+    
+                    Demo 1:
+
+                    PS C:\>Get-ChildItem -Path Cert:\localMachine\My | Test-Certificate -Policy SSL -DNSName "dns=contoso.com"
+
+                    This example verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
+                    with the DNS name specified.
+
+                    Demo 2:
+
+                    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+                    -EKU "1.3.6.1.5.5.7.3.1" –User
+
+                    This example verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
+                    checking is not performed.
+        
+                .PARAMETER Certificate
+                Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accept pipeline input
+                .PARAMETER Password
+                Specifies PFX file password. Password must be passed as SecureString.
+                .PARAMETER CRLMode
+                Sets revocation check mode. May contain on of the following values:
+       
+                    - Online - perform revocation check downloading CRL from CDP extension ignoring cached CRLs. Default value
+                    - Offline - perform revocation check using cached CRLs if they are already downloaded
+                    - NoCheck - specified certificate will not checked for revocation status (not recommended)
+                .PARAMETER CRLFlag
+                Sets revocation flags for chain elements. May contain one of the following values:
+       
+                    - ExcludeRoot - perform revocation check for each certificate in chain exluding root. Default value
+                    - EntireChain - perform revocation check for each certificate in chain including root. (not recommended)
+                    - EndCertificateOnly - perform revocation check for specified certificate only.
+                .PARAMETER VerificationFlags
+                Sets verification checks that will bypassed performed during certificate chaining engine
+                check. You may specify one of the following values:
+       
+                - NoFlag - No flags pertaining to verification are included (default).
+                - IgnoreNotTimeValid - Ignore certificates in the chain that are not valid either because they have expired or they are not yet in effect when determining certificate validity.
+                - IgnoreCtlNotTimeValid - Ignore that the certificate trust list (CTL) is not valid, for reasons such as the CTL has expired, when determining certificate verification.
+                - IgnoreNotTimeNested - Ignore that the CA (certificate authority) certificate and the issued certificate have validity periods that are not nested when verifying the certificate. For example, the CA cert can be valid from January 1 to December 1 and the issued certificate from January 2 to December 2, which would mean the validity periods are not nested.
+                - IgnoreInvalidBasicConstraints - Ignore that the basic constraints are not valid when determining certificate verification.
+                - AllowUnknownCertificateAuthority - Ignore that the chain cannot be verified due to an unknown certificate authority (CA).
+                - IgnoreWrongUsage - Ignore that the certificate was not issued for the current use when determining certificate verification.
+                - IgnoreInvalidName - Ignore that the certificate has an invalid name when determining certificate verification.
+                - IgnoreInvalidPolicy - Ignore that the certificate has invalid policy when determining certificate verification.
+                - IgnoreEndRevocationUnknown - Ignore that the end certificate (the user certificate) revocation is unknown when determining     certificate verification.
+                - IgnoreCtlSignerRevocationUnknown - Ignore that the certificate trust list (CTL) signer revocation is unknown when determining certificate verification.
+                - IgnoreCertificateAuthorityRevocationUnknown - Ignore that the certificate authority revocation is unknown when determining certificate verification.
+                - IgnoreRootRevocationUnknown - Ignore that the root revocation is unknown when determining certificate verification.
+                - AllFlags - All flags pertaining to verification are included.   
+                .INPUTS
+                Accepts piped input Certificate
+                .OUTPUTS
+                This script return general info about certificate chain status 
+                .EXAMPLE
+                PS> Get-ChilItem cert:\CurrentUser\My | test-CertificateTDO -CRLMode "NoCheck"
+                Will check certificate chain for each certificate in current user Personal container.
+                Specifies certificates will not be checked for revocation status.
+                .EXAMPLE
+                PS> $output = test-CertificateTDO C:\Certs\certificate.cer -CRLFlag "EndCertificateOnly"
+                Will check certificate chain for certificate that is located in C:\Certs and named
+                as Certificate.cer and revocation checking will be performed for specified certificate oject
+                .EXAMPLE
+                PS> $output = gci Cert:\CurrentUser\My -CodeSigningCert | Test-CertificateTDO -CRLMode NoCheck -CRLFlag EntireChain -verbose ;
+                Demo Self-signed codesigning tests from CU\My, skips CRL revocation checks (which self-signed wouldn't have); validates that the entire chain is trusted.
+                .EXAMPLE
+                PS> if( gci Cert:\CurrentUser\My -CodeSigningCert | Test-CertificateTDO -CRLMode NoCheck -CRLFlag EntireChain |  ?{$_.valid -AND $_.Usage -contains 'Code Signing'} ){
+                PS>         write-host "A-OK for code signing!"
+                PS> } else { write-warning 'Bad Cert for code signing!'} ; 
+                Demo conditional branching on basis of output valid value.
+                .EXAMPLE
+                PS C:\>Get-ChildItem -Path Cert:\localMachine\My | Test-Certificate -Policy SSL -DNSName "dns=contoso.com"
+                Native PKI\test-certificate() demo: verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
+                with the DNS name specified.
+                .EXAMPLE
+                PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+                -EKU "1.3.6.1.5.5.7.3.1" –User
+                Native PKI\test-certificate() demo: Verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
+                checking is not performed.    
+                .LINK
+                https://web.archive.org/web/20160715110022/poshcode.org/1633
+                .LINK
+                https://github.com/tostka/verb-network
+                #>
+                #requires -Version 2.0
+                [CmdletBinding()]
+                #[Alias('','')]
+                PARAM(        
+                    [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accepts pipeline input")]
+                        $Certificate,
+                    [Parameter(HelpMessage="Specifies PFX|P12 file password. Password must be passed as SecureString.")]
+                        [System.Security.SecureString]$Password,
+                    [Parameter(HelpMessage="Sets revocation check mode (Online|Offline|NoCheck)")]
+                        [ValidateSet('Online','Offline','NoCheck')]
+                        [System.Security.Cryptography.X509Certificates.X509RevocationMode]$CRLMode = "Online",
+                    [Parameter(HelpMessage="Sets revocation flags for chain elements ('ExcludeRoot|EntireChain|EndCertificateOnly')")]
+                        [ValidateSet('ExcludeRoot','EntireChain','EndCertificateOnly')]
+                        [System.Security.Cryptography.X509Certificates.X509RevocationFlag]$CRLFlag = "ExcludeRoot",
+                    [Parameter(HelpMessage="Sets verification checks that will bypassed performed during certificate chaining engine check (NoFlag|IgnoreNotTimeValid|IgnoreCtlNotTimeValid|IgnoreNotTimeNested|IgnoreInvalidBasicConstraints|AllowUnknownCertificateAuthority|IgnoreWrongUsage|IgnoreInvalidName|IgnoreInvalidPolicy|IgnoreEndRevocationUnknown|IgnoreCtlSignerRevocationUnknown|IgnoreCertificateAuthorityRevocationUnknown|IgnoreRootRevocationUnknown|AllFlags)")]
+                        [validateset('NoFlag','IgnoreNotTimeValid','IgnoreCtlNotTimeValid','IgnoreNotTimeNested','IgnoreInvalidBasicConstraints','AllowUnknownCertificateAuthority','IgnoreWrongUsage','IgnoreInvalidName','IgnoreInvalidPolicy','IgnoreEndRevocationUnknown','IgnoreCtlSignerRevocationUnknown','IgnoreCertificateAuthorityRevocationUnknown','IgnoreRootRevocationUnknown','AllFlags')]
+                        [System.Security.Cryptography.X509Certificates.X509VerificationFlags]$VerificationFlags = "NoFlag"
+                ) ;
+                BEGIN { 
+                    $Verbose = ($VerbosePreference -eq 'Continue') 
+                    $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2 ; 
+                    $chain = New-Object System.Security.Cryptography.X509Certificates.X509Chain ; 
+                    $chain.ChainPolicy.RevocationFlag = $CRLFlag ; 
+                    $chain.ChainPolicy.RevocationMode = $CRLMode ; 
+                    $chain.ChainPolicy.VerificationFlags = $VerificationFlags ; 
+                    #*------v Function _getstatus_ v------
+                    function _getstatus_ ($status, $chain, $cert){
+                        # add a returnable output object
+                        if($host.version.major -ge 3){$oReport=[ordered]@{Dummy = $null ;} }
+                        else {$oReport=@{Dummy = $null ;}} ;
+                        If($oReport.Contains("Dummy")){$oReport.remove("Dummy")} ;
+                        $oReport.add('Subject',$cert.Subject); 
+                        $oReport.add('Issuer',$cert.Issuer); 
+                        $oReport.add('NotBefore',$cert.NotBefore); 
+                        $oReport.add('NotAfter',$cert.NotAfter);
+                        $oReport.add('Thumbprint',$cert.Thumbprint); 
+                        $oReport.add('Usage',$cert.EnhancedKeyUsageList.FriendlyName) ; 
+                        $oReport.add('isSelfSigned',$false) ; 
+                        $oReport.add('Status',$status); 
+                        $oReport.add('Valid',$false); 
+                        if($cert.Issuer -eq $cert.Subject){
+                            $oReport.SelfSigned = $true ;
+                            write-host -foregroundcolor yellow "NOTE⚠️:Current certificate $($cert.SerialNumber) APPEARS TO BE *SELF-SIGNED* (SUBJECT==ISSUER)" ; 
+                        } ; 
+                        # Return the list of certificates in the chain (the root will be the last one)
+                        $oReport.add('TrustChain',($chain.ChainElements | ForEach-Object {$_.Certificate})) ; 
+                        write-verbose "Certificate Trust Chain`n$(($chain.ChainElements | ForEach-Object {$_.Certificate}|out-string).trim())" ; 
+                        if ($status) {
+                            $smsg = "Current certificate $($cert.SerialNumber) chain and revocation status is valid" ; 
+                            if($CRLMode -eq 'NoCheck'){
+                                $smsg += "`n(NOTE:-CRLMode:'NoCheck', no Certificate Revocation Check performed)" ; 
+                            } ; 
+                            write-host -foregroundcolor green $smsg;
+                            $oReport.valid = $true ; 
+                        } else {
+                            Write-Warning "Current certificate $($cert.SerialNumber) chain is invalid due of the following errors:" ; 
+                            $chain.ChainStatus | foreach-object{Write-Host $_.StatusInformation.trim() -ForegroundColor Red} ; 
+                            $oReport.valid = $false ; 
+                        } ; 
+                        New-Object PSObject -Property $oReport | write-output ;
+                    } ; 
+                    #*------^ END Function _getstatus_ ^------
+                } ;
+                PROCESS {
+                    foreach($item in $Certificate){
+                        if ($item -is [System.Security.Cryptography.X509Certificates.X509Certificate2]) {
+                            $status = $chain.Build($item)   ; 
+                            $report = _getstatus_ $status $chain $item   ; 
+                            write-verbose "return report to pipeline" ; 
+                            RETURN $report ;
+                        } else {
+                            if (!(Test-Path $item)) {
+                                Write-Warning "Specified path is invalid" #return
+                                $valid = $false ; 
+                                RETURN $false ; 
+                            } else {
+                                if ((Resolve-Path $item).Provider.Name -ne "FileSystem") {
+                                    Write-Warning "Spicifed path is not recognized as filesystem path. Try again" ; #return   ; 
+                                    RETURN $false ; 
+                                } else {
+                                    $item = get-item $(Resolve-Path $item)   ; 
+                                    switch -regex ($item.Extension) {
+                                        "\.CER|\.DER|\.CRT" {$cert.Import($item.FullName)}  
+                                        "\.PFX|\.P12" {
+                                                if (!$Password) {$Password = Read-Host "Enter password for PFX file $($item)" -AsSecureString}
+                                                        $cert.Import($item.FullName, $password, "UserKeySet")  ;  
+                                        }  
+                                        "\.P7B|\.SST" {
+                                                $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2Collection ; 
+                                                $cert.Import([System.IO.File]::ReadAllBytes($item.FullName))   ; 
+                                        }  
+                                        default {
+                                            Write-Warning "Looks like your specified file is not a certificate file" #return
+                                            RETURN $false ; 
+                                        }  
+                                    }  
+                                    $cert | foreach-object{
+                                            $status = $chain.Build($_)  
+                                            $report = _getstatus_ $status $chain $_   ; 
+                                            RETURN $report ;
+                                    }  
+                                    $cert.Reset()  
+                                    $chain.Reset()  
+                                } ; 
+                            } ; 
+                        }   ; 
+                    } ;  # loop-E $Certificate
+                } ;  # PROC-E
+                END {} ; 
+            } ; 
+            #*------^ END Function test-CertificateTDO ^------
+        }
+        #endregion FUNCTIONS_INTERNAL ; #*======^ END FUNCTIONS_INTERNAL ^======
+
+        TRY{            
+            ($RDPSignExec = get-command rdpsign.exe -ea STOP).source ; 
+            if($DiscoverCertificate){
+                write-host "-DiscoverCertificate: Discovering 1st signing certificate in CU\My, LM\My order" ; 
+                if($Cert = @(get-childitem cert:\currentuser\my -codesigning -ea 0 )[0]){
+                    write-verbose "found matching -codesigning CU\My cert:`n$(($cert|out-string).trim())" ; 
+                } elseif($Cert = @(get-childitem cert:\LocalMachine\my -codesigning -ea 0 )[0]){
+                    write-verbose "found -codesigning  matching LM\My cert:`n$(($cert|out-string).trim())" ; 
+                } else { 
+                    throw "Unable to locate a Signing Cert in either`ncert:\currentuser\my -codesigning`nor cert:\LocalMachine\my -codesigning. ABORTING!" ; 
+                } 
+            }else{
+                $Thumbprint = $Thumbprint -replace '\s','' ; 
+                if($Cert = Get-ChildItem "Cert:\*\My\$($Thumbprint)" -ea STOP | 
+                    Where-Object { $_.EnhancedKeyUsageList -match "Code Signing" } | 
+                        sort pspath | select -last 1
+                ){
+
+                } ; 
+            }
+            if($Cert){
+                $smsg = "Matched Certificate:" ; 
+                $smsg += "`n`n$(($Cert | ft -a $prpCert|out-string).trim())" ; 
+                write-verbose $smsg ; 
+                $pltTCT=[ordered]@{
+                    Certificate = $cert ;
+                    CRLMode = 'NoCheck' ;
+                    CRLFlag = 'EntireChain' ;
+                } ;
+                $smsg = "test-CertificateTDO w`n$(($pltTCT|out-string).trim())" ; 
+                write-verbose $smsg ; 
+                if($bRet = test-CertificateTDO @pltTCT |  ?{$_.valid -AND $_.Usage -contains 'Code Signing'} ){
+                    write-verbose "Certificate...`n`n$(($bret.TrustChain | %{$_| ft -a subject,notbefore,notafter,issuer}|out-string).trim())`n`n... is valid for CodeSigning" ; 
+                } else { 
+                    $smsg = "Unable to locate a usable -codesigning certificate in either CU\My or LM\My! ABORTING!" ; 
+                    write-warning $smsg ; 
+                    throw $smsg ;
+                    break ; 
+                } ; 
+            }else{
+                $smsg = "UNABLE TO LOCATE CERT IN LOCAL OR CURRENTUSER\MY\$($THUMBPRINT)!" ; 
+                write-warning $smsg ; 
+                throw $smsg ; 
+            }
+
+            if($RegisterCertificate -AND $Thumbprint ){
+                $smsg = "-RegisterCertificate & -Thumbprint :$($Thumbprint) : Configure HKCU required keys and values to register the signing certificate specified`nto be trusted to load signed .rdp files without prompts" ; 
+                write-host -foregroundcolor yellow $smsg ;                 
+                write-verbose "Create the key path $($RegPath)`nif it does not exist" ; 
+                if (-not (Test-Path $RegPath)) {New-Item -Path $RegPath -Force -verbose } ; # | Out-Null
+                New-ItemProperty  -Path $RegPath  -Name 'AllowSignedFiles'  -PropertyType DWord  -Value 1  -Force -verbose  ; # | Out-Null
+                New-ItemProperty -Path $RegPath -Name 'TrustedCertThumbprints' -PropertyType String -Value '$($Thumbprint)' -Force  -verbose  ; # | Out-Null                
+                $smsg += "Certificate`n`n$(($Cert | ft -a $prpCert|out-string).trim())" ;
+                $smsg += "`nRegistered/Trusted at`n$($RegPath)`nwith:AllowSignedFiles:1`nand:TrustedCertThumbprints: $($Thumbprint) " ; 
+                write-host -foregroundcolor green $smsg ; 
+                return $smsg ; 
+            } ; 
+        } CATCH {
+            $ErrTrapd=$Error[0] ;
+            write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+            $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+            write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+            return $false ; 
+        } ;
+
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+        foreach ($item in $Path){
+            TRY{
+                Write-Verbose "Signing RDP file: $($item.fullname)" ; 
+                #& rdpsign.exe /sha256 $Thumbprint $RdpFilePath ; 
+                $ret = & $RDPSignExec /sha256 $Thumbprint $item.fullname; 
+                if(gc $item.fullname | Where-Object { $_ -match "^signature" -or $_ -match "^signscope" }){
+                    $smsg = $ret ; 
+                    $smsg += "`n$($item.fullname): confirmed '^(signature|signscope) applied" ; 
+                    write-verbose $smsg ; 
+                    $item.fullname | write-output 
+                }else{
+                    $smsg = "$($item.fullname): MISSING '^(signature|signscope)!" ; 
+                    write-warning $smsg ; 
+                }
+            } CATCH {$ErrTrapd=$Error[0] ;
+                write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+            } ;
+        } ;  # loop-E
+    }  # if-E PROC
+    END{} ; 
+}
+
+#*------^ set-RDPFileSignatureTDO.ps1 ^------
+
+
+#*------v show-SerFilterLogFormattedOutput.ps1 v------
+function show-SerFilterLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerFilterLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerFilterLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'Filter' Log File Type output, and parses it for the focused cmd=send lines, and lip= lines, to assemble a targeted set of QID-specific search steps for the MTA log (the next step in a trace)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+	[2026-03-18 07:52:30.007522 -0500] rprt s=4cwtbdrj71 mod=session cmd=disconnect module= rule= action= helo=SERVER.DOMAIN
+.com msgs=1 rcpts=1 routes=allow_relay duration=0.096 elapsed=0.524
+...[TRIMMED]...
+[2026-03-18 07:52:29.487175 -0500] rprt s=4cwtbdrj71 mod=session cmd=connect ip=123.456.789.012 country=us lip=123.456.789.013 prot
+=smtp:smtp hops_active=f routes= notroutes=default_inbound,firewallsafe,internalnet,outbound,pp_spoofsafe,spfsafe,tls,xclient
+_trusted perlwait=0.003    
+"@ ; 
+    PS> show-SerFilterLogFormattedOutput -LogText $hsLogOutput
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerFilterLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText,
+        [Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $serlines = $logtext ; 
+        } ; ;         
+        #$serlines = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serlines = $serlines -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        $serverIP = [regex]::match(($serlines |?{$_ -match 'lip='}).split(' '),'lip=(\d+\.\d+\.\d+\.\d+)').groups[1].value ; 
+        switch($serverIP){            
+            $masterServer[1]  {$server = $masterServer[0]}
+            $agentserver[1] {$server = $agentserver[0]}
+            default{
+                throw "Unrecogized, or unconfigured Server IP Address!" ; 
+            } ; 
+        } ; 
+        $sendline = $serlines |?{$_ -match 'cmd=send'} ;
+        if($sendQID = [regex]::match(($serlines |?{$_ -match 'cmd=send'}).split(' '),'qid=([\w]{14})').groups[1].value){
+            $smsg = "cmd=send QID resolved: $($sendQID)" ;
+            $smsg += "`nRun MTA Search:`nLogs & reports > Log Viewer`nServer:$($server)`nLog Type Filter: MTA`nFind: $($sendQID)`n, click SEARCH" ;
+            write-host -foregroundcolor yellow $smsg ;
+            $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+            write-host "(report copied to clipboard)" ; 
+        } else {write-warning "No line with both 'cmd=send' & 'qid=([\w]{14})' found: Unable to resolve QID for MTA search" } ; 
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerFilterLogFormattedOutput.ps1 ^------
+
+
+#*------v show-SerMtaLogFormattedOutput.ps1 v------
+function show-SerMtaLogFormattedOutput {
+    <#
+    .SYNOPSIS
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-03-19
+    FileName    : show-SerMtaLogFormattedOutput.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-network
+    Tags        : Powershell,Proofpoint,SecureEmailRelay,SER,Log,MessageTrace
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    REVISIONS
+    * 12:04 PM 3/19/2026 init
+    .DESCRIPTION
+    show-SerMtaLogFormattedOutput.ps1 - Takes Proofpoint SER Logs (from clipboard) and Reports > Log Viewer  'MTA' Log File Type output, and parses it to provide an unwrapped display for readability of the output data (which tends to have random line breaks, and partial lines)
+    
+    .PARAMETER LogText
+    The raw Filter Log output text report
+    .PARAMETER masterserver
+    Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)
+    .PARAMETER agentserver
+    Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)
+    .INPUTS
+    None. Does not accepted piped input.(.NET types, can add description)
+    .OUTPUTS
+    None. Returns no objects or output (.NET types)
+    .EXAMPLE
+    PS> $hsLogOutput = @"
+		2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>, size=21724, class
+=0, nrcpts=1, msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@LYNMS651.aaaaaa.aa.aaaa.aaa>, proto=ESMTP, daemon=MTA, tls_verify=N
+ONE, tls_version=NONE, cipher=NONE, auth=NONE, relay=SIT-PPAGENT-01.toro.com [127.0.0.1]
+2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaaaa9@AaAaaa.aaa>, delay=00:00:01,
+xdelay=00:00:01, mailer=esmtp, tls_verify=OK, tls_version=TLSv1.2, cipher=ECDHE-RSA-AES256-GCM, pri=141724, relay=smtp-us.se
+r.proofpoint.com. [99.999.999.999], dsn=2.0.0, stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+"@ ; 
+    PS> show-SerMtaLogFormattedOutput -LogText $hsLogOutput
+    
+        2026-03-18T15:06:22.652742-07:00 SIT-PPAGENT-01 queued-ser[26103]: 62IM6FMg026103: from=<Aaaaaaa@aaaa.aaa>
+         size=21724
+         class=0
+         nrcpts=1
+         msgid=<b7d44227-e0da-4648-9a0e-fcaa469c0c0f@AAAAA999.aaaaaa.aa.aaaa.aaa>
+         proto=ESMTP
+         daemon=MTA
+         tls_verify=NONE
+         tls_version=NONE
+         cipher=NONE
+         auth=NONE
+         relay=SIT-PPAGENT-01.aaaa.aaa [127.0.0.1]
+
+        2026-03-18T15:06:23.253533-07:00 SIT-PPAGENT-01 queued-ser[26108]: 62IM6FMg026103: to=<aaaaaa.aa.aaaa.aaa>
+         delay=00:00:01
+        xdelay=00:00:01
+         mailer=esmtp
+         tls_verify=OK
+         tls_version=TLSv1.2
+         cipher=ECDHE-RSA-AES256-GCM
+         pri=141724
+         relay=smtp-us.ser.proofpoint.com. [99.999.999.999]
+         dsn=2.0.0
+         stat=Sent (2z1ywXGjAvJb72z1zwkOzm mail accepted for delivery)
+             
+    Demo that uses -jlogfile param with a pre-populated herre string
+    .EXAMPLE
+    PS> show-SerMtaLogFormattedOutput
+    Demo that uses default clipboard source for input LogText
+    .LINK
+    https://github.com/tostka/verb-network
+    #>
+    # VALIDATORS: [ValidateNotNull()][ValidateNotNullOrEmpty()][ValidateLength(24,25)][ValidateLength(5)][ValidatePattern("some\sregex\sexpr")][ValidateSet("US","GB","AU")][ValidateScript({Test-Path $_ -PathType 'Container'})][ValidateScript({Test-Path $_})][ValidateRange(21,65)]#positiveInt:[ValidateRange(0,[int]::MaxValue)]#negativeInt:[ValidateRange([int]::MinValue,0)][ValidateCount(1,3)]
+    ## [OutputType('bool')] # optional specified output type
+    [CmdletBinding()]
+    ###[Alias('Alias','Alias2')]
+    PARAM(
+        [Parameter(HelpMessage="The raw Filter Log output text report")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$LogText
+            #,
+        <#[Parameter(HelpMessage="Array containing OnPrem Master Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$masterserver = $tormeta.seropmaster,
+        [Parameter(HelpMessage="Array containing OnPrem Agent Server nbname,serverIP (used to resolve hosts)")]
+            #[ValidateNotNullOrEmpty()]
+            #[Alias('ALIAS1', 'ALIAS2')]
+            [string[]]$agentserver = $tormeta.seropagent    
+        #>
+    ) ;
+    TRY{
+        IF(-NOT $logtext){
+            $bRet=Read-Host "COPY THE RAW FILTER LOG VIEWER OUTPUT TO CLIPBOARD!(press any key to continue)"  ;        
+            $sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) ; 
+        } else {
+            $sermta = $logtext ; 
+        } ; ;         
+        #$sermta = (Microsoft.PowerShell.Management\get-clipboard -raw -ea STOP ) -replace [Environment]::NewLine," " -replace "(\[)","`r`n[" -split "`r?`n" ;
+        #$sermta = $sermta  -replace ([Environment]::NewLine),"" -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1' -replace "\|","`r`n").Split([Environment]::NewLine) |  ?{$_} ;
+        $sermta = $sermta -replace ([Environment]::NewLine),"" ; 
+        $sermta = $sermta -replace "(\d{4}-\d{2}-\w{5}:\d{2}:\d{2}\.\d{6}-\d{2}:\d{2})",'|$1'  ; 
+        $sermta = $sermta -replace "\|","`r`n" ; 
+        $sermta = $sermta.Split([Environment]::NewLine) |  ?{$_} ;
+        $smsg = $null ;
+        $sermta | %{ $smsg += "`n`n" ; $smsg+= ($_ -replace ",","`r`n")} ;
+        $smsg | write-output ;
+        $smsg | Microsoft.PowerShell.Management\set-clipboard ;
+        write-host "`n(report copied to clipboard)" ;
+    } CATCH {$ErrTrapd=$Error[0] ;
+       write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+       $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+       write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+    } ;    
+}
+
+#*------^ show-SerMtaLogFormattedOutput.ps1 ^------
+
+
 #*------v split-DnsTXTRecord.ps1 v------
 function split-DnsTXTRecord{
     <#
@@ -10492,59 +11259,6 @@ $(($StatusElems | group | sort count -desc | ft -auto Count,Name|out-string).tri
 #*------^ summarize-PassStatusHtml.ps1 ^------
 
 
-#*------v test-ADComputerName.ps1 v------
-Function test-ADComputerName{
-    <#
-    .SYNOPSIS
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-ADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-ADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-ADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-ADComputerName.ps1 ^------
-
-
 #*------v test-CertificateTDO.ps1 v------
 function test-CertificateTDO {
     <#
@@ -10565,6 +11279,7 @@ function test-CertificateTDO {
     AddedWebsite: http://www.toddomation.com
     AddedTwitter: @tostka / http://twitter.com/tostka
     REVISIONS
+    * 9:18 AM 4/29/2026 Removed rem'd param lines, minor capitalization tweaks 
     * 9:55 AM 7/9/2025 updated CBH, corrected link vio -> vnet mod; updated CBH to explicitly note it supports testing _installed_ certs as well (VP's original didn't and relied on filesystem .ext for logic handling pfx pw etc). Shifted copies of the pki\test-certificate examples down into actual CBH expl entries, for broad reference
     * 8:20 AM 8/30/2024 pulled errant alias (rol, restart-outlook)
     * 2:29 PM 8/22/2024 fixed process looping (lacked foreach); added to verb-Network; retoololed to return a testable summary report object (summarizes Subject,Issuer,Not* dates,thumbprint,Usage (FriendlyName),isSelfSigned,Status,isValid,and the full TrustChain); 
@@ -10639,7 +11354,7 @@ function test-CertificateTDO {
     - IgnoreRootRevocationUnknown - Ignore that the root revocation is unknown when determining certificate verification.
     - AllFlags - All flags pertaining to verification are included.   
     .INPUTS
-    None. Does not accepted piped input.
+    Accepts piped input Certificate
     .OUTPUTS
     This script return general info about certificate chain status 
     .EXAMPLE
@@ -10675,9 +11390,7 @@ function test-CertificateTDO {
     #requires -Version 2.0
     [CmdletBinding()]
     #[Alias('','')]
-    PARAM(
-        #[Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,ValueFromPipelineByPropertyName=$true,HelpMessage="Path to file[-path 'c:\pathto\file.txt']")]
-        #[Parameter(Mandatory = $true, ValueFromPipeline = $true, Position = 0,HelpMessage="Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accept pipeline input)"]
+    PARAM(        
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="Specifies the certificate to test certificate chain. This parameter may accept X509Certificate, X509Certificate2 objects or physical file path. this paramter accepts pipeline input")]
             $Certificate,
         [Parameter(HelpMessage="Specifies PFX|P12 file password. Password must be passed as SecureString.")]
@@ -10742,16 +11455,17 @@ function test-CertificateTDO {
             if ($item -is [System.Security.Cryptography.X509Certificates.X509Certificate2]) {
                 $status = $chain.Build($item)   ; 
                 $report = _getstatus_ $status $chain $item   ; 
-                return $report ;
+                write-verbose "return report to pipeline" ; 
+                RETURN $report ;
             } else {
                 if (!(Test-Path $item)) {
                     Write-Warning "Specified path is invalid" #return
                     $valid = $false ; 
-                    return $false ; 
+                    RETURN $false ; 
                 } else {
                     if ((Resolve-Path $item).Provider.Name -ne "FileSystem") {
                         Write-Warning "Spicifed path is not recognized as filesystem path. Try again" ; #return   ; 
-                        return $false ; 
+                        RETURN $false ; 
                     } else {
                         $item = get-item $(Resolve-Path $item)   ; 
                         switch -regex ($item.Extension) {
@@ -10766,13 +11480,13 @@ function test-CertificateTDO {
                             }  
                             default {
                                 Write-Warning "Looks like your specified file is not a certificate file" #return
-                                return $false ; 
+                                RETURN $false ; 
                             }  
                         }  
                         $cert | foreach-object{
                                 $status = $chain.Build($_)  
                                 $report = _getstatus_ $status $chain $_   ; 
-                                return $report ;
+                                RETURN $report ;
                         }  
                         $cert.Reset()  
                         $chain.Reset()  
@@ -10846,132 +11560,6 @@ function test-Connection-T {
 }
 
 #*------^ test-Connection-T.ps1 ^------
-
-
-#*------v test-CredentialsTDO.ps1 v------
-function test-CredentialsTDO{
-        <#
-        .SYNOPSIS
-        test-CredentialsTDO - tests provided uid+pw cred combo
-        .NOTES
-        Version     : 0.0.
-        Author      : Todd Kadrie
-        Website     : http://www.toddomation.com
-        Twitter     : @tostka / http://twitter.com/tostka
-        CreatedDate : 20250711-0423PM
-        FileName    : test-CredentialsTDO.ps1
-        License     : (none asserted)
-        Copyright   : (none asserted)
-        Github      : https://github.com/tostka/verb-io
-        Tags        : Powershell,ActiveDirectory,Account,Credential
-        AddedCredit : Michel de Rooij / michel@eightwone.com
-        AddedWebsite: http://eightwone.com
-        AddedTwitter: URL        
-        REVISIONS
-        * 4:33 PM 10/16/2025 logic fix, self-contained, brought in alt deps; CBH demo1 fix
-        * 12:59 PM 9/17/2025 add to vnet; remove write-my*() calls (write-log has native defer support now)
-        * 1:44 PM 8/8/2025 ren test-Credentials821 -> test-CredentialsTDO, aliased orig name (I made sufficient changes, may as well keep a copy in verb-io)
-        11:59 AM 7/18/2025 lifted copy of sub from install-Ex15, updated to support pw as plaintext or securestring, tweaked pw conv code, orig was failing
-        .DESCRIPTION
-        test-CredentialsTDO - tests provided uid+pw cred combo
-                
-        .INPUTS
-        None, no piped input.
-        .OUTPUTS
-        System.Object summary of Exchange server descriptors, and service statuses.
-        .EXAMPLE
-        PS> $tcred = get-credential ; 
-        PS> if(test-CredentialsTDO -UserName $tcred.username -Password $tcred.GetNetworkCredential().Password){
-        PS>     write-host -foregroundcolor green "Credential validated" ; 
-        PS> } ; 
-        .LINK
-        https://github.org/tostka/verb-ex2010/
-        #>
-        [CmdletBinding()]
-        [alias('test-Credentials')]
-        PARAM(            
-            [Parameter(HelpMessage = "Account to be tested")]
-                [Alias('Account','logon')]
-                [string]$UserName,
-            [Parameter(Mandatory=$true,HelpMessage = "Account password to be tested (securestring or plain text)")]
-                [Alias('AdminPassword')]
-                #[string]
-                $Password                       
-        ) ;
-        switch ($Password.gettype().fullname){
-            'System.String' {
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-                $PlainTextPassword= $Password ; 
-            }
-            'System.Security.SecureString'{
-                #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( $Password ))
-                $tmpCred = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList ("None",$Password ) ;                
-                #$PlainTextPassword = $Password.GetNetworkCredential().Password 
-                $PlainTextPassword = $tmpcred.GetNetworkCredential().Password ; 
-                remove-variable tmpCred
-            }
-            default{
-                $smsg = "Unrecognized -Password type:$($Password.gettype().fullname)" ; 
-                $smsg += "`nSpecify as either plain text or SecureSTring" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                throw $smsg ; 
-            }
-        }
-        #$PlainTextPassword= [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR( (ConvertTo-SecureString $Password) ))
-        if(get-command FullPlainTextAccount -ea SilentlyContinue){
-            $FullPlainTextAccount= get-FullDomainAccountTDO -Account $UserName ;
-        }else{
-            #write-warning "missing:FullPlainTextAccount(), skipping account format specification" ; 
-            switch -regex ($username){
-                '(.*)\\(.*)' {
-                    $Parts = $UserName.split('\') ; 
-                    $FullPlainTextAccount = "$($Parts[0].ToUpper())\$($Parts[1])" ; write-host  "UserName is in Legacy format" ; 
-                    break ; 
-                } ; 
-                '(.*)@(.*)' {
-                    write-host  "Username is in UPN format"  ; 
-                    $FullPlainTextAccount = $UserName ; 
-                    break ; 
-                }
-                default{
-                    if($env:USERDOMAIN){
-                        $FullPlainTextAccount = "$($env:USERDOMAIN)\$($UserName)" ; 
-                        write-host  "simple string: Assuming Logon, asserting `$env:USERDOMAIN for domain in legacy format" ; 
-                    } else{
-                        throw "Unrecognized -Username format:$($Username)" ; 
-                    };
-                    break ;  
-                } ; 
-            } ; 
-        }
-        TRY {
-            if($env:USERDOMAIN -eq $env:COMPUTERNAME){
-                write-host "`$env:USERDOMAIN -eq `$env:COMPUTERNAME: => non-domain-joined, checking Test-LocalCredentialTDO()" ; 
-                $Username = $FullPlainTextAccount.split("\")[-1]
-                if(get-command Test-LocalCredentialTDO){
-                    Return $( Test-LocalCredentialTDO -UserName $Username -Password $PlainTextPassword)
-                }else{
-                    #throw "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  
-                    $smsg = "Missing:Test-LocalCredentialTDO(), unable to test non-Domain-Joined account" ;  write-host -foregroundcolor yellow $smsg ; 
-                    TRY {Add-Type -AssemblyName System.DirectoryServices.AccountManagement} CATCH {} ; 
-                    $DS = New-Object System.DirectoryServices.AccountManagement.PrincipalContext('machine',$ComputerName)
-                    Return $($DS.ValidateCredentials($UserName, $Password))
-                } ; 
-            }else{
-                $dc= New-Object DirectoryServices.DirectoryEntry( $Null, $FullPlainTextAccount, $PlainTextPassword)
-                If($dc.Name) {
-                    return $true
-                }Else {
-                    Return $false
-                }
-            }
-        }CATCH {
-            Return $false
-        }
-        Return $false        
-    }
-
-#*------^ test-CredentialsTDO.ps1 ^------
 
 
 #*------v Test-DnsDkimCnameToTxtKeyTDO.ps1 v------
@@ -11989,59 +12577,6 @@ function Test-IPAddressInRangeIp6 {
 #*------^ Test-IPAddressInRangeIp6.ps1 ^------
 
 
-#*------v test-isADComputerName.ps1 v------
-Function test-isADComputerName{
-    <#
-    .SYNOPSIS
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .NOTES
-    Version     : 0.0.
-    Author      : Todd Kadrie
-    Website     : http://www.toddomation.com
-    Twitter     : @tostka / http://twitter.com/tostka
-    CreatedDate : 2024-
-    FileName    : test-isADComputerName.ps1
-    License     : MIT License
-    Copyright   : (c) 2024 Todd Kadrie
-    Github      : https://github.com/tostka/verb-XXX
-    Tags        : Powershell
-    AddedCredit : Luc Fullenwarth
-    AddedWebsite: https://gravatar.com/fullenw1
-    AddedTwitter: twitter.com/LFullenwarth
-    REVISIONS
-    * 2:03 PM 6/6/2024 rounded out param validation sample to full function
-    * 8/5/20 LF posted arti
-    .DESCRIPTION
-    test-isADComputerName.ps1 - Validate that passed string is an ADComputer object name
-    .PARAMETER  ComputerName
-    ComputerName string to be validated[-ComputerName SomeBox]
-    .INPUTS
-    System.String Accepts piped input
-    .OUTPUTS
-    System.Boolean
-    .EXAMPLE
-    PS> test-isADComputerName.ps1 -ComputerName $env:computername
-    Demo simple test
-    .LINK
-    https://github.com/tostka/verb-Network
-    .LINK
-    https://bitbucket.org/tostka/powershell/
-    .LINK
-    https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
-    #>    
-    #Requires -Modules ActiveDirectory
-    PARAM(
-        [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
-            [ValidateScript({Get-ADComputer -Identity $PSItem})]
-            [ValidateNotNullOrEmpty()]
-            [string]$ComputerName
-    )
-    write-output $true ; 
-}
-
-#*------^ test-isADComputerName.ps1 ^------
-
-
 #*------v test-isComputerDNSRegistered.ps1 v------
 Function test-isComputerDNSRegistered{
     <#
@@ -12062,6 +12597,7 @@ Function test-isComputerDNSRegistered{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:07 PM 3/26/2026 change req to DnsClient (not ad)
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12083,7 +12619,7 @@ Function test-isComputerDNSRegistered{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules DnsClient
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({Resolve-DnsName -Name $PSItem})]
@@ -12116,6 +12652,7 @@ Function test-isComputerNameFQDN{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:10 PM 3/26/2026 rem'd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12137,7 +12674,6 @@ Function test-isComputerNameFQDN{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
         [ValidateLength(6, 253)]
@@ -12171,6 +12707,7 @@ Function test-isComputerNameNetBios{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:12 PM 3/26/2026 remd req ad
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12192,7 +12729,6 @@ Function test-isComputerNameNetBios{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateLength(1, 15)]
@@ -12226,6 +12762,7 @@ Function test-isComputerSMBCapable{
     AddedWebsite: https://gravatar.com/fullenw1
     AddedTwitter: twitter.com/LFullenwarth
     REVISIONS
+    * 8:14 PM 3/26/2026 flip req from ad -> NetTCPIP
     * 2:03 PM 6/6/2024 rounded out param validation sample to full function
     * 8/5/20 LF's posted vers (article)
     .DESCRIPTION
@@ -12250,7 +12787,7 @@ Function test-isComputerSMBCapable{
     .LINK
     https://itluke.online/2020/08/05/validating-computer-names-with-powershell/
     #>    
-    #Requires -Modules ActiveDirectory
+    #Requires -Modules NetTCPIP
     PARAM(
         [Parameter(Position=0,Mandatory=$True,ValueFromPipeline=$true,HelpMessage="ComputerName string to be validated[-ComputerName SomeBox]")]
             [ValidateScript({(Test-NetConnection -ComputerName $PSItem -CommonTCPPort 'SMB').TcpTestSucceeded})]
@@ -12623,6 +13160,8 @@ function Test-Port {
     Github      : https://github.com/tostka/verb-XXX
     Tags        : Powershell
     REVISIONS
+    # 9:50 AM 3/24/2026 psv2 doesn't like dbl quoted regex in ValidatePattern (Parameter attributes need to be a constant or a script block.): 
+        flipped to singles.
     # 9:11 AM 1/24/2025 added -ea 0 to the gcm's; expanded gcms; added try/catch to the Net.Sockets.TcpClient code (output friendly error fail); added CBH demo rdp users poll
         ; removed aliases 's' & 'p' (they're already usable as abbrev $server & $port, no other conflicting params ); flip 1st expl to commonly used 3389 (rdp) port; added cmdletbinding (full adv func/verbose support); added alias test-portTDO
     # 12:28 PM 4/12/2022 prior was .net dependant, not psCore compliant: make it defer to and use the NetTCPIP:Test-NetConnection -ComputerName -Port alt, or psv6+ test-connection -targetname -tcpport, only fallback to .net when on Win and no other option avail); moved port valid to param block, rem'd out eapref; added position to params; updated CBH
@@ -12668,7 +13207,7 @@ function Test-Port {
             [string]$Server,
         [parameter(Position=1,Mandatory=$true)]
             [alias('TcpPort')]
-            [ValidatePattern("^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$")]
+            [ValidatePattern('^(6553[0-5]|655[0-2]\d|65[0-4]\d\d|6[0-4]\d{3}|[1-5]\d{4}|[1-9]\d{0,3}|0)$')]
             [int32]$Port
     )
     if($host.version.major -ge 6 -AND (get-command test-connection -ea STOP)){
@@ -12945,6 +13484,97 @@ function test-RDPDriveRedirectionTDO {
 #*------^ test-RDPDriveRedirectionTDO.ps1 ^------
 
 
+#*------v test-RDPFileSignatureTDO.ps1 v------
+function test-RDPFileSignatureTDO {
+    <#
+    .SYNOPSIS
+    test-RDPFileSignatureTDO - Superfically test (check for signature tags in file), Digitally signed status on rdp TermServ connection files
+    .NOTES
+    Version     : 0.0.
+    Author      : Todd Kadrie
+    Website     : http://www.toddomation.com
+    Twitter     : @tostka / http://twitter.com/tostka
+    CreatedDate : 2026-04-29
+    FileName    : set-RDPFileSignatureTDO.ps1
+    License     : MIT License
+    Copyright   : (c) 2026 Todd Kadrie
+    Github      : https://github.com/tostka/verb-XXX
+    Tags        : Powershell
+    AddedCredit : REFERENCE
+    AddedWebsite: URL
+    AddedTwitter: URL
+    * 10:07 AM 4/29/2026 fixed bvorked help parsing: removed leading periods from all RDP file ext refs (confused parser on dotted help keywords) ; 
+    * 12:59 PM 4/28/2026 init
+    .DESCRIPTION
+    test-RDPFileSignatureTDO - Superfically test (check for signature tags in file), Digitally signed status on rdp TermServ connection files
+
+    Only mstsc.exe can currently validate a signed file (by loading and displaying the file without prompts). 
+    
+    All this function does is check for an rdpsign.exe applied signature & signscope tag in the file. 
+    Verbose output will return the matched lines in the rdp file
+
+    .PARAMETER Path
+    rdp File paths[-path c:\pathto\file.rdp]
+    .INPUTS
+    Accepts piped input Path 
+    .OUTPUTS
+    Returns string path to properly signed rdp files (and $false for unsigned files)
+    .EXAMPLE
+    PS> $results = test-RDPFileSignatureTDO -path 'C:\Users\aaaaaAAA\Desktop\rdp-faves\AAAAAAAAAAA-AAA-Ex16-Mbx1-1024x768-SID.RDP' ;
+    PS> $results ; 
+
+        C:\Users\aaaaaAAA\Desktop\rdp-faves\AAAAAAAAAAA-AAA-Ex16-Mbx1-1024x768-SID.RDP: confirmed '^(signature|signscope) applied 
+
+    Test and report results of test
+    .LINK
+    https://github.com/tostka/verb-io
+    #>
+    [CmdletBinding()]
+    [Alias('test-RdpFile','test-RdpFileTDO')]
+    PARAM(
+        [Parameter(Mandatory = $False,Position = 0,ValueFromPipeline = $True, HelpMessage = '.Rdp File paths[-path c:\pathto\file.rdp]')]
+            [Alias('PsPath')]
+            [ValidateScript({Test-Path $_})]
+            [ValidateScript({ if([IO.Path]::GetExtension($_) -ne ".rdp") { throw "Path must point to an .rdp file" } $true })]
+            [system.io.fileinfo[]]$Path
+    ) ; 
+    BEGIN {
+        ${CmdletName} = $PSCmdlet.MyInvocation.MyCommand.Name ;
+
+        if ($PSCmdlet.MyInvocation.ExpectingInput) {
+            write-verbose "Data received from pipeline input: '$($InputObject)'" ; 
+        } else {
+            #write-verbose "Data received from parameter input: '$($InputObject)'" ; 
+            write-verbose "(non-pipeline - param - input)" ; 
+        } ; 
+    } ;  # BEGIN-E
+    PROCESS {
+        $Error.Clear() ; 
+        foreach ($item in $Path){
+            TRY{
+                Write-Verbose "Checking RDP file: $($item.fullname)" ; 
+                if($sigs = gc $item.fullname | Where-Object { $_ -match "^signature" -or $_ -match "^signscope" }){
+                    write-host "$($item.fullname): confirmed '^(signature|signscope) applied" ; 
+                    write-verbose "`nSignatures`n$(($sigs|out-string).trim())" ; 
+                    $item.fullname | write-output 
+                }else{
+                    $smsg = "$($item.fullname): MISSING '^(signature|signscope)!" ; 
+                    write-host $smsg ; 
+                    $false | write-output  ; 
+                }
+            } CATCH {$ErrTrapd=$Error[0] ;
+                write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+            } ;
+        } ;  # loop-E
+    }  # if-E PROC
+    END{} ; 
+}
+
+#*------^ test-RDPFileSignatureTDO.ps1 ^------
+
+
 #*------v update-SecurityProtocolTDO.ps1 v------
 function update-SecurityProtocolTDO {
     <#
@@ -13179,7 +13809,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,get-CredentialsTDO,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,Get-ForestRootNCTDO,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,Get-RootNCTDO,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-ADComputerName,test-CertificateTDO,_getstatus_,test-Connection-T,test-CredentialsTDO,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isADComputerName,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,set-RDPFileSignatureTDO,test-CertificateTDO,_getstatus_,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,test-RDPFileSignatureTDO,update-SecurityProtocolTDO -Alias *
 
 
 
@@ -13187,8 +13817,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvD3YyoVqrRu2MX810Eq/M3/8
-# p06gggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSz3U7aOcdMBCXpz2IwK5RKZs
+# voigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13203,9 +13833,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRELodw
-# cFrSYhmDE9xTxSbHObX5mzANBgkqhkiG9w0BAQEFAASBgKQvB75DUezpmpMfmCuW
-# zvQP+fohXM8qn1pHL82Mrkqf28dSqMl1JGDZWbvtAu+RQW9GvCqu4iIAPht8TTA+
-# h2qLZK5G+/5V9YbRsmpiweh/Whh1wi9RtsZHFr+U8WWBkoWh9p94DxbF5o9CU+ib
-# eKmkS16b2N12xuORDY/DjYFi
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT2qk0y
+# CkY4ssmyx3R8J1sqmrny/jANBgkqhkiG9w0BAQEFAASBgFPearopPBBYxMbG1YQi
+# fv9ZLuuOqlQa2ZMrqSnEn+r1HkUqj7MpayLRUbU/knnBnspqWnTY84Bd5WlDK4qw
+# YAVkOtpN90PfPUIskO4/Vv5xILmiSSPVDbLoKW76jFApBIrEzl9GZs2ZIw3RGmSw
+# Qa4Kyly4lZKl4V8d2RPdN1pD
 # SIG # End signature block

@@ -1,11 +1,11 @@
-﻿# verb-Network.psm1
+﻿# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 6.0.0.0
+Version     : 6.1.0.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -1850,7 +1850,7 @@ function Get-RestartInfo {
         14:09:12:
         #*------v $SetupEvts : v------
         VERBOSE: Constructed structured query:
-        <QueryList><Query Id="0" Path="setup"><Select Path="setup">*[(System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.000Z' and @SystemTime&lt;='2022-08-22T03:22:26.000Z'])]</Select></Query></QueryList>.
+        <QueryList><Query Id="0" Path="setup"><Select Path="setup">*[(System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.1.0Z' and @SystemTime&lt;='2022-08-22T03:22:26.1.0Z'])]</Select></Query></QueryList>.
 
         Date                  EventID Process                          Reason
         ----                  ------- -------                          ------
@@ -1877,8 +1877,8 @@ function Get-RestartInfo {
         VERBOSE: The Microsoft-Windows-RestartManager provider writes events to the Application log.
         VERBOSE: The Microsoft-Windows-RestartManager provider writes events to the Microsoft-Windows-RestartManager/Operational log.
         VERBOSE: Constructed structured query:
-        <QueryList><Query Id="0" Path="application"><Select Path="application">*[System/Provider[@Name='msiinstaller' or @Name='microsoft-windows-restartmanager'] and (System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.000Z' and
-        @SystemTime&lt;='2022-08-22T03:22:26.000Z']) and ((System/EventID=1033) or (System/EventID=1035) or (System/EventID=1036) or (System/EventID=1040) or (System/EventID=1042) or (System/EventID=100000) or (System/EventID=100001))]</Select></Query></QueryList>.
+        <QueryList><Query Id="0" Path="application"><Select Path="application">*[System/Provider[@Name='msiinstaller' or @Name='microsoft-windows-restartmanager'] and (System/TimeCreated[@SystemTime&gt;='2022-08-22T02:42:26.1.0Z' and
+        @SystemTime&lt;='2022-08-22T03:22:26.1.0Z']) and ((System/EventID=1033) or (System/EventID=1035) or (System/EventID=1036) or (System/EventID=1040) or (System/EventID=1042) or (System/EventID=100000) or (System/EventID=100001))]</Select></Query></QueryList>.
         14:09:13:PatchEvts 1035|1036: w
         Date                  EventID Process                      Reason Message
         ----                  ------- -------                      ------ -------
@@ -3117,6 +3117,7 @@ function New-SelfSignedCertificateTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 12:49 PM 6/22/2026 updated CBH demo to include sample AppFqDN value; added Output object definition/properties 
     * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
     * 3:45 PM 6/23/2023 pulled req: verb-AAD 
     * 2:54 PM 6/13/2022 debugged, functional
@@ -3138,11 +3139,15 @@ function New-SelfSignedCertificateTDO {
     .INPUTS
     None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
-    None. Returns no objects or output (.NET types)
-    System.Boolean
-    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    PSCustomObject containing following properties about new certificate:
+        Certificate = System.Security.Cryptography.X509Certificates.X509Certificate2 - An X509Certificate2 object for the certificate that has been created.; 
+        CertRaw = Base64String representation of the RawCertData
+        PFXPath = Path to exported pfx file for the certificate ; 
+        Valid = set $true if Valid Certificate, CertRaw property, and PFXPath property;     
     .EXAMPLE
-    PS> $pltNAAC=[ordered]@{
+    PS> $AppFqDN = 'DESCRIPTIVETAG-AppReg.TENANT.onmicrosoft.com'
+    PS> $certStore = 'Cert:\CurrentUser\My' ; 
+    PS> $pltNSSC=[ordered]@{
     PS>     DnsName=$AppFqDN ;
     PS>     CertStoreLocation = $certStore ;
     PS>     EndDate=(get-date ).addyears(3) ;
@@ -3150,12 +3155,16 @@ function New-SelfSignedCertificateTDO {
     PS>     verbose = $($verbose) ; 
     PS>     whatif = $($whatif) ;
     PS> } ;
-    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNSSC|out-string).trim())" ;
     PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
     PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNSSC ; 
     PS> if($bREt.Valid){
-    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS>     $smsg = "`n`n==>Valid return:" ; 
+    PS>     $smsg += "`n$(($bREt|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE:$(($bREt.Certificate|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE-RAW:$(($bREt.CertRaw|out-string).trim())`n`n" ; 
+    PS>     write-host -foregroundcolor green $smsg ; 
     PS> } else { 
     PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
     PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
@@ -5078,7 +5087,7 @@ Received: from mail-108-xxxxxx.xxxxxxx.xxx (123.123.123.123) by
  via Frontend Transport; Thu, 5 Dec 2024 21:07:09 +0000
 Received: from xxxxxxxxx.xxxxxxx.xxx ([123.456.789.0] xxxxxxxxx.xxxxxxx.xxx)
  (Authenticated sender: mN4UYu2MZsgR)
- by mail-108-xxxxxx.xxxxxxx.xxx (ZoneMTA) with ESMTPSA id 19398a5d8640003e01.001
+ by mail-108-xxxxxx.xxxxxxx.xxx (ZoneMTA) with ESMTPSA id 19398a5d86.1.03e01.001
  for <xxxx.xxxxxx@xxxx.com>
  (version=TLSv1.3 cipher=TLS_AES_256_GCM_SHA384);
  Thu, 05 Dec 2024 21:07:05 +0000
@@ -8755,7 +8764,7 @@ function save-WebDownload {
                                                 X-AspNetMvc-Version: 3.0
                                                 X-Frame-Options: deny
                                                 CF-Cache-Status: DYNAMIC
-                                                Strict-Transport-Security: max-age=12960000
+                                                Strict-Transport-Security: max-age=1296.1.0
                                                 X-Conten...
                             Forms             : {}
                             Headers           : {[Transfer-Encoding, chunked], [Connection, keep-alive], [X-AspNetMvc-Version, 3.0], [X-Frame-Options, deny]...}
@@ -9316,7 +9325,7 @@ function save-WebFaveIcon {
                     if ( ($ficonurl.tostring() -match '^http') -AND  ([boolean]([uri]$ficonurl.tostring())) ){
                         write-verbose "Absolute parsable URL http present" ; 
                         [uri]$ficonUrl = [regex]::match($ficonUrl,$rgxURL).captures.value.replace('"','') ; 
-                        # https://a.mtstatic.com/@public/production/site_6638/1614630907-favicon.ico/
+                        # https://a.mtstatic.com/@public/production/site_6638/16146.1.07-favicon.ico/
                     } else { 
                         $smsg = "Parsing apparant relative uri & building AbsoluteURI" ; 
                         $smsg += "`n$($ficonurl.tostring())" ; 
@@ -10208,7 +10217,7 @@ function set-RDPFileSignatureTDO {
 
                     Demo 2:
 
-                    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+                    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f6.1.08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
                     -EKU "1.3.6.1.5.5.7.3.1" –User
 
                     This example verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
@@ -10273,7 +10282,7 @@ function set-RDPFileSignatureTDO {
                 Native PKI\test-certificate() demo: verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
                 with the DNS name specified.
                 .EXAMPLE
-                PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+                PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f6.1.08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
                 -EKU "1.3.6.1.5.5.7.3.1" –User
                 Native PKI\test-certificate() demo: Verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
                 checking is not performed.    
@@ -11313,7 +11322,7 @@ function test-CertificateTDO {
 
         Demo 2:
 
-        PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+        PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f6.1.08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
         -EKU "1.3.6.1.5.5.7.3.1" –User
 
         This example verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
@@ -11378,7 +11387,7 @@ function test-CertificateTDO {
     Native PKI\test-certificate() demo: verifies each certificate in the MY store of the local machine and verifies that it is valid for SSL
     with the DNS name specified.
     .EXAMPLE
-    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f680f08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
+    PS C:\>Test-Certificate –Cert cert:\currentuser\my\191c46f6.1.08a9e6ef3f6783140f60a979c7d3b -AllowUntrustedRoot
     -EKU "1.3.6.1.5.5.7.3.1" –User
     Native PKI\test-certificate() demo: Verifies that the provided EKU is valid for the specified certificate and its chain. Revocation
     checking is not performed.    
@@ -13817,8 +13826,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSz3U7aOcdMBCXpz2IwK5RKZs
-# voigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUS+I4s9i+rIuNrazRXZOBAvGZ
+# chSgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13833,9 +13842,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT2qk0y
-# CkY4ssmyx3R8J1sqmrny/jANBgkqhkiG9w0BAQEFAASBgFPearopPBBYxMbG1YQi
-# fv9ZLuuOqlQa2ZMrqSnEn+r1HkUqj7MpayLRUbU/knnBnspqWnTY84Bd5WlDK4qw
-# YAVkOtpN90PfPUIskO4/Vv5xILmiSSPVDbLoKW76jFApBIrEzl9GZs2ZIw3RGmSw
-# Qa4Kyly4lZKl4V8d2RPdN1pD
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRYFZmY
+# 356yOKSgXdpMJlk0rNHunTANBgkqhkiG9w0BAQEFAASBgA5CvKwoKloDZcy/PYDs
+# Wwxvora1WisPcEt8cjpqkZ8JY/0lMHP3a0La7Yq7OGXwiVJkUwTDzg00ChbN7D3d
+# 9TBqtL/iovXmeV+aUfiuAEG7lLOjH4xxvP94ymg6N8A3VUmAlFPyAmF8GvB6j+rE
+# Ew5PenO849Ls6C9lNkW30VjK
 # SIG # End signature block
