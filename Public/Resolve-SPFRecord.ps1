@@ -18,6 +18,10 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISION
+    # 9:18 AM 7/8/2026 update $mts, stop stripping boolean:$false items
+    * 11:07 AM 1/7/2025 removed a bunch of rem'd code; considered if/then'ing resolve-spfmacrosTDO() in, but it's substantial; leave it external. 
+        added SPFRecord class $Directive property, to record the raw mechanism/modifier driving the subsequent IPAddress adds; also added $SPFObject adds wo IPAddress to record same, 
+        purely for ref/doc the chain of IP sources in the output. They'd be filtered out of the results - ($results | ?{$_.ipaddress}).ipaddress - for actual verification test-IPAddressInRange processing. 
     * 4:28 PM 1/3/2025 finally rounded out, to return full stack of Pass Subnet IP specifications, for post-review and test-IPAddressInRange() checking
     * 2:21 PM 1/2/2025 $DomainName/Name update $Name/Domainname regex to make the CN portion optional (fails toro.com, but has to accomodate recursive include:calls to resolve _spf.salesforce.com)
     * 12:36 PM 12/12/2024 add: alias:Resolve-DNSNameSPF, param alias: $name: 'DomainName', 'Domain'
@@ -137,12 +141,12 @@ function Resolve-SPFRecord {
     PS>     verbose = $true ;
     PS> } ;
     PS> write-verbose "Resolve populated specifications above, and process through Resolve-SPFRecord" ; 
-    PS> $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)}
+    PS> $mts = $pltDomSpecs.GetEnumerator() |?{ $_.value -isnot [boolean] -AND (($_.value -eq $null) -OR ($_.value -eq '') -OR ($_.value.length -eq 0))}
     PS> $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ;
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Resolve-SPFRecord w`n$(($pltDomSpecs|out-string).trim())" ;
     PS> $results = Resolve-SPFRecord @pltDomSpecs ;
     PS> write-verbose "Process returned results, checking for specified IPAddress above within returned 'pass' subnets : => Approved SPF deliveries for host" ; 
-    PS> $PassSubnets = $results.ipaddress ;
+    PS> $PassSubnets = ($results | ?{$_.ipaddress}).ipaddress ; 
     PS> $smsg = "==$($pltDomSpecs.DomainName) expanded SPF returned $($PassSubnets|  measure | select -expand count) 'Pass' subnets" ;
     PS> $smsg += "`n$(($PassSubnets |out-string).trim())" ;
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ;
@@ -219,6 +223,7 @@ function Resolve-SPFRecord {
     ) ; 
     BEGIN {
         #*======v CLASSES v======
+        <# stock class
         class SPFRecord {
             [string] $SPFSourceDomain
             [string] $IPAddress
@@ -241,6 +246,35 @@ function Resolve-SPFRecord {
                 $this.Qualifier = $Qualifier
             }
         } ; 
+        #>
+        # update to include Directive record
+        class SPFRecord {
+            [string] $SPFSourceDomain
+            [string] $IPAddress
+            [string] $Referrer
+            [string] $Qualifier
+            [bool] $Include
+            [string] $Directive
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress
+            SPFRecord ([string] $IPAddress, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.Directive = $Directive
+            }
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress and DNSName
+            SPFRecord ([string] $IPAddress, [String]$DNSName, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.SPFSourceDomain = $DNSName
+                $this.Directive = $Directive
+            }
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress and DNSName and
+            SPFRecord ([string] $IPAddress, [String]$DNSName, [String] $Qualifier, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.SPFSourceDomain = $DNSName
+                $this.Qualifier = $Qualifier
+                $this.Directive = $Directive
+            }
+        } ; 
+        
         #*======^ END CLASSES ^======
 
         #region CONSTANTS_AND_ENVIRO #*======v CONSTANTS_AND_ENVIRO v======
@@ -307,7 +341,15 @@ function Resolve-SPFRecord {
 
         #region FUNCTIONS ; #*======v FUNCTIONS v======
         
-         #*------v Function convert-IPAddressToReverseTDO v------
+        # do simple dep tests:
+        if(-not (get-command resolve-SPFMacrosTDO -ea 0)){
+            $smsg = "MISSING DEPENDANT VERB-NETWORK\resolve-SPFMacrosTDO()!" 
+            write-warning $smsg ; 
+            throw $smsg 
+            BREAK ; 
+        } ; 
+
+        #*------v Function convert-IPAddressToReverseTDO v------
         if(-not (get-command convert-IPAddressToReverseTDO -ea 0)){
             function convert-IPAddressToReverseTDO {
                 <#
@@ -403,6 +445,7 @@ function Resolve-SPFRecord {
             } ; 
         } ; 
         #*------^ END Function convert-IPAddressToReverseTDO ^------
+
 
         #*------v Function test-IpAddressCidrRange v------
         if(!(get-command  test-IpAddressCidrRange)){
@@ -515,23 +558,6 @@ function Resolve-SPFRecord {
                
         $SPFRawAggreg  = @() ; 
 
-        #Aggregate all ip46
-        #$aggrIp46Specs = @() ; 
-        <# 3:19 PM 1/3/2025 add test support
-            Run each as they occur
-            '^a:
-            '^exists:
-            '^mx:
-            '^ptr:
-
-            Aggregate results by type, testing against SenderIP/IPAddress/Domain/SenderAddress etc
-        #>
-        <#
-        $aggrATests = @() ; 
-        $aggrExistsTests = @() ; 
-        $aggrMxTests = @() ; 
-        $aggrPtrTests = @() ; 
-        #>
     } ; 
     PROCESS {
         # Keep track of number of DNS queries
@@ -619,15 +645,12 @@ function Resolve-SPFRecord {
 
                 6: redirect counts as a DNS query: (counts toward the 10 additional DNS 
                 queries limit) 
-
             #>
             # WITH A REDIRECT, NO OTHER ITEMS ARE EVALUATED, PROCESSING STOPS HERE, AND THE RECORD IS DROPPED INTO PIPELINE
             if ( $SPFDirectives -match "redirect" ) {
                 $RedirectRecord = $SPFDirectives -match "redirect" -replace "redirect=" ; 
                 Write-Verbose "[REDIRECT]`t$RedirectRecord" ; 
                 # Follow the REDIRECT "include" and resolve the include
-                #Resolve-SPFRecord -Name "$RedirectRecord" -Server $Server -Referrer $Name | write-output ; 
-                # Resolve-SPFRecord | write-output : leverage $rPSBoundParameters post-filtered instead
                 if($rPSBoundParameters){
                         $pltRvSPFRec = [ordered]@{} ;
                         # add the specific Name for this call, and Server spec (which defaults, is generally not 
@@ -661,9 +684,9 @@ function Resolve-SPFRecord {
                     #region Resolve_Information ; #*------v Resolve_Information v------
                     $isIPv4 = $isIPv6 = $isFQDN = $isNBName = $false ; 
                     $SendNameHost = $ComputerARec =  $SendIP =  $SendPTR =  $SendIPRev =  $SendAddressfamily = $null ; 
-                    # string
+                    # [string]
                     $Computer = $IPAddress ; 
-                    #ipaddr
+                    # [ipaddress]
                     #$Computer = $IPAddress.IPAddressToString
                     TRY{
                         # for [string] IP spec
@@ -683,9 +706,6 @@ function Resolve-SPFRecord {
                     if( -not ($isIPv4 -OR $isIPv6) -AND (6 -le $Computer.length -le 253) -AND ($Computer -match '^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$') ){
                         $isFQDN = $true ; 
                     }  ;
-                    <#[ValidateLength(1, 15)]
-                    [ValidateScript({$PSItem -replace '\\|/|:|\*|\?|"||\||\.' -eq $PSItem})]
-                    #>
                     if( -not ($isIPv4 -OR $isIPv6) -AND  (1 -le $Computer.length -le 15) -AND ($Computer -replace '\\|/|:|\*|\?|"||\||\.' -eq $Computer) ){
                         $isNBName = $true ; 
                     }  ;
@@ -705,7 +725,6 @@ function Resolve-SPFRecord {
             
                         write-verbose "Resolve IP A Record: resolve-dnsname -name $($Computer) -type A: `nresolve-dnsname -name $($Computer) -type A  -server $($Server) -ea STOP | select -first 1 " ; 
                         TRY{
-                            #$ComputerARec = resolve-dnsname -name $Computer -type A  -ea STOP -server $Server | select -first 1  ; 
                             $ComputerARec = resolve-dnsname -name $SendNameHost  -type A  -ea STOP -server $Server | select -first 1  ; 
                             write-host -foregroundcolor green "Resolved $($SendNameHost ) A Record:`n$(($ComputerARec|out-string).trim())" ; 
                             $SendIP = $ComputerARec.IPAddress ; 
@@ -754,18 +773,17 @@ function Resolve-SPFRecord {
                 } ; 
 
                 write-host -foregroundcolor green "Processing SPFDirectives:`n$(($SPFDirectives|out-string).trim())" ; 
-                $hasMacros = $false ; 
                 $ReturnValues = foreach ($SPFDirective in $SPFDirectives) {
                     write-verbose "process:$($SPFDirective)" ; 
                     if($SPFDirective -eq 'include:_spf.salesforce.com'){
                         write-verbose "gotcha!" ; 
                     } ;
                     switch -Regex ($SPFDirective) {
-                        # 9:59 AM 8/13/2021 add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
+                        # add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
                         "v=spf\d" {
                             write-verbose "Spf Version modifier: $($SPFDirective)" ;
                         } 
-                        # 9:59 AM 8/13/2021 add a case for all mechanism, or throws: WARNING: [~all]	 Unknown directive
+                        # add a case for all mechanism, or throws: WARNING: [~all]	 Unknown directive
                         "[~+-?]all" {
                             switch ($Qualifier){
                                 "pass" {write-verbose "all PASS mechanism: $($SPFDirective)"}
@@ -781,8 +799,16 @@ function Resolve-SPFRecord {
                                 before running any directive
                                 this is being examined 3rd, after v=spf & all
                             #>
+                            Write-Verbose "[macro-spec]`tSPF entry: $SPFDirective (recursing)" ; 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            #$SPFObject | write-output  ; 
                             if( get-command -name resolve-SPFMacrosTDO -ea 0){
-                                $hasMacros = $true ; 
                                 # deps check
                                 # $IPAddress
                                 if($SPFDirective -match '%\{[ivp]}'){
@@ -842,19 +868,7 @@ function Resolve-SPFRecord {
                                         write-verbose  "SPF Directive specified:Includes Sender Server HELO name dependant Macro '%{h}', and a `$SenderHeloName has been specified ($($SenderHeloName))" ;
                                     } ;
                                 }; 
-                                <#$pltDomSpecs = [ordered]@{
-                                    SpfRecord = $SPFDirective ; 
-                                    DomainName = $Name ;
-                                    IPAddress = $IPAddress ;
-                                    SenderAddress = $SenderAddress ;
-                                    SenderHeloName = $SenderHeloName ;
-                                    Verbose = $($PSBoundParameters['Verbose'] -eq $true) ; 
-                                    #Verbose = $($PSBoundParameters.Verbose -eq $true) ;
-                                } ;
-                                $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)} 
-                                $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ; 
-                                write-host -foregroundcolor green "resolve-SPFMacros w`n$(($pltDomSpecs|out-string).trim())" ; 
-                                #>
+                                
                                 # resolve-SPFMacros call: build splat on filtered $rPSBoundParameters
                                 if($rPSBoundParameters){
                                       $pltRvSPFMacr = [ordered]@{} ; 
@@ -873,6 +887,7 @@ function Resolve-SPFRecord {
                                 Write-Warning "[$_]`tMacro sytax detected:Macros validation/expansion is not supported by this function. For more information, see https://tools.ietf.org/html/rfc7208#section-7" ;  
                                 Continue ; 
                             } ; 
+                            $SPFObject | write-output  ; 
                         }
                         
                         
@@ -883,8 +898,19 @@ function Resolve-SPFRecord {
                         '^include:.*$' {
                             # Follow the include and resolve the include
                             Write-Verbose "[include]`tSPF entry: $SPFDirective (recursing)" ; 
-                            #Resolve-SPFRecord -Name ( $SPFDirective -replace "^include:" ) -Server $Server -Referrer $Name | write-output ; 
-                            # Resolve-SPFRecord | write-output : leverage $rPSBoundParameters post-filtered instead
+                            # could spec $SPFObject.Include = $true ; on initial include add below, but since the subsequent 
+                            # expands come through as IPaddreses, may as well leave the call'd include: 
+                            # directive *not* tagged as Include:True (it's there to show the source of the 
+                            # subesquent includes, not as part of the porocessed IPAddress range specs) 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
+
                             if($rPSBoundParameters){
                                     $pltRvSPFRec = [ordered]@{} ;
                                     # add the specific Name for this call, and Server spec (which defaults, is generally not 
@@ -899,29 +925,20 @@ function Resolve-SPFRecord {
                                 write-warning $smsg ;
                                 throw $smsg ;
                             }; 
+                            $SPFObject | write-output  ; 
                         }
                         '^ip[46]:.*$' {
                             Write-Verbose "[IP]`tSPF entry: $SPFDirective" ; 
-                            $SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier) ; 
-                            #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                            if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                            #$SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier) ; 
+                            # append $SPFDirective as $Directive property
+                            $SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier, $SPFDirective) ; 
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                 $SPFObject.Referrer = $Referrer ; 
                                 $SPFObject.Include = $true ; 
                             } ; 
-                            <# just do subnets & other raw IP aggregates into the stack, no active local tests)
-                            $subSpec = [ordered]@{
-                                Subnet = ($SPFDirective -replace "^ip[46]:")
-                                Name = $Name ; 
-                                Qualifier = $Qualifier ; 
-                                SenderPassed = $null ; 
-                            } ; 
-                            if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
-                                $subSpec.add('Referrer',$Referrer) ; 
-                                $subSpec.add('Include',$true) ; 
-                            } ; 
-                            #$aggrIp46Specs += [pscustomobject]$subSpec ; 
-                            #>
-
+                            # just do subnets & other raw IP aggregates into the stack, no active local tests)
+                            
                             # validate ip spec (IPAddress|CIDRRange|IPAddressRange) and boolean Valid properties
                             
                             $ret= test-IpAddressCidrRange -Address $SPFDirective.replace('ip4:','').replace('ip6:','') ;
@@ -953,21 +970,8 @@ function Resolve-SPFRecord {
                                 write-warning "invalid IP specification:$($SPFDirective.replace('ip4:',''))" ;
                             } ; 
 
-                            # do a test Test-IPAddressInRange agains the $SenderIP, now NOPE
-                            <#
-                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
-                            PS>     write-host -foregroundcolor green  "is in range!" 
-                            PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
-                            #>
-                            <# skip, we're appending the discovered A's into the stack for later SenderIP compaire
-                            if(Test-IPAddressInRange -IPAddress $IPAddress -Range $subSpec.Subnet -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
-                                $subSpec.SenderPassed = $true ; 
-                            }else{
-                                $subSpec.SenderPassed = $false ; 
-                            }
-                            $aggrIp46Specs += [pscustomobject]$subSpec ; 
-                            #>
-
+                            #we're appending the discovered A's into the stack for later SenderIP compaire
+                            
                             $SPFObject | write-output  ; 
                         } 
                         '^a:.*$' {
@@ -987,12 +991,22 @@ function Resolve-SPFRecord {
                                 the client IP will be sought within that subnet.                                 
                             #>
                             Write-Verbose "[A]`tSPF entry: $SPFDirective"
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type A ; 
                             # Check SPF record
                             foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                #$SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
+                                # append $SPFDirective as $Directive property
+                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier, $SPFDirective) ; 
+                                if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                     $SPFObject.Referrer = $Referrer ; 
                                     $SPFObject.Include = $true ; 
                                 }
@@ -1009,32 +1023,17 @@ function Resolve-SPFRecord {
                             #>
                             # as macro replace occurs first, before mechanisms, any macros should already be swapped by the time it gets to here
                             Write-Verbose "[A]`tSPF entry: $SPFDirective"
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             # this is a simple: $DNSRecords = Resolve-DnsName -Name ( $SPFDirective -replace "^exists:" ) -Server $Server $Name -Type A ; 
                             # *not* a run back through Resolve-SpfRecord() (which only does Type TXT SPF explicit processing)
-                            <#
-                            #$DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type A ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Server $Server -Referrer $Name | write-output ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Server $Server -Referrer $Referrer | write-output ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Type A -Server $Server -Referrer $Referrer 
-                            # $DNSRecords = Resolve-SPFRecord : leverage $rPSBoundParameters post-filtered instead
-                            if($rPSBoundParameters){
-                                    $pltRvSPFRec = [ordered]@{} ;
-                                    # add the specific Name for this call, and Server spec (which defaults, is generally not
-                                    $pltRvSPFRec.add('Name',( $SPFDirective -replace "^exists:" ) ) ;
-                                     $pltRvSPFRec.add('Type','A') ; 
-                                    $pltRvSPFRec.add('Referrer',$Name) ;
-                                    $pltRvSPFRec.add('Server',$Server ) ;
-                                    $rPSBoundParameters.GetEnumerator() | ?{ $_.key -notmatch $rgxBoundParamsExcl} | foreach-object { $pltRvSPFRec.add($_.key,$_.value)  } ;
-                                    write-host "Resolve-SPFRecord w`n$(($pltRvSPFRec|out-string).trim())" ;
-                                    $DNSRecords = Resolve-SPFRecord @pltRvSPFRec ;
-                                    # Resolve-SPFRecord isn't written to do -Type (A); have to do directly
-                            } else {
-                                $smsg = "unpopulated `$rPSBoundParameters!" ;
-                                write-warning $smsg ;
-                                throw $smsg ;
-                            };
-                            #>
-
+                            
                             $pltRvDNSName=[ordered]@{
                                 Name = ( $SPFDirective -replace "^exists:" ) ;
                                 Server = $Server ;
@@ -1045,24 +1044,12 @@ function Resolve-SPFRecord {
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                             #$DNSRecords = Resolve-DnsName -Name ( $SPFDirective -replace "^exists:" ) -Server $Server $Name -Type A ; 
                             $DNSRecords = Resolve-DnsName @pltRvDNSName ; 
-
-                            <## Check SPF record
-                            foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
-                                    $SPFObject.Referrer = $Referrer ; 
-                                    $SPFObject.Include = $true ; 
-                                }
-                                
-                                $SPFObject | write-output  ; 
-                            } ;  # loop-E
-                            #>
+                           
                             if($DNSRecords){
                                 # hit on the exists: pass - add the IPAddress, Directive & Qualifier into the returned SPfObject (will be avail to match with the SenderIP later)
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^exists:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^exists:"), $Qualifier, $SPFDirective) ;
+                                if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                     $SPFObject.Referrer = $Referrer ; 
                                     $SPFObject.Include = $true ; 
                                 }
@@ -1084,15 +1071,25 @@ function Resolve-SPFRecord {
                                 The A records have to match the client IP exactly, unless a prefix-length is provided, in which case each IP address returned by the A lookup will be expanded to its corresponding CIDR prefix, and the client IP will be sought within that subnet.
                             #>
                             Write-Verbose "[MX]`tSPF entry: $SPFDirective" ; 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type MX ; 
                             # same as the A: & exists: discoveries: append the discovered IPAddress, Directive, and Qualifier into the SenderIP eval stack
                             foreach ($MXRecords in ($DNSRecords.NameExchange) ) {
                                 # Check SPF record
                                 $DNSRecords = Resolve-DnsName -Server $Server -Name $MXRecords -Type A ; 
                                 foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                    $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier) ; 
-                                    #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                    if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                    #$SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier) ; 
+                                    # append $SPFDirective as $Directive property
+                                    $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier, $SPFDirective) ;
+                                    if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                    #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                         $SPFObject.Referrer = $Referrer ; 
                                         $SPFObject.Include = $true ; 
                                     } ; 
@@ -1142,33 +1139,8 @@ function Resolve-SPFRecord {
                         }
                     } ; 
                 } ; 
-                # 3:40 PM 12/30/2024 actually, macro's get replcd in mechanisms/directives *before* running the test, so I updated the SpfDirective above, and assigned it back to itself 
-                # below should be unnecc
-                <#
-                if($hasMacros){
-                    write-host -foregroundcolor yellow "SPF Macros detected, running test-SPFMacroSpecificationTDO() expansion attempt" ; 
-                    # #test-SPFMacroSpecificationTDO -SpfRecord -DomainName -SenderAddress -IPAddress
-                    $pltRvSPFMacros=[ordered]@{
-                        SpfRecord = $ReturnValues  # need to reformat these to the raw entries
-                        DomainName = $Name ; 
-                        #Verbose = ($PSBoundParameters['Verbose'] -eq $true)
-                        Verbose = $($PSParameters.verbose -eq $true)
-                        erroraction = 'STOP' ;
-                        whatif = $($whatif) ;
-                    } ;
-                    if($SenderAddress){
-                        $pltRvSPFMacros.add('SenderAddress',$SenderAddress) ; 
-                    } ; 
-                    if($IPAddress){
-                        $pltRvSPFMacros.add('IPAddress',$IPAddress) ; 
-                    } ; 
-                    $smsg = "test-SPFMacroSpecificationTDO w`n$(($pltRvSPFMacros|out-string).trim())" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $ReturnValues += @(
-                        test-SPFMacroSpecificationTDO @pltRvSPFMacros ; 
-                    ); 
-                } ; 
-                #>
+                # macro's get replcd in mechanisms/directives *before* running the test, so I updated the SpfDirective above, and assigned it back to itself 
+                
                 $DNSQuerySum = $ReturnValues | Select-Object -Unique SPFSourceDomain | Measure-Object | Select-Object -ExpandProperty Count ; 
                 if ( $DNSQuerySum -le 6) {
                     write-host -foregroundcolor yellow "($DNSQuerySum) DNS queries made  (Must not exceed 10 DNS queries)." ; 

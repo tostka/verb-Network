@@ -18,6 +18,8 @@ function resolve-SPFMacrosTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    # 9:18 AM 7/8/2026 update $mts, stop stripping boolean:$false items
+    * 10:39 AM 1/7/2025 removed obsolete code/rems
     * 4:33 PM 1/2/2025
         recoded & expanded convert-IPAddressToReverseTDO, to support ipv6 reversal; 
          $DomainName/Name update $Name/Domainname regex to make the CN portion optional (fails toro.com, but has to accomodate recursive include:calls to resolve _spf.salesforce.com)
@@ -33,7 +35,7 @@ function resolve-SPFMacrosTDO {
         added -Server 1.1.1.1, controllable param; removed broad rem's and end stop-transcript; turned down most w-h's as this is a util, not a main script;
         expanded CBH on helo host name rfc specs ref; added validatepattern's for SenderEmailAddress, DomainName, and SenderHeloName (covering [ip4][Ipv6:ip6]|fqdn); 
         rearranged, segmented expansion to types: ip macros, senderaddress macros, domainname macros, only apply ip-resolution code to ip-macro-tied spf entries;
-flipped some params to non-mandetory (SenderAddress), test and prompt as needed instead (avoid need to push Helo host unless there's an %{h} macro), 
+        flipped some params to non-mandetory (SenderAddress), test and prompt as needed instead (avoid need to push Helo host unless there's an %{h} macro), 
         added prompts to demand missing params as needed; pulled pipeline support, for submitter tests we're testing a single host/IP/PTR here; loop test a broad set if neededat cmdline
         tested OK on toro.com.
     * 4:10 PM 12/16/2024 questions about header sources for various tests: went back to RFC source, and dug out the detailed mechaism engring specs. Then worked through pphosted & salesforce macro expansion, 
@@ -51,7 +53,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
 
         #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         AI Overview
-        Learn more
+        
         In a DNS SPF record, macros are replaced immediately before the SPF record is evaluated, meaning that when the receiving mail server looks up the SPF record, the macro variables like "%{i}" (representing the sender's IP address) are substituted with their actual values before any checks against the specified mechanisms are performed. 
         Key points about macro replacement in SPF:
 
@@ -116,7 +118,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         => %{h}: _The hostname_ specified by the HELO or EHLO command used during the SMTP connection when the message is being sent is referred to by the %{h} macro.
         NOT the DomainName!
 
-
+        Ref: 
         [RFC 4408 Sender Policy Framework (SPF) for Authorizing Use of Domains in Email, Version 1](https://www.rfc-editor.org/rfc/rfc7208)
 
         - <Sender> is checked against 1) The HELO Identity (full fqdn from HELO/EHLO greeting sent by client, if enabled on server), 
@@ -314,6 +316,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
            (the "address literal" is the address in brackets (`[192.0.2.1]`), or for v6 the address with an `IPv6` prefix (`[IPv6:fe80::1]`))
 
     This is specifically tuned to resolve & lookup dynamic per-host DNS records, over validating standard include or other records
+
     .PARAMETER SpfRecord
     Optional Pre-resolved SpfRecord specification string to be evaluated (skips initial resolution pass; used to recycle from Resolve-SPFRecord() call[-SpfRecord `$spfRec]
     .PARAMETER IPAddress
@@ -396,7 +399,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     PS>     SenderHeloName = 'mymailoutlyn0.toro.com' ;
     PS> } ; 
     PS> write-verbose "remove empty value keys" ; 
-    PS> $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)} 
+    PS> $mts = $pltDomSpecs.GetEnumerator() |?{ $_.value -isnot [boolean] -AND (($_.value -eq $null) -OR ($_.value -eq '') -OR ($_.value.length -eq 0))} 
     PS> $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ; 
     PS> $tspf = resolve-dnsname -name $pltDomSpecs.DomainName -type TXT -server 1.1.1.1 | ? strings -match 'spf' | select -expand strings ; 
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($pltDomSpecs.DomainName) Matched DNS SPF Record w`n$(($tspf|out-string).trim())" ; 
@@ -422,7 +425,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     PS>     write-warning $smsg ; 
     PS>     throw $smsg ; 
     PS> }; 
-    Demo call leveraging $PSBoundParameters
+    Demo call leveraging `$PSBoundParameters
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -438,7 +441,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     [Alias('resolve-SPFMacros')]
     PARAM(
         [Parameter(Mandatory=$True,HelpMessage="Optional Pre-resolved SpfRecord specification string to be evaluated (skips initial resolution pass; used to recycle from Resolve-SPFRecord() call[-SpfRecord `$spfRec]")]
-            <# 8:58 AM 12/13/2024 prob don't have to eval the v=spf for full spf compliance - not this func''s role, and it may be handling substrings of a full spf, so just sub through the sent text and send updated back
+            <# don't eval the v=spf for full spf compliance - not this func''s role, and it may be handling substrings of a full spf, so just sub through the sent text and send updated back
             [ValidateScript({
                 ($_ -is [string])
                 if($_ -match '^v=spf'){$true}else{
@@ -447,34 +450,28 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
             })]
             #>
             [Alias('MacroString')]
-            #[string]
             [string[]]$SpfRecord, # make it an array to accomodate stacked strings, and crlf-split herestrings
         # assumes IPAddress is required on every expansion (as the macro expansion loop lops out the ipaddresses and does relevent updates)
-        #[Parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="Sending server IP Address(es) to be tested for '%{i}','%{ir}','%{v}','%{p}' IP-based macros in the DomainName SPF record[-IPAddress '192.168.1.1','192.168.1.2']")]
         [Parameter(Mandatory=$true,HelpMessage="Sending server IP Address to be expanded into '%{i}','%{ir}','%{v}','%{p}' IP-based macros in the DomainName SPF record[-IPAddress '192.168.1.1']")]
-            #[ValidateNotNullOrEmpty()]
             [Alias('SenderIPAddress','SenderIP')]
-            #[string[]]
-            #if doing a single submitting server eval, this should be a single ip string, better, [system.net.ipaddress]
+            #if doing a single submitting server eval, this should be a single ip string. Better, [system.net.ipaddress], self-validates
             [system.net.ipaddress]$IPAddress, # =  @($Tormeta.OP_ExEgressIPs + $CMWMeta.OP_ExEgressIPs) ,
         [Parameter(Mandatory=$True,HelpMessage="DomainName for which SPF records should be tested[-DomainName DOMAIN.COM]")]
             [ValidateNotNullOrEmpty()]
             #[ValidatePattern("^([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # email domain name restrictions
             #[ValidatePattern("^([-0-9a-zA-Z_]+[.])+([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # DNS -type TXT permits underscores, but not in the DomainName portion on the right 
+            # Note: -type SRV also permit leading _ on records
             # make the CN machinename optional: 
             [ValidatePattern("^((([-0-9a-zA-Z_]+[.])+)*)([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # DNS -type TXT permits underscores, but not in the DomainName portion on the right 
-            # Note: -type SRV also permit leading _ on records
             [Alias('Domain')]
             [string]$DomainName,
         [Parameter(Mandatory=$False,HelpMessage="SenderAddress to use for '%{d}','%{s}','%{l}','%{o}' SenderAddress based macros[-SenderAddress EMAIL@DOMAIN.TLD]")]
-            #[ValidateNotNullOrEmpty()]
             [ValidatePattern("^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")]
             [Alias('Sender')]
             [string]$SenderAddress,
         [Parameter(Mandatory=$false,HelpMessage="Optional Sending client SMTP server HELO/EHLO hostname FQDN, to use for '%{h}' macro substitution (should be an FQDN or where Dyn-ip & no PTR, a squarebracketed ip4 ip, or prefixed ip6 ip: [192.0.2.1] or [IPv6:fe80::1]) [-SenderHeloName SERVER.DOMAIN.TLD]")]
-            #[ValidateNotNullOrEmpty()] # rgx below matches all three: server.sub.domain.com|[192.0.2.1]|[IPv6:fe80::1]
+            # rgx below matches all three: server.sub.domain.com|[192.0.2.1]|[IPv6:fe80::1]
             [ValidatePattern("^((?=.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,}))|\[(IPv6:((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})])$")]
-            #[Alias('ALIAS1', 'ALIAS2')]
             [string]$SenderHeloName,
         [Parameter(Mandatory = $false,HelpMessage="DNS Server to query (defaults to Cloudflare public resolver 1.1.1.1)[-Server 1.0.0.1]")]
             [string]$Server = "1.1.1.1"
@@ -486,7 +483,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         # Debugger:proxy automatic variables that aren't directly accessible when debugging (must be assigned and read back from another vari) ; 
         $rPSCmdlet = $PSCmdlet ; 
         ${CmdletName} = $rPSCmdlet.MyInvocation.MyCommand.Name ; # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
-            #region PsParams ; #*------v PsParams v------
+        #region PsParams ; #*------v PsParams v------
         $PSParameters = New-Object -TypeName PSObject -Property $rPSBoundParameters ;
         write-verbose "`$rPSBoundParameters:`n$(($rPSBoundParameters|out-string).trim())" ;
         # pre psv2, no $rPSBoundParameters autovari to check, so back them out:
@@ -508,25 +505,12 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         #endregion PsParams ; #*------^ END PsParams ^------
         #endregion ENVIRO_DISCOVER ; #*------^ END ENVIRO_DISCOVER ^------
         #region COMMON_CONSTANTS ; #*------v COMMON_CONSTANTS v------
-    
-        if(-not $DoRetries){$DoRetries = 4 } ;    # # times to repeat retry attempts
-        if(-not $RetrySleep){$RetrySleep = 10 } ; # wait time between retries
-        if(-not $RetrySleep){$DawdleWait = 30 } ; # wait time (secs) between dawdle checks
-        if(-not $DirSyncInterval){$DirSyncInterval = 30 } ; # AADConnect dirsync interval
-        if(-not $ThrottleMs){$ThrottleMs = 50 ;}
-        if(-not $rgxDriveBanChars){$rgxDriveBanChars = '[;~/\\\.:]' ; } ; # ;~/\.:,
-        if(-not $rgxCertThumbprint){$rgxCertThumbprint = '[0-9a-fA-F]{40}' } ; # if it's a 40char hex string -> cert thumbprint  
-        if(-not $rgxSmtpAddr){$rgxSmtpAddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$" ; } ; # email addr/UPN
-        if(-not $rgxDomainLogon){$rgxDomainLogon = '^[a-zA-Z][a-zA-Z0-9\-\.]{0,61}[a-zA-Z]\\\w[\w\.\- ]+$' } ; # DOMAIN\samaccountname 
-        if(-not $exoMbxGraceDays){$exoMbxGraceDays = 30} ; 
-        if(-not $XOConnectionUri ){$XOConnectionUri = 'https://outlook.office365.com'} ; 
-        if(-not $SCConnectionUri){$SCConnectionUri = 'https://ps.compliance.protection.outlook.com'} ; 
+
+        #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS  ^------
 
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
 
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
-        #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
-
         #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
 
         #region FUNCTIONS ; #*======v FUNCTIONS v======
@@ -637,19 +621,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         #endregion BANNER ; #*------^ END BANNER ^------
 
-        <# pulled pipeline support
-        # check if using Pipeline input or explicit params:
-        if ($rPSCmdlet.MyInvocation.ExpectingInput) {
-            $smsg = "Data received from pipeline input: '$($InputObject)'" ;
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-        } else {
-            # doesn't actually return an obj in the echo
-            #$smsg = "Data received from parameter input: '$($InputObject)'" ;
-            #if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            #else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-        } ;
-        #>
         if($SpfRecord){
             $smsg = "-SpfRecord specified: Using passed spf specification string" ; 
             $smsg = "`n$(($SpfRecord|out-string).trim())" ; 
@@ -659,20 +630,15 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         }else {
             #write-verbose "Resolve DNS SPF record: resolve-dnsname -name $($DomainName) -type TXT -server $Server" ; 
             #$SpfRec = resolve-dnsname -name $DomainName -type TXT -server $Server  -ea STOP| ? strings  -match '^v=spf' | select -expand strings ; 
+            # don't autoresolve, require an input spf 
             $smsg = "Missing REQUIRED -SpfRecord spec!" ; 
             throw $smsg ;
         } ; 
 
         # check for macros syntax in spf record
         if($SpfRec -notmatch '%\{[slodipvh]}' ){
-            #$smsg = "DomainName:$($DomainName) retrieved SPF record" ; 
             $smsg = "Provided SPF record (or substring)" ; 
             $smsg +="`nDOES NOT USE ANY SPF MACROS that act against dynamic per-host records" ; 
-            # make it smoothly accomodate unneeded passes
-            #$smsg +="`nThis script does not apply to this domain. ABORTING" ; 
-            #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-            #else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            #Break; 
             $smsg +="`n(returning unmodified SPF spec to pipeline)" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -765,9 +731,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
             if( -not ($isIPv4 -OR $isIPv6) -AND (6 -le $Computer.length -le 253) -AND ($Computer -match '^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$') ){
                 $isFQDN = $true ; 
             }  ;
-            <#[ValidateLength(1, 15)]
-            [ValidateScript({$PSItem -replace '\\|/|:|\*|\?|"||\||\.' -eq $PSItem})]
-            #>
+            
             if( -not ($isIPv4 -OR $isIPv6) -AND  (1 -le $Computer.length -le 15) -AND ($Computer -replace '\\|/|:|\*|\?|"||\||\.' -eq $Computer) ){
                 $isNBName = $true ; 
             }  ;
@@ -860,7 +824,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                         #$SendIPRev = (($SendPTR | select -expand name) -split '.in-addr.')[0] ; 
                         write-verbose "$($StepNo++; $StepNo). Replace %{ir} with with reversed sender IP" ; 
                         if($SendPTR -AND $SendIPRev){
-                        #$SpfRecResolved = $SpfRec.replace('%{ir}',$SendIPRev) ; 
                         $SpfRec = $SpfRec.replace('%{ir}',$SendIPRev) ; 
                         }else {
                             $smsg = "missing `$SendPTR/`$SendIPRev! Unable to perform macro replace: '%{ir}',`$SendIPRev " ; 
@@ -946,8 +909,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                             if((($ptr.namehost.split('.') | select -skip 1 ) -join '.') -eq (($ARec.name.split('.') | select -skip 1 ) -join '.')){
                                 $SpfRec = $SpfRec.replace('%{p}',(($SendPTR.namehost.split('.') | select -skip 1 ) -join '.')) ; 
                             }
-
-
                         #>
                         $smsg = "SPF Record contains Macro '%{p}' which tests SenderIP PTR'd to NameHost,"
                         $smsg += "`nwhich is resolved to a matching -Type A Name,"
@@ -986,10 +947,8 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                                 write-warning $smsg ; 
                                 throw $smsg ; 
                             } ; 
-
                             $SpfRec = $SpfRec.replace('%{p}',(($SendPTR.namehost.split('.') | select -skip 1 ) -join '.')) ; 
                         } ; 
-
 
                         if(-not $SenderHeloName){
                             $smsg = "$($StepNo++; $StepNo). WARN! No -SenderHeloName specified from which to replace %{p} macros!" ; 
@@ -1084,7 +1043,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
 
         $SpfRec | write-output ;
-
 
     }  # PROC-E
     END{
