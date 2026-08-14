@@ -20,6 +20,7 @@ function New-SelfSignedCertificateTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 1:51 PM 8/10/2026 fixed conflict echo when* -> not*
     * 12:49 PM 6/22/2026 updated CBH demo to include sample AppFqDN value; added Output object definition/properties 
     * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
     * 3:45 PM 6/23/2023 pulled req: verb-AAD 
@@ -143,7 +144,7 @@ function New-SelfSignedCertificateTDO {
 
     # precheck for conflicting existing on same dnsname
     if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
-        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,not*|out-string).trim())" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
