@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 6.1.1.0
+Version     : 6.1.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3117,6 +3117,7 @@ function New-SelfSignedCertificateTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 1:51 PM 8/10/2026 fixed conflict echo when* -> not*
     * 12:49 PM 6/22/2026 updated CBH demo to include sample AppFqDN value; added Output object definition/properties 
     * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
     * 3:45 PM 6/23/2023 pulled req: verb-AAD 
@@ -3240,7 +3241,7 @@ function New-SelfSignedCertificateTDO {
 
     # precheck for conflicting existing on same dnsname
     if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
-        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,not*|out-string).trim())" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
@@ -4665,8 +4666,7 @@ $smsg |out-string
 
 
 #*------v resolve-networkLocalTDO.ps1 v------
-if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
-    Function resolve-NetworkLocalTDO {
+Function resolve-NetworkLocalTDO {
         <#
         .SYNOPSIS
         resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
@@ -4685,8 +4685,7 @@ if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
-        * 11:20 AM 9/17/2025 removed write-my* calls: implemented support in vio\write-log() instead (avoids all this manual updating)
-        * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+        * 8:47 AM 8/3/2026 revised logic, worked around CIM v WMI bug: -computername in wmi uses dcom; in cim it relise on WinRM: fails if disabled. fix: Drop -Computername and it defaults to local instance
         * 4:07 PM 5/15/2025 added psv2-compat hash code; get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
         12:55 PM 5/13/2025 added get-CimInstance/get-WMIInstance fail through logic, added OS.Domain & .Workgroup properties to return
         .DESCRIPTION
@@ -4702,67 +4701,66 @@ if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
         https://github.com/tostka/verb-Network
         #>
         [CmdletBinding()]
-        Param () ;
-        BEGIN {
+        PARAM() ;
+        BEGIN{
             $rgxIP4Addr = "(?:\d{1,3}\.){3}\d{1,3}" ;
             $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ;
             $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;
-            $prpNS = 'DNSHostName', 'ServiceName', @{N = "DNSServerSearchOrder"; E = { "$($_.DNSServerSearchOrder)" } },
-            @{N = 'IPAddress'; E = { $_.IPAddress } }, @{N = 'DefaultIPGateway'; E = { $_.DefaultIPGateway } } ;
+            $prpNS = 'DNSHostName','ServiceName',@{N="DNSServerSearchOrder";E={"$($_.DNSServerSearchOrder)"}},
+                @{N='IPAddress';E={$_.IPAddress}},@{N='DefaultIPGateway';E={$_.DefaultIPGateway}} ;
         } ;
         PROCESS {
-
-            if ($host.version.major -ge 3) { $netsettings = [ordered]@{Dummy = $null ; } }
-            else { $netsettings = @{Dummy = $null ; } } ;
-            if ($netsettings.keys -contains 'dummy') { $netsettings.remove('Dummy') };
-            #$fieldsBoolean = 'isLocalExchangeServer','IsEdgeTransport','isEx2019','isEx2016','isEx2010','isEx2007','isEx2003','isEx2000' | sort ; $fieldsBoolean | foreach-object { $netsettings.add($_,$false) } ;
-            $fieldsnull = 'DNSHostName', 'ServiceName', 'DNSServerSearchOrder', 'IPAddress', 'DefaultIPGateway', 'Fqdn', 'Domain', 'Workgroup' | sort ; $fieldsnull | foreach-object { $netsettings.add($_, $null) } ;
-
-            TRY {
-                if (get-command get-ciminstance -ea 0) {
-                    $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ;
-                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
-                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
-                    $nic = Get-ciminstance -class Win32_NetworkAdapterConfiguration -ComputerName localhost -ea STOP ;
+            $osClass = 'Win32_OperatingSystem' ; $boxClass = 'Win32_ComputerSystem' ; $nicClass = 'Win32_NetworkAdapterConfiguration' ;
+            if($host.version.major -ge 3){$netsettings=[ordered]@{Dummy = $null ;} } else {$netsettings = @{Dummy = $null ;} } ;
+            if($netsettings.keys -contains 'dummy'){$netsettings.remove('Dummy') };
+            $fieldsnull = 'DNSHostName','ServiceName','DNSServerSearchOrder','IPAddress','DefaultIPGateway','Fqdn','Domain','Workgroup' | sort ; $fieldsnull | % { $netsettings.add($_,$null) } ;
+            TRY{
+                if(get-command get-ciminstance -ea 0){
+                    $OS = Get-ciminstance -class $osClass -ea STOP ;
+                    $thisbox = Get-CimInstance -ClassName $boxClass -ea STOP ;
+                    if($nic = Get-ciminstance -class $nicClass -ComputerName localhost -ea 0){}elseif($nic = Get-ciminstance -class $nicClass -ea 0){write-host "local WinRM appears disabled, dropped Computername spec (defaults to local CIM instance)" 
+                    }else{write-host "CIM call failed, failing back to WMI" ; $nic = Get-WMIObject $nicClass -Computername localhost -ea STOP} ;  ;
                 } else {
-                    $OS = (Get-WmiObject -Class Win32_ComputerSystem -ea STOP)
-                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
-                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
-                    $nic = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP ;
+                    $OS = Get-WmiObject -Class $osClass -ea STOP ;
+                    $thisbox = Get-WmiObject -Class $boxClass -ea STOP ;
+                    $nic = Get-WMIObject $nicClass -Computername localhost -ea STOP ;
                 } ;
-                if ($nic = $nic | ? { $_.IPEnabled -match "True" } | Select -property $prpNS) {
+                if($thisbox){$netsettings.Domain = $thisbox.Domain ;$netsettings.Workgroup = $thisbox.Workgroup ;} ;
+                if($nic = $nic | ?{$_.IPEnabled -match "True"} | Select -property $prpNS){
                     $netsettings.DNSHostName = $nic.DNSHostName;
                     $netsettings.ServiceName = $nic.ServiceName;
                     $netsettings.DNSServerSearchOrder = $nic.DNSServerSearchOrder;
                     $netsettings.IPAddress = $nic.IPAddress;
                     $netsettings.DefaultIPGateway = $nic.DefaultIPGateway;
-                    if ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) {
-                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) -type ptr).namehost | select -first 1 ;
+                    if($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ){
+                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ) -type ptr).namehost | select -first 1 ;
                     } ;
-                } else {
-                    $smsg = "No IPEnabled NIC found!" ; 
-                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error} else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                }else {
+                    $smsg = "NO IPEnabled -match True NICS FOUND!" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     throw $smsg ;
                 }
-                # 9:45 AM 5/13/2025 add workgroup collection, if non-domain-joined
-                if ($env:Userdomain -eq $env:COMPUTERNAME) {
+                if($env:Userdomain -eq $env:COMPUTERNAME){
                     $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                }
-                if ($netsettings.Workgroup) {
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                if($netsettings.Workgroup){
                     $smsg = "WorkgroupName:$($WorkgroupName)" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
                 } ;
                 [pscustomobject]$netsettings | write-output ;
             } CATCH {
-                $ErrTrapd = $Error[0] ;
+                $ErrTrapd=$Error[0] ;
                 $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
         } ;
-    } ; 
-}
+    }
 
 #*------^ resolve-networkLocalTDO.ps1 ^------
 
@@ -5006,7 +5004,7 @@ X-Microsoft-Antispam-Message-Info:
  =?utf-8?B?ZUJHK3RPdE9zY0VtUUNvcVhlVzV5YkY5cjJzZHJ0cm82M2plbXBkTno3Qkt2?=
  =?utf-8?B?U0Z0ZXZXV1RxMkhtUGZFajh0RXJETE5KYWRERW8zNjA5cFBXOXd3aGlIUy9O?=
  =?utf-8?B?RW8rRGpiQ1I1ZXdnUmM2bCtOSVhTeFduMDdsWnlvZGtjVzhwYmxtcGZrOExn?=
- =?utf-8?B?TFI4R3dCSE8wVTAzMGp4MGJ4SHFzS0M0WU96.1.1ZHFRVXpkRHlzZmVxNm5u?=
+ =?utf-8?B?TFI4R3dCSE8wVTAzMGp4MGJ4SHFzS0M0WU96L1E0ZHFRVXpkRHlzZmVxNm5u?=
  =?utf-8?B?ZzBvQWNDMDBLTlk2SkxacGZPRDQ3NGIyT0VtWG0zR1JpaW8zeUJVMjUvcFVR?=
  =?utf-8?B?YUltNWxzZjJDbFVxcWptUWh2ZVZXaWRIOFhmTUIzWmtSemtXR1hHWmsrbHM5?=
  =?utf-8?B?Zi9TK2llWWMwZTcxYm1zWUJJUVZCZk4wNEU1dlcybjZIN3dnbTI2UWx3eUFI?=
@@ -13756,8 +13754,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUPgndkn8asuQkagkuvkCyKsyK
-# kZqgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvcKyvGf7KVlE8gUc0wsKhV/g
+# YTOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13772,9 +13770,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBQCUSPc
-# w4cm6CtGRRXOFzMitm2IljANBgkqhkiG9w0BAQEFAASBgJtmGq9sB2kpYdfcbJUH
-# BnMHPk4jwLoQB/yUGjESF+QwFwGTyITXvUMMLsEfgH0vvoiqFVQ9Pso7E1e8ljVl
-# NC+5FA7eV8LzBCqiIXJD7bfgVCubJQx7t6LpiSi8TPV2cBSAVfwsdgQQV2eyZTYZ
-# M7+tuhT9eS8TwzSFmSqqQG6X
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRggVPD
+# X2CU6Qh8NxOLQG7FXFf9fTANBgkqhkiG9w0BAQEFAASBgKPvgJCubTF62ZIQ/kBx
+# 11ob119lHpWF0r3GWrHPd7I3gmRLUsJ+TbWq/iwFSE8ToBAebWPAdKJvFlmiGPcl
+# 8dVVuhf/r8MbFxcUwmbYh+Zu1fmA+nuEEZz/L/MavZN3B5zWfPHL59ll6jfrMeta
+# xrj+8eFw0ZtqxTYJG0d729C+
 # SIG # End signature block
