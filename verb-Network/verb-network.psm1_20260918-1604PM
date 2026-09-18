@@ -1,11 +1,11 @@
-﻿# verb-Network.psm1
+﻿# verb-network.psm1
 
 
 <#
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 6.0.0.0
+Version     : 6.1.2.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -3117,6 +3117,8 @@ function New-SelfSignedCertificateTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    * 1:51 PM 8/10/2026 fixed conflict echo when* -> not*
+    * 12:49 PM 6/22/2026 updated CBH demo to include sample AppFqDN value; added Output object definition/properties 
     * 4:23 PM 3/17/2026 new verb-network renamed copy prior New-AADAppAuthCertificate (AzureAD is completeley shutdown by M$)
     * 3:45 PM 6/23/2023 pulled req: verb-AAD 
     * 2:54 PM 6/13/2022 debugged, functional
@@ -3138,11 +3140,15 @@ function New-SelfSignedCertificateTDO {
     .INPUTS
     None. Does not accepted piped input.(.NET types, can add description)
     .OUTPUTS
-    None. Returns no objects or output (.NET types)
-    System.Boolean
-    [| get-member the output to see what .NET obj TypeName is returned, to use here]
+    PSCustomObject containing following properties about new certificate:
+        Certificate = System.Security.Cryptography.X509Certificates.X509Certificate2 - An X509Certificate2 object for the certificate that has been created.; 
+        CertRaw = Base64String representation of the RawCertData
+        PFXPath = Path to exported pfx file for the certificate ; 
+        Valid = set $true if Valid Certificate, CertRaw property, and PFXPath property;     
     .EXAMPLE
-    PS> $pltNAAC=[ordered]@{
+    PS> $AppFqDN = 'DESCRIPTIVETAG-AppReg.TENANT.onmicrosoft.com'
+    PS> $certStore = 'Cert:\CurrentUser\My' ; 
+    PS> $pltNSSC=[ordered]@{
     PS>     DnsName=$AppFqDN ;
     PS>     CertStoreLocation = $certStore ;
     PS>     EndDate=(get-date ).addyears(3) ;
@@ -3150,12 +3156,16 @@ function New-SelfSignedCertificateTDO {
     PS>     verbose = $($verbose) ; 
     PS>     whatif = $($whatif) ;
     PS> } ;
-    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNAAC|out-string).trim())" ;
+    PS> $smsg = "New-SelfSignedCertificateTDO w`n$(($pltNSSC|out-string).trim())" ;
     PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug 
     PS> else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-    PS> $bRet = New-SelfSignedCertificateTDO @pltNAAC ; 
+    PS> $bRet = New-SelfSignedCertificateTDO @pltNSSC ; 
     PS> if($bREt.Valid){
-    PS>     write-verbose "valid return, insert your post handling here" ; 
+    PS>     $smsg = "`n`n==>Valid return:" ; 
+    PS>     $smsg += "`n$(($bREt|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE:$(($bREt.Certificate|out-string).trim())" ; 
+    PS>     $smsg += "`n--CERTIFICATE-RAW:$(($bREt.CertRaw|out-string).trim())`n`n" ; 
+    PS>     write-host -foregroundcolor green $smsg ; 
     PS> } else { 
     PS>     $smsg ="New-SelfSignedCertificateTDO returned INVALID outputs`n$(($bRet|out-string).trim())" ;
     PS>     if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } 
@@ -3231,7 +3241,7 @@ function New-SelfSignedCertificateTDO {
 
     # precheck for conflicting existing on same dnsname
     if($conflicts = gci $pltNSSCert.CertStoreLocation |?{$_.subject -eq "CN=$($pltNSSCert.DnsName)"} ){
-        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,when*|out-string).trim())" ; 
+        $smsg = "PREXISTING CERT IN $($CertStoreLocation) W MATCHING DNSNAME!`n$(($conflicts | ft -a thumbprint,subject,not*|out-string).trim())" ; 
         if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug 
         else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
         $bRet=Read-Host "Enter YYY to continue. Anything else will exit" 
@@ -4656,8 +4666,7 @@ $smsg |out-string
 
 
 #*------v resolve-networkLocalTDO.ps1 v------
-if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
-    Function resolve-NetworkLocalTDO {
+Function resolve-NetworkLocalTDO {
         <#
         .SYNOPSIS
         resolve-NetworkLocalTDO.ps1 - Retrieve local network settings - interface descriptors and resolved ip address PTR -> A Record FQDN, also returns Domain/Workgroup info
@@ -4676,8 +4685,7 @@ if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
         AddedWebsite: URL
         AddedTwitter: URL
         REVISIONS
-        * 11:20 AM 9/17/2025 removed write-my* calls: implemented support in vio\write-log() instead (avoids all this manual updating)
-        * 10:45 AM 8/6/2025 added write-myOutput|Warning|Verbose support (for xopBuildLibrary/install-Exchange15.ps1 compat)
+        * 8:47 AM 8/3/2026 revised logic, worked around CIM v WMI bug: -computername in wmi uses dcom; in cim it relise on WinRM: fails if disabled. fix: Drop -Computername and it defaults to local instance
         * 4:07 PM 5/15/2025 added psv2-compat hash code; get-cim|wmiobject Win32_ComputerSystem wasn't returning a Domain or Workgroup property, unless |select -expand used, so tacked on 2 explicit queries for the properties.
         12:55 PM 5/13/2025 added get-CimInstance/get-WMIInstance fail through logic, added OS.Domain & .Workgroup properties to return
         .DESCRIPTION
@@ -4693,67 +4701,66 @@ if (-not(gi function:resolve-NetworkLocalTDO -ea 0)) {
         https://github.com/tostka/verb-Network
         #>
         [CmdletBinding()]
-        Param () ;
-        BEGIN {
+        PARAM() ;
+        BEGIN{
             $rgxIP4Addr = "(?:\d{1,3}\.){3}\d{1,3}" ;
             $rgxIP6Addr = "^((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})$" ;
             $rgxIP4AddrAuto = "169\.254\.\d{1,3}\.\d{1,3}" ;
-            $prpNS = 'DNSHostName', 'ServiceName', @{N = "DNSServerSearchOrder"; E = { "$($_.DNSServerSearchOrder)" } },
-            @{N = 'IPAddress'; E = { $_.IPAddress } }, @{N = 'DefaultIPGateway'; E = { $_.DefaultIPGateway } } ;
+            $prpNS = 'DNSHostName','ServiceName',@{N="DNSServerSearchOrder";E={"$($_.DNSServerSearchOrder)"}},
+                @{N='IPAddress';E={$_.IPAddress}},@{N='DefaultIPGateway';E={$_.DefaultIPGateway}} ;
         } ;
         PROCESS {
-
-            if ($host.version.major -ge 3) { $netsettings = [ordered]@{Dummy = $null ; } }
-            else { $netsettings = @{Dummy = $null ; } } ;
-            if ($netsettings.keys -contains 'dummy') { $netsettings.remove('Dummy') };
-            #$fieldsBoolean = 'isLocalExchangeServer','IsEdgeTransport','isEx2019','isEx2016','isEx2010','isEx2007','isEx2003','isEx2000' | sort ; $fieldsBoolean | foreach-object { $netsettings.add($_,$false) } ;
-            $fieldsnull = 'DNSHostName', 'ServiceName', 'DNSServerSearchOrder', 'IPAddress', 'DefaultIPGateway', 'Fqdn', 'Domain', 'Workgroup' | sort ; $fieldsnull | foreach-object { $netsettings.add($_, $null) } ;
-
-            TRY {
-                if (get-command get-ciminstance -ea 0) {
-                    $OS = (Get-ciminstance -class Win32_OperatingSystem -ea STOP) ;
-                    $netsettings.Domain = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
-                    $netsettings.Workgroup = Get-CimInstance -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
-                    $nic = Get-ciminstance -class Win32_NetworkAdapterConfiguration -ComputerName localhost -ea STOP ;
+            $osClass = 'Win32_OperatingSystem' ; $boxClass = 'Win32_ComputerSystem' ; $nicClass = 'Win32_NetworkAdapterConfiguration' ;
+            if($host.version.major -ge 3){$netsettings=[ordered]@{Dummy = $null ;} } else {$netsettings = @{Dummy = $null ;} } ;
+            if($netsettings.keys -contains 'dummy'){$netsettings.remove('Dummy') };
+            $fieldsnull = 'DNSHostName','ServiceName','DNSServerSearchOrder','IPAddress','DefaultIPGateway','Fqdn','Domain','Workgroup' | sort ; $fieldsnull | % { $netsettings.add($_,$null) } ;
+            TRY{
+                if(get-command get-ciminstance -ea 0){
+                    $OS = Get-ciminstance -class $osClass -ea STOP ;
+                    $thisbox = Get-CimInstance -ClassName $boxClass -ea STOP ;
+                    if($nic = Get-ciminstance -class $nicClass -ComputerName localhost -ea 0){}elseif($nic = Get-ciminstance -class $nicClass -ea 0){write-host "local WinRM appears disabled, dropped Computername spec (defaults to local CIM instance)" 
+                    }else{write-host "CIM call failed, failing back to WMI" ; $nic = Get-WMIObject $nicClass -Computername localhost -ea STOP} ;  ;
                 } else {
-                    $OS = (Get-WmiObject -Class Win32_ComputerSystem -ea STOP)
-                    $netsettings.Domain = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Domain ;
-                    $netsettings.Workgroup = Get-WmiObject -ClassName Win32_ComputerSystem | Select-Object -ExpandProperty Workgroup ;
-                    $nic = Get-WMIObject Win32_NetworkAdapterConfiguration -Computername localhost -ea STOP ;
+                    $OS = Get-WmiObject -Class $osClass -ea STOP ;
+                    $thisbox = Get-WmiObject -Class $boxClass -ea STOP ;
+                    $nic = Get-WMIObject $nicClass -Computername localhost -ea STOP ;
                 } ;
-                if ($nic = $nic | ? { $_.IPEnabled -match "True" } | Select -property $prpNS) {
+                if($thisbox){$netsettings.Domain = $thisbox.Domain ;$netsettings.Workgroup = $thisbox.Workgroup ;} ;
+                if($nic = $nic | ?{$_.IPEnabled -match "True"} | Select -property $prpNS){
                     $netsettings.DNSHostName = $nic.DNSHostName;
                     $netsettings.ServiceName = $nic.ServiceName;
                     $netsettings.DNSServerSearchOrder = $nic.DNSServerSearchOrder;
                     $netsettings.IPAddress = $nic.IPAddress;
                     $netsettings.DefaultIPGateway = $nic.DefaultIPGateway;
-                    if ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) {
-                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ? { $_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto } ) -type ptr).namehost | select -first 1 ;
+                    if($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ){
+                        $netsettings.fqdn = (resolve-dnsname -name ($netsettings.ipaddress | ?{$_ -MATCH $rgxIP4Addr -AND $_ -notmatch $rgxIP4AddrAuto} ) -type ptr).namehost | select -first 1 ;
                     } ;
-                } else {
-                    $smsg = "No IPEnabled NIC found!" ; 
-                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Error} else{ write-ERROR "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                }else {
+                    $smsg = "NO IPEnabled -match True NICS FOUND!" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                     throw $smsg ;
                 }
-                # 9:45 AM 5/13/2025 add workgroup collection, if non-domain-joined
-                if ($env:Userdomain -eq $env:COMPUTERNAME) {
+                if($env:Userdomain -eq $env:COMPUTERNAME){
                     $smsg = "%USERDOMAIN% -EQ %COMPUTERNAME%: $($env:computername) => non-domain-connected, likely edge role Ex server!" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-                }
-                if ($netsettings.Workgroup) {
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                if($netsettings.Workgroup){
                     $smsg = "WorkgroupName:$($WorkgroupName)" ;
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
                 } ;
                 [pscustomobject]$netsettings | write-output ;
             } CATCH {
-                $ErrTrapd = $Error[0] ;
+                $ErrTrapd=$Error[0] ;
                 $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN } #Error|Warn|Debug
+                else{ write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
             } ;
         } ;
-    } ; 
-}
+    }
 
 #*------^ resolve-networkLocalTDO.ps1 ^------
 
@@ -6046,6 +6053,8 @@ function resolve-SPFMacrosTDO {
     AddedWebsite: URL
     AddedTwitter: URL
     REVISIONS
+    # 9:18 AM 7/8/2026 update $mts, stop stripping boolean:$false items
+    * 10:39 AM 1/7/2025 removed obsolete code/rems
     * 4:33 PM 1/2/2025
         recoded & expanded convert-IPAddressToReverseTDO, to support ipv6 reversal; 
          $DomainName/Name update $Name/Domainname regex to make the CN portion optional (fails toro.com, but has to accomodate recursive include:calls to resolve _spf.salesforce.com)
@@ -6061,7 +6070,7 @@ function resolve-SPFMacrosTDO {
         added -Server 1.1.1.1, controllable param; removed broad rem's and end stop-transcript; turned down most w-h's as this is a util, not a main script;
         expanded CBH on helo host name rfc specs ref; added validatepattern's for SenderEmailAddress, DomainName, and SenderHeloName (covering [ip4][Ipv6:ip6]|fqdn); 
         rearranged, segmented expansion to types: ip macros, senderaddress macros, domainname macros, only apply ip-resolution code to ip-macro-tied spf entries;
-flipped some params to non-mandetory (SenderAddress), test and prompt as needed instead (avoid need to push Helo host unless there's an %{h} macro), 
+        flipped some params to non-mandetory (SenderAddress), test and prompt as needed instead (avoid need to push Helo host unless there's an %{h} macro), 
         added prompts to demand missing params as needed; pulled pipeline support, for submitter tests we're testing a single host/IP/PTR here; loop test a broad set if neededat cmdline
         tested OK on toro.com.
     * 4:10 PM 12/16/2024 questions about header sources for various tests: went back to RFC source, and dug out the detailed mechaism engring specs. Then worked through pphosted & salesforce macro expansion, 
@@ -6079,7 +6088,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
 
         #-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         AI Overview
-        Learn more
+        
         In a DNS SPF record, macros are replaced immediately before the SPF record is evaluated, meaning that when the receiving mail server looks up the SPF record, the macro variables like "%{i}" (representing the sender's IP address) are substituted with their actual values before any checks against the specified mechanisms are performed. 
         Key points about macro replacement in SPF:
 
@@ -6144,7 +6153,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         => %{h}: _The hostname_ specified by the HELO or EHLO command used during the SMTP connection when the message is being sent is referred to by the %{h} macro.
         NOT the DomainName!
 
-
+        Ref: 
         [RFC 4408 Sender Policy Framework (SPF) for Authorizing Use of Domains in Email, Version 1](https://www.rfc-editor.org/rfc/rfc7208)
 
         - <Sender> is checked against 1) The HELO Identity (full fqdn from HELO/EHLO greeting sent by client, if enabled on server), 
@@ -6342,6 +6351,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
            (the "address literal" is the address in brackets (`[192.0.2.1]`), or for v6 the address with an `IPv6` prefix (`[IPv6:fe80::1]`))
 
     This is specifically tuned to resolve & lookup dynamic per-host DNS records, over validating standard include or other records
+
     .PARAMETER SpfRecord
     Optional Pre-resolved SpfRecord specification string to be evaluated (skips initial resolution pass; used to recycle from Resolve-SPFRecord() call[-SpfRecord `$spfRec]
     .PARAMETER IPAddress
@@ -6424,7 +6434,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     PS>     SenderHeloName = 'mymailoutlyn0.toro.com' ;
     PS> } ; 
     PS> write-verbose "remove empty value keys" ; 
-    PS> $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)} 
+    PS> $mts = $pltDomSpecs.GetEnumerator() |?{ $_.value -isnot [boolean] -AND (($_.value -eq $null) -OR ($_.value -eq '') -OR ($_.value.length -eq 0))} 
     PS> $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ; 
     PS> $tspf = resolve-dnsname -name $pltDomSpecs.DomainName -type TXT -server 1.1.1.1 | ? strings -match 'spf' | select -expand strings ; 
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($pltDomSpecs.DomainName) Matched DNS SPF Record w`n$(($tspf|out-string).trim())" ; 
@@ -6450,7 +6460,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     PS>     write-warning $smsg ; 
     PS>     throw $smsg ; 
     PS> }; 
-    Demo call leveraging $PSBoundParameters
+    Demo call leveraging `$PSBoundParameters
     .LINK
     https://github.com/tostka/verb-Network
     .LINK
@@ -6466,7 +6476,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
     [Alias('resolve-SPFMacros')]
     PARAM(
         [Parameter(Mandatory=$True,HelpMessage="Optional Pre-resolved SpfRecord specification string to be evaluated (skips initial resolution pass; used to recycle from Resolve-SPFRecord() call[-SpfRecord `$spfRec]")]
-            <# 8:58 AM 12/13/2024 prob don't have to eval the v=spf for full spf compliance - not this func''s role, and it may be handling substrings of a full spf, so just sub through the sent text and send updated back
+            <# don't eval the v=spf for full spf compliance - not this func''s role, and it may be handling substrings of a full spf, so just sub through the sent text and send updated back
             [ValidateScript({
                 ($_ -is [string])
                 if($_ -match '^v=spf'){$true}else{
@@ -6475,34 +6485,28 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
             })]
             #>
             [Alias('MacroString')]
-            #[string]
             [string[]]$SpfRecord, # make it an array to accomodate stacked strings, and crlf-split herestrings
         # assumes IPAddress is required on every expansion (as the macro expansion loop lops out the ipaddresses and does relevent updates)
-        #[Parameter(Mandatory=$true,ValueFromPipeline=$true,HelpMessage="Sending server IP Address(es) to be tested for '%{i}','%{ir}','%{v}','%{p}' IP-based macros in the DomainName SPF record[-IPAddress '192.168.1.1','192.168.1.2']")]
         [Parameter(Mandatory=$true,HelpMessage="Sending server IP Address to be expanded into '%{i}','%{ir}','%{v}','%{p}' IP-based macros in the DomainName SPF record[-IPAddress '192.168.1.1']")]
-            #[ValidateNotNullOrEmpty()]
             [Alias('SenderIPAddress','SenderIP')]
-            #[string[]]
-            #if doing a single submitting server eval, this should be a single ip string, better, [system.net.ipaddress]
+            #if doing a single submitting server eval, this should be a single ip string. Better, [system.net.ipaddress], self-validates
             [system.net.ipaddress]$IPAddress, # =  @($Tormeta.OP_ExEgressIPs + $CMWMeta.OP_ExEgressIPs) ,
         [Parameter(Mandatory=$True,HelpMessage="DomainName for which SPF records should be tested[-DomainName DOMAIN.COM]")]
             [ValidateNotNullOrEmpty()]
             #[ValidatePattern("^([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # email domain name restrictions
             #[ValidatePattern("^([-0-9a-zA-Z_]+[.])+([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # DNS -type TXT permits underscores, but not in the DomainName portion on the right 
+            # Note: -type SRV also permit leading _ on records
             # make the CN machinename optional: 
             [ValidatePattern("^((([-0-9a-zA-Z_]+[.])+)*)([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")] # DNS -type TXT permits underscores, but not in the DomainName portion on the right 
-            # Note: -type SRV also permit leading _ on records
             [Alias('Domain')]
             [string]$DomainName,
         [Parameter(Mandatory=$False,HelpMessage="SenderAddress to use for '%{d}','%{s}','%{l}','%{o}' SenderAddress based macros[-SenderAddress EMAIL@DOMAIN.TLD]")]
-            #[ValidateNotNullOrEmpty()]
             [ValidatePattern("^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$")]
             [Alias('Sender')]
             [string]$SenderAddress,
         [Parameter(Mandatory=$false,HelpMessage="Optional Sending client SMTP server HELO/EHLO hostname FQDN, to use for '%{h}' macro substitution (should be an FQDN or where Dyn-ip & no PTR, a squarebracketed ip4 ip, or prefixed ip6 ip: [192.0.2.1] or [IPv6:fe80::1]) [-SenderHeloName SERVER.DOMAIN.TLD]")]
-            #[ValidateNotNullOrEmpty()] # rgx below matches all three: server.sub.domain.com|[192.0.2.1]|[IPv6:fe80::1]
+            # rgx below matches all three: server.sub.domain.com|[192.0.2.1]|[IPv6:fe80::1]
             [ValidatePattern("^((?=.{1,254}$)(^(?:(?!\d+\.|-)[a-zA-Z0-9_\-]{1,63}(?<!-)\.?)+(?:[a-zA-Z]{2,}))|\[(IPv6:((([0-9A-Fa-f]{1,4}:){1,6}:)|(([0-9A-Fa-f]{1,4}:){7}))([0-9A-Fa-f]{1,4})|\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})])$")]
-            #[Alias('ALIAS1', 'ALIAS2')]
             [string]$SenderHeloName,
         [Parameter(Mandatory = $false,HelpMessage="DNS Server to query (defaults to Cloudflare public resolver 1.1.1.1)[-Server 1.0.0.1]")]
             [string]$Server = "1.1.1.1"
@@ -6514,7 +6518,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         # Debugger:proxy automatic variables that aren't directly accessible when debugging (must be assigned and read back from another vari) ; 
         $rPSCmdlet = $PSCmdlet ; 
         ${CmdletName} = $rPSCmdlet.MyInvocation.MyCommand.Name ; # function self-name (equiv to script's: $MyInvocation.MyCommand.Path) ;
-            #region PsParams ; #*------v PsParams v------
+        #region PsParams ; #*------v PsParams v------
         $PSParameters = New-Object -TypeName PSObject -Property $rPSBoundParameters ;
         write-verbose "`$rPSBoundParameters:`n$(($rPSBoundParameters|out-string).trim())" ;
         # pre psv2, no $rPSBoundParameters autovari to check, so back them out:
@@ -6536,25 +6540,12 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         #endregion PsParams ; #*------^ END PsParams ^------
         #endregion ENVIRO_DISCOVER ; #*------^ END ENVIRO_DISCOVER ^------
         #region COMMON_CONSTANTS ; #*------v COMMON_CONSTANTS v------
-    
-        if(-not $DoRetries){$DoRetries = 4 } ;    # # times to repeat retry attempts
-        if(-not $RetrySleep){$RetrySleep = 10 } ; # wait time between retries
-        if(-not $RetrySleep){$DawdleWait = 30 } ; # wait time (secs) between dawdle checks
-        if(-not $DirSyncInterval){$DirSyncInterval = 30 } ; # AADConnect dirsync interval
-        if(-not $ThrottleMs){$ThrottleMs = 50 ;}
-        if(-not $rgxDriveBanChars){$rgxDriveBanChars = '[;~/\\\.:]' ; } ; # ;~/\.:,
-        if(-not $rgxCertThumbprint){$rgxCertThumbprint = '[0-9a-fA-F]{40}' } ; # if it's a 40char hex string -> cert thumbprint  
-        if(-not $rgxSmtpAddr){$rgxSmtpAddr = "^([0-9a-zA-Z]+[-._+&'])*[0-9a-zA-Z]+@([-0-9a-zA-Z]+[.])+[a-zA-Z]{2,63}$" ; } ; # email addr/UPN
-        if(-not $rgxDomainLogon){$rgxDomainLogon = '^[a-zA-Z][a-zA-Z0-9\-\.]{0,61}[a-zA-Z]\\\w[\w\.\- ]+$' } ; # DOMAIN\samaccountname 
-        if(-not $exoMbxGraceDays){$exoMbxGraceDays = 30} ; 
-        if(-not $XOConnectionUri ){$XOConnectionUri = 'https://outlook.office365.com'} ; 
-        if(-not $SCConnectionUri){$SCConnectionUri = 'https://ps.compliance.protection.outlook.com'} ; 
+
+        #endregion COMMON_CONSTANTS ; #*------^ END COMMON_CONSTANTS  ^------
 
         #region LOCAL_CONSTANTS ; #*------v LOCAL_CONSTANTS v------
 
         #endregion LOCAL_CONSTANTS ; #*------^ END LOCAL_CONSTANTS ^------  
-        #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
-
         #endregion CONSTANTS_AND_ENVIRO ; #*------^ END CONSTANTS_AND_ENVIRO ^------
 
         #region FUNCTIONS ; #*======v FUNCTIONS v======
@@ -6665,19 +6656,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
         #endregion BANNER ; #*------^ END BANNER ^------
 
-        <# pulled pipeline support
-        # check if using Pipeline input or explicit params:
-        if ($rPSCmdlet.MyInvocation.ExpectingInput) {
-            $smsg = "Data received from pipeline input: '$($InputObject)'" ;
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-        } else {
-            # doesn't actually return an obj in the echo
-            #$smsg = "Data received from parameter input: '$($InputObject)'" ;
-            #if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            #else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-        } ;
-        #>
         if($SpfRecord){
             $smsg = "-SpfRecord specified: Using passed spf specification string" ; 
             $smsg = "`n$(($SpfRecord|out-string).trim())" ; 
@@ -6687,20 +6665,15 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
         }else {
             #write-verbose "Resolve DNS SPF record: resolve-dnsname -name $($DomainName) -type TXT -server $Server" ; 
             #$SpfRec = resolve-dnsname -name $DomainName -type TXT -server $Server  -ea STOP| ? strings  -match '^v=spf' | select -expand strings ; 
+            # don't autoresolve, require an input spf 
             $smsg = "Missing REQUIRED -SpfRecord spec!" ; 
             throw $smsg ;
         } ; 
 
         # check for macros syntax in spf record
         if($SpfRec -notmatch '%\{[slodipvh]}' ){
-            #$smsg = "DomainName:$($DomainName) retrieved SPF record" ; 
             $smsg = "Provided SPF record (or substring)" ; 
             $smsg +="`nDOES NOT USE ANY SPF MACROS that act against dynamic per-host records" ; 
-            # make it smoothly accomodate unneeded passes
-            #$smsg +="`nThis script does not apply to this domain. ABORTING" ; 
-            #if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-            #else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            #Break; 
             $smsg +="`n(returning unmodified SPF spec to pipeline)" ; 
             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
             else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -6793,9 +6766,7 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
             if( -not ($isIPv4 -OR $isIPv6) -AND (6 -le $Computer.length -le 253) -AND ($Computer -match '^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$') ){
                 $isFQDN = $true ; 
             }  ;
-            <#[ValidateLength(1, 15)]
-            [ValidateScript({$PSItem -replace '\\|/|:|\*|\?|"||\||\.' -eq $PSItem})]
-            #>
+            
             if( -not ($isIPv4 -OR $isIPv6) -AND  (1 -le $Computer.length -le 15) -AND ($Computer -replace '\\|/|:|\*|\?|"||\||\.' -eq $Computer) ){
                 $isNBName = $true ; 
             }  ;
@@ -6888,7 +6859,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                         #$SendIPRev = (($SendPTR | select -expand name) -split '.in-addr.')[0] ; 
                         write-verbose "$($StepNo++; $StepNo). Replace %{ir} with with reversed sender IP" ; 
                         if($SendPTR -AND $SendIPRev){
-                        #$SpfRecResolved = $SpfRec.replace('%{ir}',$SendIPRev) ; 
                         $SpfRec = $SpfRec.replace('%{ir}',$SendIPRev) ; 
                         }else {
                             $smsg = "missing `$SendPTR/`$SendIPRev! Unable to perform macro replace: '%{ir}',`$SendIPRev " ; 
@@ -6975,8 +6945,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                             if((($ptr.namehost.split('.') | select -skip 1 ) -join '.') -eq (($ARec.name.split('.') | select -skip 1 ) -join '.')){
                                 $SpfRec = $SpfRec.replace('%{p}',(($SendPTR.namehost.split('.') | select -skip 1 ) -join '.')) ; 
                             }
-
-
                         #>
                         $smsg = "SPF Record contains Macro '%{p}' which tests SenderIP PTR'd to NameHost,"
                         $smsg += "`nwhich is resolved to a matching -Type A Name,"
@@ -7015,10 +6983,8 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
                                 write-warning $smsg ; 
                                 throw $smsg ; 
                             } ; 
-
                             $SpfRec = $SpfRec.replace('%{p}',(($SendPTR.namehost.split('.') | select -skip 1 ) -join '.')) ; 
                         } ; 
-
 
                         if(-not $SenderHeloName){
                             $smsg = "$($StepNo++; $StepNo). WARN! No -SenderHeloName specified from which to replace %{p} macros!" ; 
@@ -7114,7 +7080,6 @@ flipped some params to non-mandetory (SenderAddress), test and prompt as needed 
 
         $SpfRec | write-output ;
 
-
     }  # PROC-E
     END{
         $smsg = "$($sBnr.replace('=v','=^').replace('v=','^='))" ;
@@ -7146,6 +7111,10 @@ function Resolve-SPFRecord {
     AddedWebsite: https://cloudbrothers.info/en/
     AddedTwitter: 
     REVISION
+    # 9:18 AM 7/8/2026 update $mts, stop stripping boolean:$false items
+    * 11:07 AM 1/7/2025 removed a bunch of rem'd code; considered if/then'ing resolve-spfmacrosTDO() in, but it's substantial; leave it external. 
+        added SPFRecord class $Directive property, to record the raw mechanism/modifier driving the subsequent IPAddress adds; also added $SPFObject adds wo IPAddress to record same, 
+        purely for ref/doc the chain of IP sources in the output. They'd be filtered out of the results - ($results | ?{$_.ipaddress}).ipaddress - for actual verification test-IPAddressInRange processing. 
     * 4:28 PM 1/3/2025 finally rounded out, to return full stack of Pass Subnet IP specifications, for post-review and test-IPAddressInRange() checking
     * 2:21 PM 1/2/2025 $DomainName/Name update $Name/Domainname regex to make the CN portion optional (fails toro.com, but has to accomodate recursive include:calls to resolve _spf.salesforce.com)
     * 12:36 PM 12/12/2024 add: alias:Resolve-DNSNameSPF, param alias: $name: 'DomainName', 'Domain'
@@ -7265,12 +7234,12 @@ function Resolve-SPFRecord {
     PS>     verbose = $true ;
     PS> } ;
     PS> write-verbose "Resolve populated specifications above, and process through Resolve-SPFRecord" ; 
-    PS> $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)}
+    PS> $mts = $pltDomSpecs.GetEnumerator() |?{ $_.value -isnot [boolean] -AND (($_.value -eq $null) -OR ($_.value -eq '') -OR ($_.value.length -eq 0))}
     PS> $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ;
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Resolve-SPFRecord w`n$(($pltDomSpecs|out-string).trim())" ;
     PS> $results = Resolve-SPFRecord @pltDomSpecs ;
     PS> write-verbose "Process returned results, checking for specified IPAddress above within returned 'pass' subnets : => Approved SPF deliveries for host" ; 
-    PS> $PassSubnets = $results.ipaddress ;
+    PS> $PassSubnets = ($results | ?{$_.ipaddress}).ipaddress ; 
     PS> $smsg = "==$($pltDomSpecs.DomainName) expanded SPF returned $($PassSubnets|  measure | select -expand count) 'Pass' subnets" ;
     PS> $smsg += "`n$(($PassSubnets |out-string).trim())" ;
     PS> write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)"  ;
@@ -7347,6 +7316,7 @@ function Resolve-SPFRecord {
     ) ; 
     BEGIN {
         #*======v CLASSES v======
+        <# stock class
         class SPFRecord {
             [string] $SPFSourceDomain
             [string] $IPAddress
@@ -7369,6 +7339,35 @@ function Resolve-SPFRecord {
                 $this.Qualifier = $Qualifier
             }
         } ; 
+        #>
+        # update to include Directive record
+        class SPFRecord {
+            [string] $SPFSourceDomain
+            [string] $IPAddress
+            [string] $Referrer
+            [string] $Qualifier
+            [bool] $Include
+            [string] $Directive
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress
+            SPFRecord ([string] $IPAddress, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.Directive = $Directive
+            }
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress and DNSName
+            SPFRecord ([string] $IPAddress, [String]$DNSName, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.SPFSourceDomain = $DNSName
+                $this.Directive = $Directive
+            }
+            # Constructor: Creates a new SPFRecord object, with a specified IPAddress and DNSName and
+            SPFRecord ([string] $IPAddress, [String]$DNSName, [String] $Qualifier, [string]$Directive) {
+                $this.IPAddress = $IPAddress
+                $this.SPFSourceDomain = $DNSName
+                $this.Qualifier = $Qualifier
+                $this.Directive = $Directive
+            }
+        } ; 
+        
         #*======^ END CLASSES ^======
 
         #region CONSTANTS_AND_ENVIRO #*======v CONSTANTS_AND_ENVIRO v======
@@ -7435,7 +7434,15 @@ function Resolve-SPFRecord {
 
         #region FUNCTIONS ; #*======v FUNCTIONS v======
         
-         #*------v Function convert-IPAddressToReverseTDO v------
+        # do simple dep tests:
+        if(-not (get-command resolve-SPFMacrosTDO -ea 0)){
+            $smsg = "MISSING DEPENDANT VERB-NETWORK\resolve-SPFMacrosTDO()!" 
+            write-warning $smsg ; 
+            throw $smsg 
+            BREAK ; 
+        } ; 
+
+        #*------v Function convert-IPAddressToReverseTDO v------
         if(-not (get-command convert-IPAddressToReverseTDO -ea 0)){
             function convert-IPAddressToReverseTDO {
                 <#
@@ -7531,6 +7538,7 @@ function Resolve-SPFRecord {
             } ; 
         } ; 
         #*------^ END Function convert-IPAddressToReverseTDO ^------
+
 
         #*------v Function test-IpAddressCidrRange v------
         if(!(get-command  test-IpAddressCidrRange)){
@@ -7643,23 +7651,6 @@ function Resolve-SPFRecord {
                
         $SPFRawAggreg  = @() ; 
 
-        #Aggregate all ip46
-        #$aggrIp46Specs = @() ; 
-        <# 3:19 PM 1/3/2025 add test support
-            Run each as they occur
-            '^a:
-            '^exists:
-            '^mx:
-            '^ptr:
-
-            Aggregate results by type, testing against SenderIP/IPAddress/Domain/SenderAddress etc
-        #>
-        <#
-        $aggrATests = @() ; 
-        $aggrExistsTests = @() ; 
-        $aggrMxTests = @() ; 
-        $aggrPtrTests = @() ; 
-        #>
     } ; 
     PROCESS {
         # Keep track of number of DNS queries
@@ -7755,15 +7746,12 @@ function Resolve-SPFRecord {
                 6: redirect counts as a DNS query: (counts toward the 10 additional DNS 
                 queries limit)
  
-
             #>
             # WITH A REDIRECT, NO OTHER ITEMS ARE EVALUATED, PROCESSING STOPS HERE, AND THE RECORD IS DROPPED INTO PIPELINE
             if ( $SPFDirectives -match "redirect" ) {
                 $RedirectRecord = $SPFDirectives -match "redirect" -replace "redirect=" ; 
                 Write-Verbose "[REDIRECT]`t$RedirectRecord" ; 
                 # Follow the REDIRECT "include" and resolve the include
-                #Resolve-SPFRecord -Name "$RedirectRecord" -Server $Server -Referrer $Name | write-output ; 
-                # Resolve-SPFRecord | write-output : leverage $rPSBoundParameters post-filtered instead
                 if($rPSBoundParameters){
                         $pltRvSPFRec = [ordered]@{} ;
                         # add the specific Name for this call, and Server spec (which defaults, is generally not 
@@ -7797,9 +7785,9 @@ function Resolve-SPFRecord {
                     #region Resolve_Information ; #*------v Resolve_Information v------
                     $isIPv4 = $isIPv6 = $isFQDN = $isNBName = $false ; 
                     $SendNameHost = $ComputerARec =  $SendIP =  $SendPTR =  $SendIPRev =  $SendAddressfamily = $null ; 
-                    # string
+                    # [string]
                     $Computer = $IPAddress ; 
-                    #ipaddr
+                    # [ipaddress]
                     #$Computer = $IPAddress.IPAddressToString
                     TRY{
                         # for [string] IP spec
@@ -7819,9 +7807,6 @@ function Resolve-SPFRecord {
                     if( -not ($isIPv4 -OR $isIPv6) -AND (6 -le $Computer.length -le 253) -AND ($Computer -match '^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$') ){
                         $isFQDN = $true ; 
                     }  ;
-                    <#[ValidateLength(1, 15)]
-                    [ValidateScript({$PSItem -replace '\\|/|:|\*|\?|"||\||\.' -eq $PSItem})]
-                    #>
                     if( -not ($isIPv4 -OR $isIPv6) -AND  (1 -le $Computer.length -le 15) -AND ($Computer -replace '\\|/|:|\*|\?|"||\||\.' -eq $Computer) ){
                         $isNBName = $true ; 
                     }  ;
@@ -7841,7 +7826,6 @@ function Resolve-SPFRecord {
             
                         write-verbose "Resolve IP A Record: resolve-dnsname -name $($Computer) -type A: `nresolve-dnsname -name $($Computer) -type A  -server $($Server) -ea STOP | select -first 1 " ; 
                         TRY{
-                            #$ComputerARec = resolve-dnsname -name $Computer -type A  -ea STOP -server $Server | select -first 1  ; 
                             $ComputerARec = resolve-dnsname -name $SendNameHost  -type A  -ea STOP -server $Server | select -first 1  ; 
                             write-host -foregroundcolor green "Resolved $($SendNameHost ) A Record:`n$(($ComputerARec|out-string).trim())" ; 
                             $SendIP = $ComputerARec.IPAddress ; 
@@ -7890,18 +7874,17 @@ function Resolve-SPFRecord {
                 } ; 
 
                 write-host -foregroundcolor green "Processing SPFDirectives:`n$(($SPFDirectives|out-string).trim())" ; 
-                $hasMacros = $false ; 
                 $ReturnValues = foreach ($SPFDirective in $SPFDirectives) {
                     write-verbose "process:$($SPFDirective)" ; 
                     if($SPFDirective -eq 'include:_spf.salesforce.com'){
                         write-verbose "gotcha!" ; 
                     } ;
                     switch -Regex ($SPFDirective) {
-                        # 9:59 AM 8/13/2021 add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
+                        # add case for version spec, otherwise it throws:WARNING: [v=spf1]	 Unknown directive
                         "v=spf\d" {
                             write-verbose "Spf Version modifier: $($SPFDirective)" ;
                         } 
-                        # 9:59 AM 8/13/2021 add a case for all mechanism, or throws: WARNING: [~all]	 Unknown directive
+                        # add a case for all mechanism, or throws: WARNING: [~all]	 Unknown directive
                         "[~+-?]all" {
                             switch ($Qualifier){
                                 "pass" {write-verbose "all PASS mechanism: $($SPFDirective)"}
@@ -7917,8 +7900,16 @@ function Resolve-SPFRecord {
                                 before running any directive
                                 this is being examined 3rd, after v=spf & all
                             #>
+                            Write-Verbose "[macro-spec]`tSPF entry: $SPFDirective (recursing)" ; 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            #$SPFObject | write-output  ; 
                             if( get-command -name resolve-SPFMacrosTDO -ea 0){
-                                $hasMacros = $true ; 
                                 # deps check
                                 # $IPAddress
                                 if($SPFDirective -match '%\{[ivp]}'){
@@ -7978,19 +7969,7 @@ function Resolve-SPFRecord {
                                         write-verbose  "SPF Directive specified:Includes Sender Server HELO name dependant Macro '%{h}', and a `$SenderHeloName has been specified ($($SenderHeloName))" ;
                                     } ;
                                 }; 
-                                <#$pltDomSpecs = [ordered]@{
-                                    SpfRecord = $SPFDirective ; 
-                                    DomainName = $Name ;
-                                    IPAddress = $IPAddress ;
-                                    SenderAddress = $SenderAddress ;
-                                    SenderHeloName = $SenderHeloName ;
-                                    Verbose = $($PSBoundParameters['Verbose'] -eq $true) ; 
-                                    #Verbose = $($PSBoundParameters.Verbose -eq $true) ;
-                                } ;
-                                $mts = $pltDomSpecs.GetEnumerator() | ?{ -NOT ($_.Value -AND $_.value.length)} 
-                                $mts | ForEach-Object { $pltDomSpecs.remove($_.Key) } ; 
-                                write-host -foregroundcolor green "resolve-SPFMacros w`n$(($pltDomSpecs|out-string).trim())" ; 
-                                #>
+                                
                                 # resolve-SPFMacros call: build splat on filtered $rPSBoundParameters
                                 if($rPSBoundParameters){
                                       $pltRvSPFMacr = [ordered]@{} ; 
@@ -8009,6 +7988,7 @@ function Resolve-SPFRecord {
                                 Write-Warning "[$_]`tMacro sytax detected:Macros validation/expansion is not supported by this function. For more information, see https://tools.ietf.org/html/rfc7208#section-7" ;  
                                 Continue ; 
                             } ; 
+                            $SPFObject | write-output  ; 
                         }
                         
                         
@@ -8019,8 +7999,19 @@ function Resolve-SPFRecord {
                         '^include:.*$' {
                             # Follow the include and resolve the include
                             Write-Verbose "[include]`tSPF entry: $SPFDirective (recursing)" ; 
-                            #Resolve-SPFRecord -Name ( $SPFDirective -replace "^include:" ) -Server $Server -Referrer $Name | write-output ; 
-                            # Resolve-SPFRecord | write-output : leverage $rPSBoundParameters post-filtered instead
+                            # could spec $SPFObject.Include = $true ; on initial include add below, but since the subsequent 
+                            # expands come through as IPaddreses, may as well leave the call'd include: 
+                            # directive *not* tagged as Include:True (it's there to show the source of the 
+                            # subesquent includes, not as part of the porocessed IPAddress range specs) 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
+
                             if($rPSBoundParameters){
                                     $pltRvSPFRec = [ordered]@{} ;
                                     # add the specific Name for this call, and Server spec (which defaults, is generally not 
@@ -8035,29 +8026,20 @@ function Resolve-SPFRecord {
                                 write-warning $smsg ;
                                 throw $smsg ;
                             }; 
+                            $SPFObject | write-output  ; 
                         }
                         '^ip[46]:.*$' {
                             Write-Verbose "[IP]`tSPF entry: $SPFDirective" ; 
-                            $SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier) ; 
-                            #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                            if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                            #$SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier) ; 
+                            # append $SPFDirective as $Directive property
+                            $SPFObject = [SPFRecord]::New( ($SPFDirective -replace "^ip[46]:"), $Name, $Qualifier, $SPFDirective) ; 
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                 $SPFObject.Referrer = $Referrer ; 
                                 $SPFObject.Include = $true ; 
                             } ; 
-                            <# just do subnets & other raw IP aggregates into the stack, no active local tests)
-                            $subSpec = [ordered]@{
-                                Subnet = ($SPFDirective -replace "^ip[46]:")
-                                Name = $Name ; 
-                                Qualifier = $Qualifier ; 
-                                SenderPassed = $null ; 
-                            } ; 
-                            if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
-                                $subSpec.add('Referrer',$Referrer) ; 
-                                $subSpec.add('Include',$true) ; 
-                            } ; 
-                            #$aggrIp46Specs += [pscustomobject]$subSpec ; 
-                            #>
-
+                            # just do subnets & other raw IP aggregates into the stack, no active local tests)
+                            
                             # validate ip spec (IPAddress|CIDRRange|IPAddressRange) and boolean Valid properties
                             
                             $ret= test-IpAddressCidrRange -Address $SPFDirective.replace('ip4:','').replace('ip6:','') ;
@@ -8089,21 +8071,8 @@ function Resolve-SPFRecord {
                                 write-warning "invalid IP specification:$($SPFDirective.replace('ip4:',''))" ;
                             } ; 
 
-                            # do a test Test-IPAddressInRange agains the $SenderIP, now NOPE
-                            <#
-                            PS> if(Test-IPAddressInRange -IPAddress "2001:0db8:85a3:0000:0000:8a2e:0370:7334" -Range "2001:0db8:85a3::/48" -verbose){
-                            PS>     write-host -foregroundcolor green  "is in range!" 
-                            PS> } else { write-host -foregroundcolor yellow "Is NOT in range"} ;
-                            #>
-                            <# skip, we're appending the discovered A's into the stack for later SenderIP compaire
-                            if(Test-IPAddressInRange -IPAddress $IPAddress -Range $subSpec.Subnet -Verbose:($PSBoundParameters['Verbose'] -eq $true)){
-                                $subSpec.SenderPassed = $true ; 
-                            }else{
-                                $subSpec.SenderPassed = $false ; 
-                            }
-                            $aggrIp46Specs += [pscustomobject]$subSpec ; 
-                            #>
-
+                            #we're appending the discovered A's into the stack for later SenderIP compaire
+                            
                             $SPFObject | write-output  ; 
                         } 
                         '^a:.*$' {
@@ -8123,12 +8092,22 @@ function Resolve-SPFRecord {
                                 the client IP will be sought within that subnet.                                 
                             #>
                             Write-Verbose "[A]`tSPF entry: $SPFDirective"
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type A ; 
                             # Check SPF record
                             foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                #$SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
+                                # append $SPFDirective as $Directive property
+                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier, $SPFDirective) ; 
+                                if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                     $SPFObject.Referrer = $Referrer ; 
                                     $SPFObject.Include = $true ; 
                                 }
@@ -8145,32 +8124,17 @@ function Resolve-SPFRecord {
                             #>
                             # as macro replace occurs first, before mechanisms, any macros should already be swapped by the time it gets to here
                             Write-Verbose "[A]`tSPF entry: $SPFDirective"
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             # this is a simple: $DNSRecords = Resolve-DnsName -Name ( $SPFDirective -replace "^exists:" ) -Server $Server $Name -Type A ; 
                             # *not* a run back through Resolve-SpfRecord() (which only does Type TXT SPF explicit processing)
-                            <#
-                            #$DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type A ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Server $Server -Referrer $Name | write-output ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Server $Server -Referrer $Referrer | write-output ; 
-                            #$DNSRecords = Resolve-SPFRecord -Name ( $SPFDirective -replace "^exists:" ) -Type A -Server $Server -Referrer $Referrer 
-                            # $DNSRecords = Resolve-SPFRecord : leverage $rPSBoundParameters post-filtered instead
-                            if($rPSBoundParameters){
-                                    $pltRvSPFRec = [ordered]@{} ;
-                                    # add the specific Name for this call, and Server spec (which defaults, is generally not
-                                    $pltRvSPFRec.add('Name',( $SPFDirective -replace "^exists:" ) ) ;
-                                     $pltRvSPFRec.add('Type','A') ; 
-                                    $pltRvSPFRec.add('Referrer',$Name) ;
-                                    $pltRvSPFRec.add('Server',$Server ) ;
-                                    $rPSBoundParameters.GetEnumerator() | ?{ $_.key -notmatch $rgxBoundParamsExcl} | foreach-object { $pltRvSPFRec.add($_.key,$_.value)  } ;
-                                    write-host "Resolve-SPFRecord w`n$(($pltRvSPFRec|out-string).trim())" ;
-                                    $DNSRecords = Resolve-SPFRecord @pltRvSPFRec ;
-                                    # Resolve-SPFRecord isn't written to do -Type (A); have to do directly
-                            } else {
-                                $smsg = "unpopulated `$rPSBoundParameters!" ;
-                                write-warning $smsg ;
-                                throw $smsg ;
-                            };
-                            #>
-
+                            
                             $pltRvDNSName=[ordered]@{
                                 Name = ( $SPFDirective -replace "^exists:" ) ;
                                 Server = $Server ;
@@ -8181,24 +8145,12 @@ function Resolve-SPFRecord {
                             if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
                             #$DNSRecords = Resolve-DnsName -Name ( $SPFDirective -replace "^exists:" ) -Server $Server $Name -Type A ; 
                             $DNSRecords = Resolve-DnsName @pltRvDNSName ; 
-
-                            <## Check SPF record
-                            foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^a:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
-                                    $SPFObject.Referrer = $Referrer ; 
-                                    $SPFObject.Include = $true ; 
-                                }
-                                
-                                $SPFObject | write-output  ; 
-                            } ;  # loop-E
-                            #>
+                           
                             if($DNSRecords){
                                 # hit on the exists: pass - add the IPAddress, Directive & Qualifier into the returned SPfObject (will be avail to match with the SenderIP later)
-                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^exists:"), $Qualifier) ; 
-                                #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^exists:"), $Qualifier, $SPFDirective) ;
+                                if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                     $SPFObject.Referrer = $Referrer ; 
                                     $SPFObject.Include = $true ; 
                                 }
@@ -8220,15 +8172,25 @@ function Resolve-SPFRecord {
                                 The A records have to match the client IP exactly, unless a prefix-length is provided, in which case each IP address returned by the A lookup will be expanded to its corresponding CIDR prefix, and the client IP will be sought within that subnet.
                             #>
                             Write-Verbose "[MX]`tSPF entry: $SPFDirective" ; 
+                            # need to spec $null for 1st IPAddress assign
+                            $SPFObject = [SPFRecord]::New($null, $Name, $Qualifier, $SPFDirective) ;
+                            if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                            #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                $SPFObject.Referrer = $Referrer ;
+                                $SPFObject.Include = $true ;
+                            } ;
+                            $SPFObject | write-output  ; 
                             $DNSRecords = Resolve-DnsName -Server $Server -Name $Name -Type MX ; 
                             # same as the A: & exists: discoveries: append the discovered IPAddress, Directive, and Qualifier into the SenderIP eval stack
                             foreach ($MXRecords in ($DNSRecords.NameExchange) ) {
                                 # Check SPF record
                                 $DNSRecords = Resolve-DnsName -Server $Server -Name $MXRecords -Type A ; 
                                 foreach ($IPAddress in ($DNSRecords.IPAddress) ) {
-                                    $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier) ; 
-                                    #if ( $PSBoundParameters.ContainsKey('Referrer') ) {
-                                    if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
+                                    #$SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier) ; 
+                                    # append $SPFDirective as $Directive property
+                                    $SPFObject = [SPFRecord]::New( $IPAddress, ($SPFDirective -replace "^mx:"), $Qualifier, $SPFDirective) ;
+                                    if ( $rPSBoundParameters.ContainsKey('Referrer') ) {
+                                    #if ( $PSParameters.psobject.Properties.name -contains 'Referrer' ) {
                                         $SPFObject.Referrer = $Referrer ; 
                                         $SPFObject.Include = $true ; 
                                     } ; 
@@ -8279,33 +8241,8 @@ function Resolve-SPFRecord {
                         }
                     } ; 
                 } ; 
-                # 3:40 PM 12/30/2024 actually, macro's get replcd in mechanisms/directives *before* running the test, so I updated the SpfDirective above, and assigned it back to itself 
-                # below should be unnecc
-                <#
-                if($hasMacros){
-                    write-host -foregroundcolor yellow "SPF Macros detected, running test-SPFMacroSpecificationTDO() expansion attempt" ; 
-                    # #test-SPFMacroSpecificationTDO -SpfRecord -DomainName -SenderAddress -IPAddress
-                    $pltRvSPFMacros=[ordered]@{
-                        SpfRecord = $ReturnValues  # need to reformat these to the raw entries
-                        DomainName = $Name ; 
-                        #Verbose = ($PSBoundParameters['Verbose'] -eq $true)
-                        Verbose = $($PSParameters.verbose -eq $true)
-                        erroraction = 'STOP' ;
-                        whatif = $($whatif) ;
-                    } ;
-                    if($SenderAddress){
-                        $pltRvSPFMacros.add('SenderAddress',$SenderAddress) ; 
-                    } ; 
-                    if($IPAddress){
-                        $pltRvSPFMacros.add('IPAddress',$IPAddress) ; 
-                    } ; 
-                    $smsg = "test-SPFMacroSpecificationTDO w`n$(($pltRvSPFMacros|out-string).trim())" ; 
-                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-                    $ReturnValues += @(
-                        test-SPFMacroSpecificationTDO @pltRvSPFMacros ; 
-                    ); 
-                } ; 
-                #>
+                # macro's get replcd in mechanisms/directives *before* running the test, so I updated the SpfDirective above, and assigned it back to itself 
+                
                 $DNSQuerySum = $ReturnValues | Select-Object -Unique SPFSourceDomain | Measure-Object | Select-Object -ExpandProperty Count ; 
                 if ( $DNSQuerySum -le 6) {
                     write-host -foregroundcolor yellow "($DNSQuerySum) DNS queries made  (Must not exceed 10 DNS queries)." ; 
@@ -13817,8 +13754,8 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # SIG # Begin signature block
 # MIIELgYJKoZIhvcNAQcCoIIEHzCCBBsCAQExCzAJBgUrDgMCGgUAMGkGCisGAQQB
 # gjcCAQSgWzBZMDQGCisGAQQBgjcCAR4wJgIDAQAABBAfzDtgWUsITrck0sYpfvNR
-# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUSz3U7aOcdMBCXpz2IwK5RKZs
-# voigggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
+# AgEAAgEAAgEAAgEAAgEAMCEwCQYFKw4DAhoFAAQUvcKyvGf7KVlE8gUc0wsKhV/g
+# YTOgggI4MIICNDCCAaGgAwIBAgIQWsnStFUuSIVNR8uhNSlE6TAJBgUrDgMCHQUA
 # MCwxKjAoBgNVBAMTIVBvd2VyU2hlbGwgTG9jYWwgQ2VydGlmaWNhdGUgUm9vdDAe
 # Fw0xNDEyMjkxNzA3MzNaFw0zOTEyMzEyMzU5NTlaMBUxEzARBgNVBAMTClRvZGRT
 # ZWxmSUkwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALqRVt7uNweTkZZ+16QG
@@ -13833,9 +13770,9 @@ Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddress
 # AWAwggFcAgEBMEAwLDEqMCgGA1UEAxMhUG93ZXJTaGVsbCBMb2NhbCBDZXJ0aWZp
 # Y2F0ZSBSb290AhBaydK0VS5IhU1Hy6E1KUTpMAkGBSsOAwIaBQCgeDAYBgorBgEE
 # AYI3AgEMMQowCKACgAChAoAAMBkGCSqGSIb3DQEJAzEMBgorBgEEAYI3AgEEMBwG
-# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBT2qk0y
-# CkY4ssmyx3R8J1sqmrny/jANBgkqhkiG9w0BAQEFAASBgFPearopPBBYxMbG1YQi
-# fv9ZLuuOqlQa2ZMrqSnEn+r1HkUqj7MpayLRUbU/knnBnspqWnTY84Bd5WlDK4qw
-# YAVkOtpN90PfPUIskO4/Vv5xILmiSSPVDbLoKW76jFApBIrEzl9GZs2ZIw3RGmSw
-# Qa4Kyly4lZKl4V8d2RPdN1pD
+# CisGAQQBgjcCAQsxDjAMBgorBgEEAYI3AgEVMCMGCSqGSIb3DQEJBDEWBBRggVPD
+# X2CU6Qh8NxOLQG7FXFf9fTANBgkqhkiG9w0BAQEFAASBgKPvgJCubTF62ZIQ/kBx
+# 11ob119lHpWF0r3GWrHPd7I3gmRLUsJ+TbWq/iwFSE8ToBAebWPAdKJvFlmiGPcl
+# 8dVVuhf/r8MbFxcUwmbYh+Zu1fmA+nuEEZz/L/MavZN3B5zWfPHL59ll6jfrMeta
+# xrj+8eFw0ZtqxTYJG0d729C+
 # SIG # End signature block

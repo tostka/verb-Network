@@ -5,7 +5,7 @@
 .SYNOPSIS
 verb-Network - Generic network-related functions
 .NOTES
-Version     : 6.1.2.0
+Version     : 6.1.3.0
 Author      : Todd Kadrie
 Website     :	https://www.toddomation.com
 Twitter     :	@tostka
@@ -9423,7 +9423,7 @@ Function Send-EmailNotif {
         Website:	http://www.toddomation.com
         Twitter:	@tostka, http://twitter.com/tostka
         CreatedDate : 2014-08-21
-        FileName    : 
+        FileName    :
         License     : MIT License
         Copyright   : (c) 2020 Todd Kadrie
         Github      : https://github.com/tostka/verb-Network
@@ -9432,11 +9432,14 @@ Function Send-EmailNotif {
         AddedWebsite:	URL
         AddedTwitter:	URL
         REVISIONS
+        * 3:59 PM 9/18/2026 fundemental refactor: moved send-mailmessage & .net client into functions (plan is to fail usessl into unencrpyted backup send; not implemented).
+        * 10:13 AM 9/18/2026 fix: typo, un remm'd echo cmt
+        * 8:55 AM 9/17/2026 roughed in .net client support - supports usessl, without full smtp-auth creds (which send-mailmessage seems to require)
         * 1:56 PM 5/25/2025 add: regions outter brackets;  ps> prefixed expls; indented params; updated local ex detect code; added pretest for gcm get-exchangeserver, before trying;  tightened up
         * 1:46 PM 5/23/2023 added test for dyn-ip workstations (skips submit, avoids lengthy port timeout wait on fail); added full pswlt support
         * 9:58 PM 11/7/2021 updated CBH with complete gmail example ; updated CBH with complete gmail example
         * 8:56 PM 11/5/2021 added $Credential & $useSSL param (to support gmail/a-smtp sends); added Param HelpMessage, added params to CBH
-        * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired. 
+        * send-emailnotif.ps1: * 1:49 PM 11/23/2020 wrapped the email hash dump into a write-host cmd to get it streamed into the log at the point it's fired.
         # 2:48 PM 10/13/2020 updated autodetect of htmltags to drive BodyAsHtml choice (in addition to explicit)
         # 1:12 PM 9/22/2020 pulled [string] type on $smtpAttachment (should be able to pass in an array of paths)
         # 12:51 PM 5/15/2020 fixed use of $global:smtpserver infra param for mybox/jumpboxes
@@ -9456,13 +9459,13 @@ Function Send-EmailNotif {
            - Google, logon, Security > 'Signing in to Google' pane:App Passwords > _Generate_:select app, Select device
            - reuse the app pw above in the credential prompt below, to store the apppassword as a credential in the current profile:
               get-credfile -PrefixTag gml -SignInAddress XXX@gmail.com -ServiceName Gmail -UserRole user
-          
+
         # Underlying available send-mailmessage params: (set up param aliases)
         Send-MailMessage [-To] <String[]> [-Subject] <String> [[-Body] <String>] [[-SmtpServer] <String>] [-Attachments
         <String[]>] [-Bcc <String[]>] [-BodyAsHtml] [-Cc <String[]>] [-Credential <PSCredential>]
         [-DeliveryNotificationOption <DeliveryNotificationOptions>] [-Encoding <Encoding>] [-Port <Int32>] [-Priority
         <MailPriority>] [-UseSsl] -From <String> [<CommonParameters>]
-    
+
         .PARAMETER SMTPFrom
         Sender address
         .PARAMETER SmtpTo
@@ -9491,7 +9494,7 @@ Function Send-EmailNotif {
         PS> #$smtpTo=$tormeta.NotificationDlUs2 ;
         PS> #$smtpTo=$tormeta.NotificationDlUs ;
         PS> # 1:02 PM 4/28/2017 hourly run, just send to me
-        PS> $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ; 
+        PS> $smtpTo="dG9kZC5rYWRyaWVAdG9yby5jb20="| convertFrom-Base64String ;
         PS> # 12:09 PM 4/26/2017 need to email transcript before archiving it
         PS> if($bdebug){ write-host -ForegroundColor Yellow "$((get-date).ToString('HH:mm:ss')):Mailing Report" };
         PS> #Load as an attachment into the body text:
@@ -9514,14 +9517,14 @@ Function Send-EmailNotif {
         PS>         #SMTPServer = $SMTPServer ;
         PS>         SmtpBody = $SmtpBody ;
         PS>     } ;
-        PS>     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Send-EmailNotif w`n$(($Email|out-string).trim())" ; 
+        PS>     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):Send-EmailNotif w`n$(($Email|out-string).trim())" ;
         PS>     Send-EmailNotif @Email;
         PS> } else {
         PS>     write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):No Email Report: `$Passstatus is $null ; " ;
         PS> }  ;
         SMTP Send, using From, To, Subject & Body (as triggered from Cleanup())
         .EXAMPLE
-        PS> $smtpToFailThru=convertFrom-Base64String -string "XXXXXXXXXXx"  ; 
+        PS> $smtpToFailThru=convertFrom-Base64String -string "XXXXXXXXXXx"  ;
         PS> if(!$showdebug){
         PS>     if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr2){
         PS>         $smtpTo = (Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr2 ;
@@ -9531,7 +9534,7 @@ Function Send-EmailNotif {
         PS>         $smtpTo=$smtpToFailThru;
         PS>     } ;
         PS> } else {
-        PS>     # debug pass, variant to: NotificationAddr1    
+        PS>     # debug pass, variant to: NotificationAddr1
         PS>     #if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationDlUs){
         PS>     if((Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1){
         PS>         $smtpTo = (Get-Variable  -name "$($TenOrg)Meta").value.NotificationAddr1 ;
@@ -9540,14 +9543,14 @@ Function Send-EmailNotif {
         PS>     } ;
         PS> };
         PS> if($tenOrg -eq 'HOM' ){
-        PS>     $SMTPServer = "smtp.gmail.com" ; 
+        PS>     $SMTPServer = "smtp.gmail.com" ;
         PS>     $smtpFrom = $smtpTo ; # can only send via gmail from the auth address
         PS> } else {
-        PS>     $SMTPServer = $global:smtpserver ; 
-        PS>     $smtpFromDom = (Get-Variable  -name "$($TenOrg)Meta").value.o365_OPDomain ; 
+        PS>     $SMTPServer = $global:smtpserver ;
+        PS>     $smtpFromDom = (Get-Variable  -name "$($TenOrg)Meta").value.o365_OPDomain ;
         PS>     $smtpFrom = (($CmdletName.replace(".","-")) + "@$( $smtpFromDom  )") ;
-        PS>     $smtpFromDom = "gmail.com" ; 
-        PS> } ; 
+        PS>     $smtpFromDom = "gmail.com" ;
+        PS> } ;
         PS> $smsg = "Mailing Report" ;
         PS> if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } #Error|Warn|Debug
         PS> else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
@@ -9691,7 +9694,7 @@ Function Send-EmailNotif {
             [parameter(HelpMessage="Port number")]
                 [alias("port")]
                 [int] $SMTPPort,
-            [parameter(ParameterSetName='Smtp',HelpMessage="Switch for SSL")]        
+            [parameter(ParameterSetName='Smtp',HelpMessage="Switch for SSL")]
             [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Switch for SSL")]
                 [int] $useSSL,
             [parameter(Mandatory=$true,HelpMessage="Message Body")]
@@ -9706,134 +9709,491 @@ Function Send-EmailNotif {
                 $SmtpAttachment,
             [parameter(ParameterSetName='Gmail',HelpMessage="Switch to trigger stock Gmail send options (req Cred & useSSL)")]
                 [switch] $GmailSend,
-            [parameter(ParameterSetName='Smtp',HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]        
+            [parameter(ParameterSetName='Smtp',HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
             [parameter(ParameterSetName='Gmail',Mandatory=$true,HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
                 [System.Management.Automation.PSCredential]$Credential
         )
-        $verbose = ($VerbosePreference -eq "Continue") ; 
-        if ($PSCmdlet.ParameterSetName -eq 'gmail') {
-            $useSSL = $true; 
-        } ;   
-        $rgxSmtpHTMLTags = "</(pre|body|html|title|style)>" ;   
-        # before you email conv to str & add CrLf:
-        $SmtpBody = $SmtpBody | out-string ; 
-        #if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
-        if(-not $StripBodyHtml -AND ($SmtpBody -match "\<[^\>]*\>")){
-            $BodyAsHtml = $true ; 
-        } ;  
-        if($StripBodyHtml){
-            $smsg = "-StripBodyHtml:stripping any detected html in the body" ; 
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-            $smtpBody = [regex]::Replace($smtpBody, "\<[^\>]*\>", '') ;
-        } ; 
-        if($smtpBody -match "</(pre|body|html|title|style)>"){
-            $smsg = "`$smtpBody already contains one or more single-use html tags: $($rgxSmtpHTMLTags)" ; 
-            $smsg += "`n(using as is, no html updates)" ;
-            if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
-            else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
-        }elseif($BodyAsHtml){
-            $styleCSS = "<style>BODY{font-family: Arial; font-size: 10pt;}" ;
-            $styleCSS += "TABLE{border: 1px solid black; border-collapse: collapse;}" ;
-            $styleCSS += "TH{border: 1px solid black; background: #dddddd; padding: 5px; }" ;
-            $styleCSS += "TD{border: 1px solid black; padding: 5px; }" ;
-            $styleCSS += "</style>" ;
-            $html = "<html><head>$($styleCSS)<title>$($title)</title></head><body><pre>$($smtpBody)</pre></body></html>" ;
-            $smtpBody = $html ;
-        } ; 
-        if ($SMTPPort -eq $null) {
-            $SMTPPort = 25; # just default the port if missing, and always use it
-        }	 ;
-        if ( ($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME) ) {
-            $SMTPServer = $global:SMTPServer ;
-            $SMTPPort = $smtpserverport ; # [infra file]
-            $smsg = "Mailing:$($SMTPServer):$($SMTPPort)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
-        }elseif(get-command Get-ExchangeServer -ea 0){
-            if ((get-service MSEx* -ea 0) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer -OR $_.IsEdgeServer})) {
-                $SMTPServer = $env:computername ;
-                $smsg = "Mailing Locally:$($SMTPServer)" ;
+        BEGIN{
+            $verbose = ($VerbosePreference -eq "Continue") ;
+            
+            #region FUNCTIONS_INTERNAL ; #*======v FUNCTION FUNCTIONS_INTERNAL v======
+
+            #region _SEND_EMAILDOTNETCLIENT ; #*------v _send-EmailDotNetClient v------
+            function _send-EmailDotNetClient{
+                # use .net client
+                [CmdletBinding(DefaultParameterSetName='SMTP')]
+                PARAM(
+                    [parameter(Mandatory=$true,HelpMessage="Sender address")]
+                        [alias("from","SenderAddress")]
+                        [string] $SMTPFrom,
+                    [parameter(Mandatory=$true,HelpMessage="Recipient address")]
+                        [alias("To","RecipientAddress")]
+                        [string] $SmtpTo,
+                    [parameter(Mandatory=$true,HelpMessage="Subject")]
+                        [alias("Subject")]
+                        [string] $SMTPSubj,
+                    [parameter(Mandatory=$true,HelpMessage="Server")]
+                        [alias("server")]
+                        [string] $SMTPServer,
+                    [parameter(HelpMessage="Port number")]
+                        [alias("port")]
+                        [int] $SMTPPort,
+                    [parameter(ParameterSetName='Smtp',HelpMessage="Switch for SSL")]
+                        [int] $useSSL,
+                    [parameter(Mandatory=$true,HelpMessage="Message Body")]
+                        [alias("Body")]
+                        [string] $SmtpBody,                    
+                    [parameter(HelpMessage="array of attachement files")]
+                        [alias("attach","Attachments","attachment")]
+                        $SmtpAttachment,
+                    [parameter(ParameterSetName='Smtp',HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
+                        [System.Management.Automation.PSCredential]$Credential
+                ) ; 
+                $smsg = "using Net.Mail.SmtpClient" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                #$SMTPFrom = 'todd.kadrie@toro.com' ;
+                #$SMTPTo = 'todd.kadrie@toro.com' ;
+                #$SMTPServer = "lynms650" ;
+                #$SMTPSubject = "Test email $(get-date -format 'yyyyMMdd-HHmmtt')" ;
+                #$SMTPBody = "$($SMTPServer) test from powershell Net.Mail.SmtpClient" ;
+                #$FilePath = "d:\tmp\tmp-log.txt" ;
+                #$SMTPPort = 8111 ;
+                $SMTPMessage = New-Object System.Net.Mail.MailMessage($SMTPFrom, $SMTPTo, $SMTPSubject, $SMTPBody) ;
+                #$validatedAttachments
+                if ($validatedAttachments) {
+                    $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    TRY{
+                        $SMTPAttachment = New-Object System.Net.Mail.Attachment($validatedAttachments) ;
+                        $SMTPMessage.Attachments.Add($SMTPAttachment) ;
+                    } CATCH {
+                        $ErrTrapd = $Error[0] ;
+                        write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                    } ;
+                } ;
+                $smsg = "`$SMTPMessage `n$(($SMTPMessage|out-string).trim())" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                $prpWHSMsg = 'From','Sender','To','Bcc','Subject','Body','Attachments' ;  
+                if(-not($VerbosePreference -eq "Continue")){ 
+                    $smsg = "`$SMTPMessage `n$(($SMTPMessage | select $prpWHSMsg | out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                TRY{
+                    $SMTPClient = New-Object Net.Mail.SmtpClient($SMTPServer, $SMTPPort) ;
+                } CATCH {
+                    $ErrTrapd = $Error[0] ;
+                    write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                } ;
+                if($useSSL){
+                    $SMTPClient.EnableSsl = $true ;
+                } ;
+                $smsg = "`$SMTPClient `n$(($SMTPClient|out-string).trim())" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $prpWHSClnt = 'Host','Port','Credentials','EnableSsl' ;  
+                if(-not($VerbosePreference -eq "Continue")){ 
+                    $smsg = "`$SMTPClient `n$(($SMTPClient | select $prpWHSClnt | ft -a |out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                TRY {
+                    $Mailresult = $SMTPClient.Send($SMTPMessage) ;
+                    Write-Host "Email sent successfully!" -ForegroundColor Green ;
+                    if($Mailresult){
+                            $smsg = "`n$(($Mailresult|out-string).trim())" ;; 
+                            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                            #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                            $Mailresult | write-output  ; 
+                    } else { $true | write-output } ; 
+                } CATCH {
+                    $ErrTrapd=$Error[0] ;
+                    Write-Error "Failed to send email: $_" ;
+                    write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                } FINALLY {
+                    # Always dispose objects to unlock the attached file - don't delete $null/emtpy (gens error)
+                    if($SMTPAttachment){$SMTPAttachment.Dispose()} ;
+                    if($SMTPMessage){$SMTPMessage.Dispose()} ;
+                    if($SMTPClient){$SMTPClient.Dispose()} ;
+                } ;
+            } #
+            #endregion _SEND_EMAILDOTNETCLIENT ; #*------^ END _send-EmailDotNetClient ^------
+            #region _SEND_EMAILMAILMESSAGE ; #*------v _send-EmailMailMessage v------
+            function _send-EmailMailMessage{
+                [CmdletBinding(DefaultParameterSetName='SMTP')]
+                PARAM(
+                    [parameter(Mandatory=$true,HelpMessage="Sender address")]
+                        [alias("from","SenderAddress")]
+                        [string] $SMTPFrom,
+                    [parameter(Mandatory=$true,HelpMessage="Recipient address")]
+                        [alias("To","RecipientAddress")]
+                        [string] $SmtpTo,
+                    [parameter(Mandatory=$true,HelpMessage="Subject")]
+                        [alias("Subject")]
+                        [string] $SMTPSubj,
+                    [parameter(Mandatory=$true,HelpMessage="Server")]
+                        [alias("server")]
+                        [string] $SMTPServer,
+                    [parameter(HelpMessage="Port number")]
+                        [alias("port")]
+                        [int] $SMTPPort,
+                    [parameter(ParameterSetName='Smtp',HelpMessage="Switch for SSL")]
+                        [int] $useSSL,
+                    [parameter(Mandatory=$true,HelpMessage="Message Body")]
+                        [alias("Body")]
+                        [string] $SmtpBody,                    
+                    [parameter(HelpMessage="Switch for Body in Html format")]
+                        [switch] $BodyAsHtml,
+                    [parameter(HelpMessage="array of attachement files")]
+                        [alias("attach","Attachments","attachment")]
+                        $SmtpAttachment,
+                    [parameter(ParameterSetName='Smtp',HelpMessage="Credential (PSCredential obj) [-credential XXXX]")]
+                        [System.Management.Automation.PSCredential]$Credential
+                ) ; 
+                $smsg = "using send-MailMessage" ; 
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $sdMM = @{
+                    From       = $SMTPFrom ;
+                    To         = $SMTPTo ;
+                    Subject    = $($SMTPSubj) ;
+                    SMTPServer = $SMTPServer ;
+                    Body       = $SmtpBody ;
+                    BodyAsHtml = $($BodyAsHtml) ;
+                    verbose = $verbose ;
+                } ;
+                if($Credential){
+                    $sdMM.add('Credential',$Credential) ;
+                } ;
+                if($useSSL){
+                    $sdMM.add('useSSL',$useSSL) ;
+                } ;
+                if ($host.version.major -ge 3) {
+                    $sdMM.add("Port", $($SMTPPort))
+                } elseif ($SmtpPort -ne 25) {
+                    $smsg = "Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                if($sdMM.SMTPServer -eq 'lynmail.toro.com' -AND $SmtpPort -ne 25){
+                    # port has to be 25, 8111
+                    $sdMM.Port = '25' ; 
+                } ; 
+                $smsg = "send-mailmessage w`n$(($sdMM |out-string).trim())" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                if ($validatedAttachments) {
+                    $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;            
+                $error.clear()
+                TRY {
+                    if ($validatedAttachments) {
+                        # looks like on psv2?v3 attachment is an array, can be pipelined in too
+                        $Mailresult = $validatedAttachments | send-mailmessage @sdMM ;
+                    } else {
+                        $Mailresult = send-mailmessage @sdMM
+                    } ;
+                    if($Mailresult){
+                        $smsg = "`n$(($Mailresult|out-string).trim())" ;; 
+                        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                        #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                        $Mailresult | write-output 
+                    } else { $true | write-output } ;  ; 
+                }CATCH {
+                    $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                $error.clear() ;
+            } ; 
+            #endregion _SEND_EMAILMAILMESSAGE ; #*------^ END _send-EmailMailMessage ^------
+
+            #endregion FUNCTIONS_INTERNAL ; #*======^ END FUNCTIONS_INTERNAL ^======
+
+            #region SUB_MAIN ; #*======v SUB_MAIN v======
+            if ($PSCmdlet.ParameterSetName -eq 'gmail') {
+                $useSSL = $true;
+            } ;
+            $rgxSmtpHTMLTags = "</(pre|body|html|title|style)>" ;
+            $rgxFqdn = "^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[A-Za-z]{2,63}$"
+            # before you email conv to str & add CrLf:
+            $SmtpBody = $SmtpBody | out-string ;
+            #if ($BodyAsHtml -OR ($SmtpBody -match "\<[^\>]*\>")) {$Email.BodyAsHtml = $True } ;
+            if(-not $StripBodyHtml -AND ($SmtpBody -match "\<[^\>]*\>")){
+                $BodyAsHtml = $true ;
+            } ;
+            if($StripBodyHtml){
+                $smsg = "-StripBodyHtml:stripping any detected html in the body" ;
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                $smtpBody = [regex]::Replace($smtpBody, "\<[^\>]*\>", '') ;
+            } ;
+            if($smtpBody -match "</(pre|body|html|title|style)>"){
+                $smsg = "`$smtpBody already contains one or more single-use html tags: $($rgxSmtpHTMLTags)" ;
+                $smsg += "`n(using as is, no html updates)" ;
+                if($verbose){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+            }elseif($BodyAsHtml){
+                $styleCSS = "<style>BODY{font-family: Arial; font-size: 10pt;}" ;
+                $styleCSS += "TABLE{border: 1px solid black; border-collapse: collapse;}" ;
+                $styleCSS += "TH{border: 1px solid black; background: #dddddd; padding: 5px; }" ;
+                $styleCSS += "TD{border: 1px solid black; padding: 5px; }" ;
+                $styleCSS += "</style>" ;
+                $html = "<html><head>$($styleCSS)<title>$($title)</title></head><body><pre>$($smtpBody)</pre></body></html>" ;
+                $smtpBody = $html ;
+            } ;
+            if ($SMTPPort -eq $null) {
+                $SMTPPort = 25; # just default the port if missing, and always use it
+            }	 ;
+            if($SMTPServer){
+                $smsg = "specified: -SmtpServer: $($SmtpServer)" ; 
                 if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;                    
-            }elseif ((get-service MSEx* -ea 0)  -AND (gcm Get-ExchangeServer -ea 0)) {
-                # non Hub Ex server, draw from local site
-                $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer -OR $_.IsEdgeServer) } ) ;
-                $SMTPServer = ($htsrvs | get-random).name ;
-                $smsg = "Mailing Random Hub:$($SMTPServer)" ;
-                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;                    
-            }
-        }elseif( $rgxMyBoxW -AND ($env:COMPUTERNAME -match $rgxMyBoxW)){
-            $smsg = "`$env:COMPUTERNAME -matches `$rgxMyBoxW: vscan UNREACHABLE" ; 
-            $smsg += "`n(and dynamic IPs not configurable into restricted gateways)" ; 
-            $smsg += "`nSkipping mail submission, no reachable destination" ; 
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
-            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-            Break ; 
-        } else {
-            # non-Ex servers, non-mybox: Lync etc, assume vscan access
-            $smsg = "Non-Exch server, assuming Vscan access" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;              
-            # but dyn ip workstations, not
-            $SMTPServer = "vscan.toro.com" ;
-        } ;
-        $sdMM = @{
-            From       = $SMTPFrom ;
-            To         = $SMTPTo ;
-            Subject    = $($SMTPSubj) ;
-            SMTPServer = $SMTPServer ;
-            Body       = $SmtpBody ;
-            BodyAsHtml = $($BodyAsHtml) ; 
-            verbose = $verbose ; 
-        } ;
-        if($Credential){
-            $sdMM.add('Credential',$Credential) ; 
-        } ; 
-        if($useSSL){
-            $sdMM.add('useSSL',$useSSL) ; 
-        } ; 
-        [array]$validatedAttachments = $null ;
-        if ($SmtpAttachment) {
-            if ($SmtpAttachment -isnot [system.array]) {
-                if (test-path $SmtpAttachment) {$validatedAttachments += $SmtpAttachment }
-                else {write-warning "$((get-date).ToString('HH:mm:ss')):UNABLE TO GCI ATTACHMENT:$($SmtpAttachment)" }
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+            }elseif ((($myBox -contains $env:COMPUTERNAME) -OR ($AdminJumpBoxes -contains $env:COMPUTERNAME)) ) {
+                $SMTPServer = $global:SMTPServer ;
+                $SMTPPort = $smtpserverport ; # [infra file]
+                $smsg = "Mailing:$($SMTPServer):$($SMTPPort)" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+            }elseif((get-command Get-ExchangeServer -ea 0)){
+                if ((get-service MSEx* -ea 0) -AND (get-exchangeserver $env:computername | Where-Object {$_.IsHubTransportServer -OR $_.IsEdgeServer})) {
+                    $SMTPServer = $env:computername ;
+                    $smsg = "Mailing Locally:$($SMTPServer)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                }elseif ((get-service MSEx* -ea 0)  -AND (gcm Get-ExchangeServer -ea 0)) {
+                    # non Hub Ex server, draw from local site
+                    $htsrvs = (Get-ExchangeServer | Where-Object {  ($_.Site -eq (get-exchangeserver $env:computername ).Site) -AND ($_.IsHubTransportServer -OR $_.IsEdgeServer) } ) ;
+                    $SMTPServer = ($htsrvs | get-random).name ;
+                    $smsg = "Mailing Random Hub:$($SMTPServer)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                }
+            }elseif(($rgxMyBoxW -AND ($env:COMPUTERNAME -match $rgxMyBoxW))){
+                $smsg = "`$env:COMPUTERNAME -matches `$rgxMyBoxW: vscan UNREACHABLE" ;
+                $smsg += "`n(and dynamic IPs not configurable into restricted gateways)" ;
+                $smsg += "`nSkipping mail submission, no reachable destination" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                Break ;
             } else {
-                foreach ($attachment in $SmtpAttachment) {
-                    if (test-path $attachment) {$validatedAttachments += $attachment }
-                    else {write-warning "$((get-date).ToString('HH:mm:ss')):UNABLE TO GCI ATTACHMENT:$($attachment)" }  ;
+                # non-Ex servers, non-mybox: Lync etc, assume vscan access
+                $smsg = "Non-Exch server, assuming Vscan access" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                # but dyn ip workstations, not
+                $SMTPServer = "vscan.toro.com" ;
+            } ;
+            # pre-validate attachments, if any, before sending
+            [array]$validatedAttachments = $null ;
+            if ($SmtpAttachment) {
+                if ($SmtpAttachment -isnot [system.array]) {
+                    if (test-path $SmtpAttachment) {$validatedAttachments += $SmtpAttachment }
+                    else {write-warning "$((get-date).ToString('HH:mm:ss')):UNABLE TO GCI ATTACHMENT:$($SmtpAttachment)" }
+                } else {
+                    foreach ($attachment in $SmtpAttachment) {
+                        if (test-path $attachment) {$validatedAttachments += $attachment }
+                        else {write-warning "$((get-date).ToString('HH:mm:ss')):UNABLE TO GCI ATTACHMENT:$($attachment)" }  ;
+                    } ;
                 } ;
             } ;
         } ; 
-        if ($host.version.major -ge 3) {$sdMM.add("Port", $($SMTPPort))}
-        elseif ($SmtpPort -ne 25) {
-            $smsg = "Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        } ;
-        $smsg = "send-mailmessage w`n$(($sdMM |out-string).trim())" ; 
-        if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-        else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;            
-        if ($validatedAttachments) {
-            $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
-            else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;               
-        } ;
-        $error.clear()
-        TRY {
-            if ($validatedAttachments) {
-                # looks like on psv2?v3 attachment is an array, can be pipelined in too
-                $validatedAttachments | send-mailmessage @sdMM ;
-            } else {
-                send-mailmessage @sdMM
-            } ;
-        }CATCH {
-            $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
-            if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent} 
-            else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; 
-        } ; 
-        $error.clear() ;
+        PROCESS{
+            if($useSSL -AND $SMTPServer -notmatch $rgxFqdn){
+                $smsg = "-useSSL but -SmtpServer: $($SmtpServer) *DOES NOT* match an FQDN!" ; 
+                $smsg += "`nSSL *requires* certificate authentication, *requires* a server FQDN on a connector-bound certificate!" ;
+                $smsg += "`n=> this combo will *not* work with -useSSL" ;
+                $smsg += "`n=> switching -useSSL:`$false!" ;
+                write-warning $smsg ; 
+                $useSSL = $false ; 
+            } ; 
+            if (-not $credential -AND -not $useSSL ){
+                $sdMM = @{
+                    From       = $SMTPFrom ;
+                    To         = $SMTPTo ;
+                    Subject    = $($SMTPSubj) ;
+                    SMTPServer = $SMTPServer ;
+                    Body       = $SmtpBody ;
+                    BodyAsHtml = $($BodyAsHtml) ;
+                    verbose = $verbose ;
+                } ;
+                if($Credential){
+                    $sdMM.add('Credential',$Credential) ;
+                } ;
+                if($useSSL){
+                    $sdMM.add('useSSL',$useSSL) ;
+                } ;
+                if ($host.version.major -ge 3) {
+                    $sdMM.add("Port", $($SMTPPort))
+                } elseif ($SmtpPort -ne 25) {
+                    $smsg = "Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                if($sdMM.SMTPServer -match 'lynmail.toro.com','vscan.toro.com' -AND $SmtpPort -ne 25){
+                    # port has to be 25, 8111
+                    $sdMM.Port = '25' ; 
+                } ; 
+                if($sdMM.SMTPServer -eq 'lynmail.toro.com' -AND $SmtpPort -ne 25){
+                    # port has to be 25, 8111
+                    $sdMM.Port = '25' ; 
+                } ;
+                $smsg = "_send-EmailMailMessage w`n$(($sdMM|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                $mailresult = _send-EmailMailMessage @sdMM ; 
+                if($mailresult){ $mailresult | write-output } ; 
+                <#
+                $smsg = "send-mailmessage w`n$(($sdMM |out-string).trim())" ;
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                if ($validatedAttachments) {
+                    $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;            
+                $error.clear()
+                TRY {
+                    if ($validatedAttachments) {
+                        # looks like on psv2?v3 attachment is an array, can be pipelined in too
+                        $validatedAttachments | send-mailmessage @sdMM ;
+                    } else {
+                        send-mailmessage @sdMM
+                    } ;
+                }CATCH {
+                    $smsg = "Failed processing $($_.Exception.ItemName). `nError Message: $($_.Exception.Message)`nError Details: $($_)" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                $error.clear() ;
+                #>
+            } else{
+                # _send-EmailDotNetClient
+                $sdMM = @{
+                    From       = $SMTPFrom ;
+                    To         = $SMTPTo ;
+                    Subject    = $($SMTPSubj) ;
+                    SMTPServer = $SMTPServer ;
+                    Body       = $SmtpBody ;
+                    #BodyAsHtml = $($BodyAsHtml) ;
+                    verbose = $verbose ;
+                } ;
+                if($Credential){
+                    $sdMM.add('Credential',$Credential) ;
+                } ;
+                if($useSSL){
+                    $sdMM.add('useSSL',$useSSL) ;
+                } ;
+                if ($host.version.major -ge 3) {
+                    $sdMM.add("Port", $($SMTPPort))
+                } elseif ($SmtpPort -ne 25) {
+                    $smsg = "Less than Psv3 detected: send-mailmessage does NOT support -Port, defaulting (to 25) ";
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level WARN -Indent}
+                    else{ write-WARNING "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                } ;
+                if($sdMM.SMTPServer -eq 'lynmail.toro.com' -AND $SmtpPort -ne 25){
+                    # port has to be 25, 8111
+                    $sdMM.Port = '25' ; 
+                } ; 
+                $smsg = "_send-EmailDotNetClient w`n$(($sdMM|out-string).trim())" ; 
+                if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                $mailresult = _send-EmailDotNetClient @sdMM ; 
+                if($mailresult){ $mailresult | write-output } ; 
+
+                <# use .net client
+                $smsg = "using Net.Mail.SmtpClient" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE }
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                #$SMTPFrom = 'todd.kadrie@toro.com' ;
+                #$SMTPTo = 'todd.kadrie@toro.com' ;
+                #$SMTPServer = "lynms650" ;
+                #$SMTPSubject = "Test email $(get-date -format 'yyyyMMdd-HHmmtt')" ;
+                #$SMTPBody = "$($SMTPServer) test from powershell Net.Mail.SmtpClient" ;
+                #$FilePath = "d:\tmp\tmp-log.txt" ;
+                #$SMTPPort = 8111 ;
+                $SMTPMessage = New-Object System.Net.Mail.MailMessage($SMTPFrom, $SMTPTo, $SMTPSubject, $SMTPBody) ;
+                #$validatedAttachments
+                if ($validatedAttachments) {
+                    $smsg = "`$validatedAttachments:$(($validatedAttachments|out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info }
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    TRY{
+                        $SMTPAttachment = New-Object System.Net.Mail.Attachment($validatedAttachments) ;
+                        $SMTPMessage.Attachments.Add($SMTPAttachment) ;
+                    } CATCH {
+                        $ErrTrapd = $Error[0] ;
+                        write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                        $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                        write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                    } ;
+                } ;
+                $smsg = "`$SMTPMessage `n$(($SMTPMessage|out-string).trim())" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ;
+                $prpWHSMsg = 'From','Sender','To','Bcc','Subject','Body','Attachments' ;  
+                if(-not($VerbosePreference -eq "Continue")){ 
+                    $smsg = "`$SMTPMessage `n$(($SMTPMessage | select $prpWHSMsg | out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                TRY{
+                    $SMTPClient = New-Object Net.Mail.SmtpClient($SMTPServer, $SMTPPort) ;
+                } CATCH {
+                    $ErrTrapd = $Error[0] ;
+                    write-host -foregroundcolor gray "TargetCatch:} CATCH [$($ErrTrapd.Exception.GetType().FullName)] {"  ;
+                    $smsg = "`n$(($ErrTrapd | fl * -Force|out-string).trim())" ;
+                    write-warning "$((get-date).ToString('HH:mm:ss')):$($smsg)" ;
+                } ;
+                if($useSSL){
+                    $SMTPClient.EnableSsl = $true ;
+                } ;
+                $smsg = "`$SMTPClient `n$(($SMTPClient|out-string).trim())" ;
+                if($VerbosePreference -eq "Continue"){if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level VERBOSE } 
+                else{ write-verbose "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ; } ; 
+                $prpWHSClnt = 'Host','Port','Credentials','EnableSsl' ;  
+                if(-not($VerbosePreference -eq "Continue")){ 
+                    $smsg = "`$SMTPClient `n$(($SMTPClient | select $prpWHSClnt | ft -a |out-string).trim())" ;
+                    if ($logging) { Write-Log -LogContent $smsg -Path $logfile -useHost -Level Info } 
+                    else{ write-host -foregroundcolor green "$((get-date).ToString('HH:mm:ss')):$($smsg)" } ;
+                    #Levels:Error|Warn|Info|H1|H2|H3|H4|H5|Debug|Verbose|Prompt|Success
+                } ; 
+                TRY {
+                    $SMTPClient.Send($SMTPMessage) ;
+                    Write-Host "Email sent successfully!" -ForegroundColor Green ;
+                } CATCH {
+                    Write-Error "Failed to send email: $_" ;
+                } FINALLY {
+                    # Always dispose objects to unlock the attached file - don't delete $null/emtpy (gens error)
+                    if($SMTPAttachment){$SMTPAttachment.Dispose()} ;
+                    if($SMTPMessage){$SMTPMessage.Dispose()} ;
+                    if($SMTPClient){$SMTPClient.Dispose()} ;
+                } ;
+                #>
+            } # if-E send-mailmessage block
+        } ; # E-PROC
+        END{
+            #endregion SUB_MAIN ; #*======^ END SUB_MAIN ^======
+        }
     }
 
 #*------^ Send-EmailNotif.ps1 ^------
@@ -13215,7 +13575,7 @@ function test-PrivateIP {
     .PARAMETER IP
     The IP address to test[-IP 192.168.0.1]
     .EXAMPLE
-    Test-PrivateIP -IP 172.16.1.2
+    Test-PrivateIP -IP 172.16.1.3
     Result
     ------
     True
@@ -13746,7 +14106,7 @@ function Convert-IPtoInt64 {
 
 #*======^ END FUNCTIONS ^======
 
-Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,Set-CertificatesInCAHierarchyTDO,set-RDPFileSignatureTDO,test-CertificateTDO,_getstatus_,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,test-RDPFileSignatureTDO,update-SecurityProtocolTDO -Alias *
+Export-ModuleMember -Function Add-IntToIPv4Address,Connect-PSR,convert-IPAddressToReverseTDO,Disconnect-PSR,get-CertificateChainOfTrust,Get-CurrentUserNameTDO,Get-DnsDkimRecord,get-DNSServers,get-FullDomainAccountTDO,get-IPSettings,Get-NetIPConfigurationLegacy,get-NetworkClass,get-NetworkSubnet,Get-RestartInfo,get-tsUsers,get-WebTableTDO,get-whoami,import-CertCERLegacy,Import-CertificateTrustFileTDO,Invoke-BypassPaywall,New-RandomFilename,Invoke-SecurityDialog,New-SelfSignedCertificateTDO,push-TLSLatest,Reconnect-PSR,Resolve-DNSLegacy.ps1,Resolve-DnsSenderIDRecords,resolve-NetworkLocalTDO,resolve-SMTPHeader,resolve-SPFMacros,resolve-SPFMacrosTDO,convert-IPAddressToReverseTDO,Resolve-SPFRecord,SPFRecord,SPFRecord,SPFRecord,convert-IPAddressToReverseTDO,test-IpAddressCidrRange,save-WebDownload,save-WebDownloadCurl,save-WebDownloadDotNet,save-WebFaveIcon,Send-EmailNotif,_send-EmailDotNetClient,_send-EmailMailMessage,Set-CertificatesInCAHierarchyTDO,set-RDPFileSignatureTDO,test-CertificateTDO,_getstatus_,show-SerFilterLogFormattedOutput,show-SerMtaLogFormattedOutput,split-DnsTXTRecord,summarize-PassStatus,summarize-PassStatusHtml,test-CertificateTDO,_getstatus_,test-Connection-T,Test-DnsDkimCnameToTxtKeyTDO,test-IpAddressCidrRange,Test-IPAddressInRange,Test-IPAddressInRangeIp6,Test-IPAddressInRangeIp6,test-isComputerDNSRegistered,test-isComputerNameFQDN,test-isComputerNameNetBios,test-isComputerSMBCapable,test-isRDPSession,Test-LocalCredentialTDO,test-LocalDrivePathTDO,Test-NetAddressIpv4TDO,Test-NetAddressIpv6TDO,Test-Port,test-PrivateIP,Test-RDP,test-RDPDriveRedirectionTDO,test-RDPFileSignatureTDO,update-SecurityProtocolTDO -Alias *
 
 
 
