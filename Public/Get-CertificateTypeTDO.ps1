@@ -67,7 +67,7 @@
         [Alias('test-CertificateTypeTDO')]
         PARAM(            
             [Parameter(Mandatory=$True,ValueFromPipeline=$true,HelpMessage="X509 Certificate object to be tested[-Certificate `$certObj]")]
-            [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate
+                [System.Security.Cryptography.X509Certificates.X509Certificate2]$Certificate
         )
         PROCESS{
             foreach($item in $certificate){
