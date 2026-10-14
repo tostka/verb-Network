@@ -78,7 +78,7 @@
             $prpCert = 'Issuer','Subject','NotBefore','NotAfter','HasPrivateKey','Thumbprint',@{Name='PsPath';Expression={$_.pspath.replace('Microsoft.PowerShell.Security\Certificate::','') }} 
             # no return the entire 509 cert object, match the return of an import-certificate command
             TRY{
-                Add-Type -AssemblyName System.Security ;
+                TRY{Add-Type -AssemblyName System.Security}CATCH{} ;
                 #$CertStore = New-Object System.Security.Cryptography.X509Certificates.X509Store -ArgumentList  "\\$($Computername)\$($TargetCertStore)", $CertStoreLocation ;                
                 $CertStore = New-Object System.Security.Cryptography.X509Certificates.X509Store($TargetCertStore, $CertStoreLocation)
                 $CertStore.Open('ReadWrite');
